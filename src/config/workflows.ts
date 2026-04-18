@@ -1,0 +1,616 @@
+import { WorkflowId } from "@/components/Sidebar";
+
+export interface WorkflowField {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "file" | "url" | "select";
+  placeholder?: string;
+  accept?: string;
+  required?: boolean;
+  options?: { label: string; value: string }[];
+  allowCustom?: boolean;
+}
+
+export interface WorkflowConfig {
+  id: WorkflowId;
+  title: string;
+  description: string;
+  fields: WorkflowField[];
+  systemInstruction: string;
+  generatePrompt: (data: Record<string, any>) => string | any[];
+  enableSearch?: boolean;
+  suggestedPrompts: string[];
+}
+
+const basePersona = `You are "TechCoach AI," an elite, highly empathetic, and strategically brilliant career coach specializing in the technology sector (software engineering, product management, data science, and IT). Your goal is to help users land their ideal tech jobs, maximize their compensation, and build sustainable career paths.
+
+Tone: Professional, encouraging, realistic, and highly actionable. Do not use corporate fluff. Provide specific, data-backed advice. Never guarantee a job placement or a specific salary; frame advice as maximizing probability and competitive positioning.`;
+
+export const COMMON_ROLES = [
+  { label: "Software Engineer", value: "Software Engineer" },
+  { label: "Frontend Engineer", value: "Frontend Engineer" },
+  { label: "Backend Engineer", value: "Backend Engineer" },
+  { label: "Full Stack Engineer", value: "Full Stack Engineer" },
+  { label: "Product Manager", value: "Product Manager" },
+  { label: "Data Scientist", value: "Data Scientist" },
+  { label: "Data Engineer", value: "Data Engineer" },
+  { label: "Machine Learning Engineer", value: "Machine Learning Engineer" },
+  { label: "DevOps Engineer", value: "DevOps Engineer" },
+  { label: "Engineering Manager", value: "Engineering Manager" },
+  { label: "UX/UI Designer", value: "UX/UI Designer" },
+  { label: "QA Engineer", value: "QA Engineer" },
+  { label: "Other", value: "Other" },
+];
+
+export const COMMON_LOCATIONS = [
+  { label: "San Francisco, CA", value: "San Francisco, CA" },
+  { label: "New York, NY", value: "New York, NY" },
+  { label: "Seattle, WA", value: "Seattle, WA" },
+  { label: "Austin, TX", value: "Austin, TX" },
+  { label: "Boston, MA", value: "Boston, MA" },
+  { label: "Los Angeles, CA", value: "Los Angeles, CA" },
+  { label: "London, UK", value: "London, UK" },
+  { label: "Remote (US)", value: "Remote (US)" },
+  { label: "Other", value: "Other" },
+];
+
+export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
+  linkedin: {
+    id: "linkedin",
+    title: "LinkedIn Profile Optimization",
+    description: "Analyze and rewrite your LinkedIn profile to be keyword-rich and impactful for tech recruiters.",
+    fields: [
+      {
+        id: "url",
+        label: "LinkedIn URL (Optional)",
+        type: "url",
+        placeholder: "https://linkedin.com/in/yourprofile",
+        required: false,
+      },
+      {
+        id: "profile",
+        label: "Profile Text (If no URL)",
+        type: "textarea",
+        placeholder: "Paste your LinkedIn headline, summary, and experience here...",
+        required: false,
+      },
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: LinkedIn Profile Optimization\nAction: Analyze the provided LinkedIn profile (via URL or text). First, highlight the pros and cons of the current profile. Then, provide specific suggestions for each section (Headline, About, Experience, Skills) to make it keyword-rich for tech recruiters.`,
+    generatePrompt: (data) => {
+      let prompt = "Please analyze my LinkedIn profile. Highlight the pros and cons, and provide suggestions for each section.\n\n";
+      if (data.url) prompt += `URL: ${data.url}\n\n`;
+      if (data.profile) prompt += `Profile Text:\n${data.profile}\n`;
+      return prompt;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "How can I make my headline stand out more to recruiters?",
+      "Can you rewrite my 'About' section to sound more impactful?",
+      "What keywords am I missing for a Senior Engineer role?",
+    ],
+  },
+  resume: {
+    id: "resume",
+    title: "Resume Analysis & Tailoring",
+    description: "Upload your resume and tailor it to a specific job description using the XYZ formula.",
+    fields: [
+      {
+        id: "resumeFile",
+        label: "Upload Resume (PDF)",
+        type: "file",
+        accept: "application/pdf",
+        required: false,
+      },
+      {
+        id: "resumeText",
+        label: "Or Paste Resume Text",
+        type: "textarea",
+        placeholder: "Paste your resume text here...",
+        required: false,
+      },
+      {
+        id: "jdUrl",
+        label: "Job Description URL (Optional)",
+        type: "url",
+        placeholder: "https://...",
+        required: false,
+      },
+      {
+        id: "jd",
+        label: "Target Job Description (If no URL)",
+        type: "textarea",
+        placeholder: "Paste the job description here...",
+        required: false,
+      },
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Resume Analysis & Tailoring\nAction: Analyze the provided resume against the Target Job Description (via URL or text). If a URL is provided, use Google Search to scrape the job description for the title, description, and other details needed to provide context. First, highlight the pros and cons of the resume. Then, identify missing keywords. Finally, rewrite 3-5 key bullet points using the XYZ formula (Accomplished [X] as measured by [Y], by doing [Z]). Provide a match percentage against the JD.`,
+    generatePrompt: (data) => {
+      const parts: any[] = [{ text: `Please analyze my resume against the provided Job Description. Highlight pros/cons, missing keywords, and rewrite bullet points using the XYZ formula.\n\n` }];
+      
+      if (data.jdUrl) {
+        parts[0].text += `Target Job Description URL:\n${data.jdUrl}\n\n`;
+      }
+      if (data.jd) {
+        parts[0].text += `Target Job Description Text:\n${data.jd}\n\n`;
+      }
+      
+      if (data.resumeText) {
+        parts.push({ text: `\n\nHere is my resume text:\n${data.resumeText}` });
+      }
+      
+      if (data.resumeFile && data.resumeFile.data) {
+        parts.push({
+          inlineData: {
+            data: data.resumeFile.data,
+            mimeType: data.resumeFile.mimeType || "application/pdf"
+          }
+        });
+      }
+      
+      return parts;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "Can you rewrite my most recent experience bullets?",
+      "What are the top 3 skills I'm missing for this JD?",
+      "How can I quantify my achievements better?",
+    ],
+  },
+  salary: {
+    id: "salary",
+    title: "Salary Negotiation Strategist",
+    description: "Draft negotiation emails and scripts based on your offer and target compensation.",
+    fields: [
+      {
+        id: "offerFile",
+        label: "Upload Offer Letter (PDF)",
+        type: "file",
+        accept: "application/pdf",
+        required: false,
+      },
+      {
+        id: "offer",
+        label: "Job Offer Details (If no file)",
+        type: "textarea",
+        placeholder: "e.g., $150k base, 10% bonus, $50k RSUs over 4 years...",
+        required: false,
+      },
+      {
+        id: "target",
+        label: "Target Compensation",
+        type: "text",
+        placeholder: "e.g., $170k base, $80k RSUs...",
+        required: true,
+      },
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Salary Negotiation Strategist\nAction: Draft professional, collaborative negotiation emails. Provide a script for phone conversations. Break down the total compensation (TC) to identify the most flexible areas for negotiation (e.g., signing bonus vs. base). If an offer letter is provided, scrape it for the offer details.`,
+    generatePrompt: (data) => {
+      const parts: any[] = [{ text: `Here is my target compensation:\n\n${data.target}\n\nPlease help me strategize my negotiation based on the provided offer details.\n\n` }];
+      
+      if (data.offer) {
+        parts[0].text += `Job Offer Details:\n${data.offer}\n\n`;
+      }
+      
+      if (data.offerFile && data.offerFile.data) {
+        parts.push({
+          inlineData: {
+            data: data.offerFile.data,
+            mimeType: data.offerFile.mimeType || "application/pdf"
+          }
+        });
+      }
+      
+      return parts;
+    },
+    suggestedPrompts: [
+      "Draft an email asking for a higher signing bonus.",
+      "What if they say the base salary is non-negotiable?",
+      "How do I ask for more equity instead of base?",
+    ],
+  },
+  interview: {
+    id: "interview",
+    title: "Interview & Job Search Guide",
+    description: "Get tailored behavioral and technical questions, plus a job search schedule.",
+    fields: [
+      {
+        id: "jdUrl",
+        label: "Job Description URL (Optional)",
+        type: "url",
+        placeholder: "https://...",
+        required: false,
+      },
+      {
+        id: "request",
+        label: "Target Role / Request Details",
+        type: "textarea",
+        placeholder: "e.g., I'm interviewing for a Senior Backend role at Stripe. Need prep strategy.",
+        required: true,
+      },
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Interview & Job Search Guide\nAction: Generate tailored behavioral (STAR method) questions and technical screening questions. Provide a week-by-week job search schedule or suggest highly valued certifications (e.g., AWS, CKA) based on their target role. If a JD URL is provided, scrape it for context.`,
+    generatePrompt: (data) => {
+      let prompt = `Here is my target role and request:\n\n${data.request}\n\n`;
+      if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
+      prompt += `Please provide an interview and job search guide.`;
+      return prompt;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "What are the most common technical questions for this role?",
+      "Can you give me a 4-week study plan?",
+      "What system design topics should I focus on?",
+    ],
+  },
+  market: {
+    id: "market",
+    title: "Market Compensation Analyst",
+    description: "Get estimated salary bands for specific tech roles and locations.",
+    fields: [
+      {
+        id: "role",
+        label: "Role",
+        type: "select",
+        options: COMMON_ROLES,
+        allowCustom: true,
+        required: true,
+      },
+      {
+        id: "location",
+        label: "Primary Location",
+        type: "select",
+        options: COMMON_LOCATIONS,
+        allowCustom: true,
+        required: true,
+      },
+      {
+        id: "secondaryLocation",
+        label: "Secondary Location (Optional to Compare)",
+        type: "select",
+        options: COMMON_LOCATIONS,
+        allowCustom: true,
+        required: false,
+      },
+      {
+        id: "yoe",
+        label: "Years of Experience",
+        type: "text",
+        placeholder: "e.g., 5",
+        required: true,
+      },
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Market Compensation Analyst\nAction: Use your knowledge to estimate market compensation data. Return your entire response as a valid JSON object wrapped in \`\`\`json \`\`\` markdown blocks. The output JSON must strictly have the following format: { "summary": "brief overview paragraph", "locations": [ { "locationName": "string", "salaryBands": { "min": number, "q1": number, "median": number, "q3": number, "max": number }, "equity": "brief description of typical equity", "yoyTrend": [ { "year": "2022", "compensation": number }, { "year": "2023", "compensation": number }, { "year": "2024", "compensation": number } ], "costOfLiving": { "housing": number, "utilities": number, "gas": number, "groceries": number, "effectiveDisposableIncome": number } } ], "sources": ["url1", "url2"] }. Always ensure valid JSON. For \`costOfLiving\`, provide estimated MONTHLY costs in USD for those categories, and set \`effectiveDisposableIncome\` to (Annual Median Base - (Monthly CoL Sum * 12)). Ensure \`locations\` array has length 1 if only one location, or length 2 if a comparison is requested.`,
+    generatePrompt: (data) => {
+      let prompt = `What is the market compensation for a ${data.role} with ${data.yoe} years of experience in ${data.location}?`;
+      if (data.secondaryLocation) {
+        prompt += ` Please also provide a comparison with a second market: ${data.secondaryLocation}, highlighting actual pay differences after factoring in cost of living.`;
+      }
+      prompt += ` Please return ONLY the JSON as instructed!`;
+      return prompt;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "How does this compare to remote roles?",
+      "What is the typical signing bonus for this level?",
+      "How much equity should I expect at a Series B startup?",
+    ],
+  },
+  career: {
+    id: "career",
+    title: "Career Path Cartographer",
+    description: "Outline a step-by-step roadmap to reach your ultimate career goal.",
+    fields: [
+      {
+        id: "current",
+        label: "Current Role",
+        type: "select",
+        options: COMMON_ROLES,
+        allowCustom: true,
+        required: true,
+      },
+      {
+        id: "goal",
+        label: "Ultimate Career Goal",
+        type: "select",
+        options: COMMON_ROLES,
+        allowCustom: true,
+        required: true,
+      },
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Career Path Cartographer\nAction: Outline a step-by-step 3, 5, and 10-year roadmap. Include necessary title progressions, skills to acquire, and the types of companies to target at each stage.`,
+    generatePrompt: (data) => `My current role is: ${data.current}\nMy ultimate career goal is: ${data.goal}\n\nPlease map out my career path.`,
+    suggestedPrompts: [
+      "What certifications would accelerate this path?",
+      "Should I transition to management or stay an IC?",
+      "What are the biggest risks to this career plan?",
+    ],
+  },
+  company_research: {
+    id: "company_research",
+    title: "Company Research & Interview Questions",
+    description: "Research a company, get ratings/reviews (Glassdoor, Blind), and generate questions to ask.",
+    fields: [
+      {
+        id: "jdUrl",
+        label: "Job Description URL (Optional)",
+        type: "url",
+        placeholder: "https://...",
+        required: false,
+      },
+      {
+        id: "company",
+        label: "Company Name",
+        type: "text",
+        placeholder: "e.g., Google, Stripe, Airbnb",
+        required: true,
+      },
+      {
+        id: "role",
+        label: "Target Role",
+        type: "select",
+        options: COMMON_ROLES,
+        allowCustom: true,
+        required: true,
+      }
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Company Research\nAction: Use Google Search to find recent news, market position, and company ratings/reviews from Glassdoor and Blind. Summarize the company's culture and market standing. Then, generate a list of insightful questions to ask the recruiter and interviewer for the specified role. If a JD URL is provided, scrape it for context.`,
+    generatePrompt: (data) => {
+      let prompt = `Please research ${data.company} for a ${data.role} role.\n\n`;
+      if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
+      prompt += `Include ratings/reviews from Glassdoor and Blind, and suggest questions to ask.`;
+      return prompt;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "What are the biggest red flags from employee reviews?",
+      "What recent news should I mention in the interview?",
+      "Give me 3 tough questions to ask the hiring manager.",
+    ],
+  },
+  mock_behavioral: {
+    id: "mock_behavioral",
+    title: "Mock Behavioral Interview",
+    description: "Practice behavioral questions with direct guidance and feedback.",
+    fields: [
+      {
+        id: "jdUrl",
+        label: "Job Description URL (Optional)",
+        type: "url",
+        placeholder: "https://...",
+        required: false,
+      },
+      {
+        id: "role",
+        label: "Target Role",
+        type: "select",
+        options: COMMON_ROLES,
+        allowCustom: true,
+        required: true,
+      },
+      {
+        id: "focus",
+        label: "Focus Area (Optional)",
+        type: "select",
+        options: [
+          { label: "Leadership", value: "Leadership" },
+          { label: "Conflict Resolution", value: "Conflict Resolution" },
+          { label: "Time Management", value: "Time Management" },
+          { label: "Adaptability", value: "Adaptability" },
+          { label: "Communication", value: "Communication" },
+          { label: "Teamwork", value: "Teamwork" },
+          { label: "Problem Solving", value: "Problem Solving" },
+          { label: "Other", value: "Other" },
+        ],
+        allowCustom: true,
+        required: false,
+      }
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Mock Behavioral Interview\nAction: Act as an interviewer. Ask one behavioral question at a time based on the role and focus area. Wait for the user's response. After they respond, provide constructive feedback using the STAR method, then ask the next question. Provide direct guidance on how to improve. If a JD URL is provided, scrape it for context to ask more tailored questions.`,
+    generatePrompt: (data) => {
+      let prompt = `Let's start a mock behavioral interview for a ${data.role} role. ${data.focus ? `Focus on: ${data.focus}.` : ''}\n\n`;
+      if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
+      prompt += `Please ask the first question.`;
+      return prompt;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "Can we focus on questions about dealing with difficult coworkers?",
+      "I don't have a good example for that, can you give me a hint?",
+      "How would you rate my last answer out of 10?",
+    ],
+  },
+  mock_case_study: {
+    id: "mock_case_study",
+    title: "Mock Case Study & Design Test",
+    description: "Practice product case studies and design tests with step-by-step guidance.",
+    fields: [
+      {
+        id: "jdUrl",
+        label: "Job Description URL (Optional)",
+        type: "url",
+        placeholder: "https://...",
+        required: false,
+      },
+      {
+        id: "role",
+        label: "Target Role",
+        type: "select",
+        options: COMMON_ROLES,
+        allowCustom: true,
+        required: true,
+      },
+      {
+        id: "topic",
+        label: "Case Study Topic (Optional)",
+        type: "select",
+        options: [
+          { label: "Product Strategy", value: "Product Strategy" },
+          { label: "Product Design", value: "Product Design" },
+          { label: "Metrics & Analytics", value: "Metrics & Analytics" },
+          { label: "Go-to-Market", value: "Go-to-Market" },
+          { label: "Growth & Acquisition", value: "Growth & Acquisition" },
+          { label: "Other", value: "Other" },
+        ],
+        allowCustom: true,
+        required: false,
+      }
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Mock Case Study\nAction: Act as an interviewer conducting a case study or design test. Present a prompt, guide the user through clarifying questions, framework structuring, and solution design. Provide feedback at each step. If a JD URL is provided, scrape it to tailor the case study.`,
+    generatePrompt: (data) => {
+      let prompt = `Let's start a mock case study for a ${data.role} role. ${data.topic ? `Topic: ${data.topic}.` : 'Please provide a random prompt.'}\n\n`;
+      if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
+      return prompt;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "What framework should I use to structure my answer?",
+      "Can you act as the user so I can ask clarifying questions?",
+      "What edge cases am I missing?",
+    ],
+  },
+  mock_tech: {
+    id: "mock_tech",
+    title: "Mock Tech Interview",
+    description: "Practice system design, AI engineering, or coding interviews.",
+    fields: [
+      {
+        id: "jdUrl",
+        label: "Job Description URL (Optional)",
+        type: "url",
+        placeholder: "https://...",
+        required: false,
+      },
+      {
+        id: "type",
+        label: "Interview Type",
+        type: "select",
+        options: [
+          { label: "System Design", value: "System Design" },
+          { label: "Coding / Algorithms", value: "Coding / Algorithms" },
+          { label: "AI / Machine Learning", value: "AI / Machine Learning" },
+          { label: "Frontend Architecture", value: "Frontend Architecture" },
+          { label: "Backend Architecture", value: "Backend Architecture" },
+          { label: "Database Design", value: "Database Design" },
+          { label: "Other", value: "Other" },
+        ],
+        allowCustom: true,
+        required: true,
+      },
+      {
+        id: "level",
+        label: "Seniority Level",
+        type: "select",
+        options: [
+          { label: "Intern", value: "Intern" },
+          { label: "Junior", value: "Junior" },
+          { label: "Mid-Level", value: "Mid-Level" },
+          { label: "Senior", value: "Senior" },
+          { label: "Staff", value: "Staff" },
+          { label: "Principal", value: "Principal" },
+        ],
+        allowCustom: false,
+        required: true,
+      }
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Mock Tech Interview\nAction: Act as a technical interviewer. Present a technical problem (coding, system design, or AI engineering) appropriate for the seniority level. Guide the user, ask follow-up questions about trade-offs, and provide direct guidance on how to ace the problem. If a JD URL is provided, scrape it to tailor the problem.`,
+    generatePrompt: (data) => {
+      let prompt = `Let's start a ${data.level} level ${data.type} mock interview.\n\n`;
+      if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
+      prompt += `Please give me a problem to solve.`;
+      return prompt;
+    },
+    enableSearch: true,
+    suggestedPrompts: [
+      "Can I get a hint on the optimal time complexity?",
+      "What are the trade-offs of using a NoSQL database here?",
+      "How would this system scale to 1 million users?",
+    ],
+  },
+  resume_generation: {
+    id: "resume_generation",
+    title: "Resume Generator",
+    description: "Create a new resume from scratch using templates, then edit it with AI.",
+    fields: [
+      {
+        id: "template",
+        label: "Resume Template",
+        type: "select",
+        options: [
+          { label: "Modern & Clean", value: "Modern & Clean" },
+          { label: "Tech Focused", value: "Tech Focused" },
+          { label: "Executive", value: "Executive" },
+          { label: "Academic / Research", value: "Academic / Research" },
+          { label: "Creative / Portfolio", value: "Creative / Portfolio" },
+          { label: "Photography / Visual", value: "Photography / Visual" },
+        ],
+        required: true,
+      },
+      {
+        id: "targetRole",
+        label: "Target Role",
+        type: "select",
+        options: COMMON_ROLES,
+        allowCustom: true,
+        required: true,
+      },
+      {
+        id: "personalInfo",
+        label: "Personal & Contact Information",
+        type: "textarea",
+        placeholder: "Name, Email, Phone, LinkedIn, GitHub, Portfolio...",
+        required: true,
+      },
+      {
+        id: "workHistory",
+        label: "Work History",
+        type: "textarea",
+        placeholder: "Company Name, Role, Dates, and key responsibilities/achievements...",
+        required: true,
+      },
+      {
+        id: "education",
+        label: "Education",
+        type: "textarea",
+        placeholder: "Degree, University, Graduation Year, relevant coursework...",
+        required: true,
+      },
+      {
+        id: "skills",
+        label: "Skills & Additional Info",
+        type: "textarea",
+        placeholder: "Languages, frameworks, tools, certifications...",
+        required: false,
+      }
+    ],
+    systemInstruction: `${basePersona}\n\nWorkflow: Resume Generator\nAction: You are an expert resume writer. Use the provided information (Template style, Target Role, Personal Info, Work History, Education, Skills) to generate a complete, professional, Markdown-formatted resume. Incorporate best practices for tech resumes, such as quantifying impact (the XYZ formula) where possible. Format the resume according to the requested template style. Wait for the user's instructions to edit or refine the resume. When the user asks you to modify the resume, provide the completely updated markdown.`,
+    generatePrompt: (data) => {
+      let personal = '';
+      if (data.personalInfo) {
+         personal = `Name: ${data.personalInfo.name}\nEmail: ${data.personalInfo.email}\nPhone: ${data.personalInfo.phone}\nLinkedIn: ${data.personalInfo.linkedin}\nGitHub: ${data.personalInfo.github}\nPortfolio: ${data.personalInfo.portfolio}`;
+      } else {
+         personal = data.personalInfoText;
+      }
+
+      let work = '';
+      if (Array.isArray(data.workHistory)) {
+         work = data.workHistory.map((w: any) => `${w.company || 'N/A'} - ${w.role} (${w.startDate || 'N/A'} to ${w.endDate || 'N/A'})\n${w.responsibilities || ''}`).join("\n\n");
+      } else {
+         work = data.workHistory;
+      }
+
+      let edu = '';
+      if (Array.isArray(data.education)) {
+         edu = data.education.map((e: any) => `${e.degree || 'N/A'} at ${e.university} (${e.year || 'N/A'})`).join("\n");
+      } else {
+         edu = data.education;
+      }
+      
+      return `Please generate my initial resume using the ${data.template} template style, tailored for a ${data.targetRole} role. Here is my information:\n\nContact Info:\n${personal}\n\nWork History:\n${work}\n\nEducation:\n${edu}\n\nSkills:\n${data.skills || "None provided"}`;
+    },
+    suggestedPrompts: [
+      "Can we make the bullet points sound more impactful?",
+      "Add a professional summary at the top.",
+      "Summarize my older experience to keep it to one page.",
+    ]
+  }
+};
