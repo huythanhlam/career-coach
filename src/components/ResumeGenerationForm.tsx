@@ -343,6 +343,29 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
         <CardDescription className="text-base text-zinc-500">We'll use this information to draft your resume</CardDescription>
       </CardHeader>
       <CardContent className="p-8">
+        {/* User Guidance Section */}
+        <div className="mb-10 p-6 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
+          <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-400 mb-3 flex items-center gap-2">
+            <Sparkles className="w-4 h-4" /> 
+            How to get the best results
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800/70 dark:text-amber-500/70">What happens next?</h4>
+              <p className="text-sm text-amber-800/80 dark:text-zinc-400 leading-relaxed">
+                After you submit, we'll open a <strong>Resume Workspace</strong>. You'll see your AI-generated resume on the left and a live editor/chat on the right to refine it until it's perfect.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800/70 dark:text-amber-500/70">Pro Tips for Accuracy</h4>
+              <ul className="text-sm text-amber-800/80 dark:text-zinc-400 space-y-1 list-disc pl-4">
+                <li><strong>Be Specific:</strong> The more detail you provide in your Work History, the better the AI can tailor your impact.</li>
+                <li><strong>Blank is OK:</strong> If you leave responsibilities blank, the AI will generate high-quality bullet points based on your job title.</li>
+                <li><strong>Include Skills:</strong> List your core tech stack to ensure the template highlights your expertise.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-10">
           
           {/* Target Role & Selected Template status */}

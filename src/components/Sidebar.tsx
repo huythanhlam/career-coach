@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 export type ViewId =
+  | "dashboard"
   | "unified"
   | "linkedin"
   | "resume"
@@ -27,7 +28,7 @@ export type ViewId =
   | "mock_case_study"
   | "mock_tech";
 
-export type WorkflowId = Exclude<ViewId, "unified">;
+export type WorkflowId = Exclude<ViewId, "unified" | "dashboard">;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -46,9 +47,15 @@ type Category = {
 
 const viewCategories: Category[] = [
   {
+    name: "Overview",
+    items: [
+      { id: "dashboard", name: "Dashboard", icon: Rocket, isHighlight: true },
+    ],
+  },
+  {
     name: "Complete Auto-Pilot",
     items: [
-      { id: "unified", name: "Career War Room", icon: Rocket, isHighlight: true },
+      { id: "unified", name: "Career War Room", icon: Briefcase },
     ],
   },
   {
@@ -56,7 +63,7 @@ const viewCategories: Category[] = [
     items: [
       { id: "linkedin", name: "LinkedIn Optimization", icon: Briefcase },
       { id: "resume_generation", name: "Resume Generator", icon: FileText },
-      { id: "resume", name: "Resume Tailoring", icon: FileText },
+      { id: "resume", name: "Resume Analysis", icon: FileText },
       { id: "company_research", name: "Company Research", icon: Building },
       { id: "interview", name: "Interview Guide", icon: MessageSquare },
       { id: "mock_behavioral", name: "Mock Behavioral", icon: Users },

@@ -5,13 +5,14 @@
 
 import { useState } from "react";
 import { Sidebar, ViewId } from "@/components/Sidebar";
+import { Dashboard } from "@/components/Dashboard";
 import { WorkflowView } from "@/components/WorkflowView";
 import { UnifiedWorkspace } from "@/components/UnifiedWorkspace";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { workflowsConfig } from "@/config/workflows";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<ViewId>("unified");
+  const [activeView, setActiveView] = useState<ViewId>("dashboard");
 
   return (
     <TooltipProvider>
@@ -20,6 +21,7 @@ export default function App() {
         
         {/* Main Workspace Area */}
         <div className="flex-1 h-full overflow-hidden flex relative">
+          {activeView === "dashboard" && <Dashboard />}
           {activeView === "unified" && <UnifiedWorkspace />}
           
           {Object.keys(workflowsConfig).map((id) => (

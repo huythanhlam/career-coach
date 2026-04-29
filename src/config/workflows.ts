@@ -91,8 +91,8 @@ export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
   },
   resume: {
     id: "resume",
-    title: "Resume Analysis & Tailoring",
-    description: "Upload your resume and tailor it to a specific job description using the XYZ formula.",
+    title: "Resume Analysis",
+    description: "Upload your resume for a critical evaluation of its technical depth, impact metrics, and keyword alignment.",
     fields: [
       {
         id: "resumeFile",
@@ -123,9 +123,9 @@ export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
         required: false,
       },
     ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Resume Analysis & Tailoring\nAction: Analyze the provided resume against the Target Job Description (via URL or text). If a URL is provided, use Google Search to scrape the job description for the title, description, and other details needed to provide context. First, highlight the pros and cons of the resume. Then, identify missing keywords. Finally, rewrite 3-5 key bullet points using the XYZ formula (Accomplished [X] as measured by [Y], by doing [Z]). Provide a match percentage against the JD.`,
+    systemInstruction: `${basePersona}\n\nWorkflow: Resume Analysis\nAction: Conduct a high-level audit of the provided resume. Your primary objective is to evaluate how effectively the candidate communicates their technical expertise and business impact.\n\nInstructions for Analysis:\n1. Audit every bullet point for the 'XYZ Formula' (Action + Metric + Result).\n2. Cross-reference the skills listed against the provided Job Description to identify critical gaps.\n3. Highlight specific sections that are either exceptionally strong or require immediate revision.\n4. Provide actionable, technical feedback for each highlighted section.\n5. Return an improved version of the text as a Markdown document, with annotations mapped to substrings in that improved version.`,
     generatePrompt: (data) => {
-      const parts: any[] = [{ text: `Please analyze my resume against the provided Job Description. Highlight pros/cons, missing keywords, and rewrite bullet points using the XYZ formula.\n\n` }];
+      const parts: any[] = [{ text: `I am submitting my resume for a comprehensive technical analysis. Please review the content for impact metrics, clarity, and relevance to the target role. Highlight strengths to maintain and specific areas that need revision.\n\n` }];
       
       if (data.jdUrl) {
         parts[0].text += `Target Job Description URL:\n${data.jdUrl}\n\n`;
@@ -151,9 +151,9 @@ export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
     },
     enableSearch: true,
     suggestedPrompts: [
-      "Can you rewrite my most recent experience bullets?",
-      "What are the top 3 skills I'm missing for this JD?",
-      "How can I quantify my achievements better?",
+      "How can I better quantify my contributions in my most recent role?",
+      "Which keywords from the job description am I failing to address?",
+      "Is the technical stack mentioned appropriate for this seniority level?",
     ],
   },
   salary: {
@@ -582,30 +582,60 @@ export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
         required: false,
       }
     ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Resume Generator\nAction: You are an expert resume writer. Use the provided information (Template style, Target Role, Personal Info, Work History, Education, Skills) to generate a complete, professional, Markdown-formatted resume. Incorporate best practices for tech resumes, such as quantifying impact (the XYZ formula) where possible. Format the resume according to the requested template style. Wait for the user's instructions to edit or refine the resume. When the user asks you to modify the resume, provide the completely updated markdown.`,
+    systemInstruction: `${basePersona}\n\nWorkflow: Resume Generator\nAction: You are an expert resume writer. Use the provided information (Template style, Target Role, Personal Info, Work History, Education, Skills) to generate a complete, professional, Markdown-formatted resume. Incorporate best practices for tech resumes, such as quantifying impact (the XYZ formula) where possible. 
+
+If a work history entry has empty or missing responsibilities, you MUST generate realistic, high-impact achievements and responsibilities appropriate for that specific job title and company.
+
+Format the resume according to the requested template style. Wait for the user's instructions to edit or refine the resume. When the user asks you to modify the resume, provide the completely updated markdown.`,
     generatePrompt: (data) => {
-      let personal = '';
-      if (data.personalInfo) {
-         personal = `Name: ${data.personalInfo.name}\nEmail: ${data.personalInfo.email}\nPhone: ${data.personalInfo.phone}\nLinkedIn: ${data.personalInfo.linkedin}\nGitHub: ${data.personalInfo.github}\nPortfolio: ${data.personalInfo.portfolio}`;
-      } else {
-         personal = data.personalInfoText;
-      }
+      const { template, targetRole, personalInfo, workHistory, education, skills } = data;
 
-      let work = '';
-      if (Array.isArray(data.workHistory)) {
-         work = data.workHistory.map((w: any) => `${w.company || 'N/A'} - ${w.role} (${w.startDate || 'N/A'} to ${w.endDate || 'N/A'})\n${w.responsibilities || ''}`).join("\n\n");
-      } else {
-         work = data.workHistory;
-      }
+      const contactSection = `
+NAME: ${personalInfo.name}
+EMAIL: ${personalInfo.email}
+PHONE: ${personalInfo.phone || 'Not provided'}
+LINKEDIN: ${personalInfo.linkedin || 'Not provided'}
+GITHUB: ${personalInfo.github || 'Not provided'}
+PORTFOLIO: ${personalInfo.portfolio || 'Not provided'}
+`.trim();
 
-      let edu = '';
-      if (Array.isArray(data.education)) {
-         edu = data.education.map((e: any) => `${e.degree || 'N/A'} at ${e.university} (${e.year || 'N/A'})`).join("\n");
-      } else {
-         edu = data.education;
-      }
-      
-      return `Please generate my initial resume using the ${data.template} template style, tailored for a ${data.targetRole} role. Here is my information:\n\nContact Info:\n${personal}\n\nWork History:\n${work}\n\nEducation:\n${edu}\n\nSkills:\n${data.skills || "None provided"}`;
+      const workSection = Array.isArray(workHistory) 
+        ? workHistory.map((w, i) => `
+JOB #${i + 1}:
+Role: ${w.role}
+Company: ${w.company || 'Not specified'}
+Dates: ${w.startDate || 'N/A'} - ${w.endDate || 'Present'}
+Responsibilities: ${w.responsibilities || '[EMPTY - PLEASE GENERATE HIGH-QUALITY CONTENT FOR THIS ROLE]'}
+`.trim()).join("\n\n")
+        : workHistory;
+
+      const eduSection = Array.isArray(education)
+        ? education.map((e, i) => `
+EDUCATION #${i + 1}:
+Degree: ${e.degree || 'Degree Not Specified'}
+University: ${e.university}
+Year: ${e.year || 'N/A'}
+`.trim()).join("\n\n")
+        : education;
+
+      return `
+Please generate a comprehensive resume using the **${template}** template style.
+Target Role: **${targetRole}**
+
+--- PERSONAL INFORMATION ---
+${contactSection}
+
+--- WORK HISTORY ---
+${workSection}
+
+--- EDUCATION ---
+${eduSection}
+
+--- SKILLS & ADDITIONAL INFO ---
+${skills || 'Not provided'}
+
+Final Note: If any work responsibilities were marked as EMPTY, please use your expertise to fill them with professional, metric-driven bullet points using the XYZ formula.
+`.trim();
     },
     suggestedPrompts: [
       "Can we make the bullet points sound more impactful?",

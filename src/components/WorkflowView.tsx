@@ -243,7 +243,13 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
     if (e) e.preventDefault();
     const textToSend = overrideText || chatInput.trim();
     
-    if (!textToSend || !chatInstance || isGenerating) return;
+    if (!textToSend || isGenerating) return;
+
+    let currentChat = chatInstance;
+    if (!currentChat) {
+      currentChat = createTechCoachChat(config.systemInstruction, config.enableSearch);
+      setChatInstance(currentChat);
+    }
 
     setChatInput("");
     setIsGenerating(true);
@@ -255,7 +261,13 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
     ]);
 
     try {
-      await sendMessageStream(chatInstance, textToSend, (chunk) => {
+      // Provide current resume context if in resume analysis mode
+      let prompt = textToSend;
+      if (workflowId === "resume" && resumeWorkspaceData) {
+        prompt = `User Request: ${textToSend}\n\nHere is the current resume text for context:\n\n${resumeWorkspaceData.resumeText}`;
+      }
+
+      await sendMessageStream(currentChat, prompt, (chunk) => {
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1].text += chunk;
@@ -483,7 +495,6 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   };
 
   const renderFloatingChat = () => {
-    if (messages.length === 0) return null;
     return (
         <>
           {/* Floating Action Button */}
@@ -502,8 +513,8 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
           >
             <div className="shrink-0 p-4 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center z-10">
               <div>
-                <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Coach's Analysis</h3>
-                <p className="text-xs text-zinc-500">TechCoach AI</p>
+                <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">TechCoach Assistant</h3>
+                <p className="text-xs text-zinc-500">Expert Career AI</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(false)} className="h-8 w-8 rounded-full">
                 <X className="w-4 h-4" />
@@ -512,6 +523,17 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
             
             <ScrollArea className="flex-1 p-4 bg-zinc-50/50 dark:bg-zinc-950/50">
               <div className="space-y-6 pb-4">
+                {messages.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 mt-10">
+                    <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600">
+                      <Bot className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">How can I help you?</h4>
+                      <p className="text-xs text-zinc-500 mt-1">Start by filling out the form or ask me a general question about {config.title.toLowerCase()}.</p>
+                    </div>
+                  </div>
+                )}
                 {messages.map((msg, idx) => (
                   <div
                     key={idx}

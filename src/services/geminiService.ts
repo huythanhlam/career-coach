@@ -1,8 +1,16 @@
 import { GoogleGenAI, Chat, Type } from "@google/genai";
+import * as MockService from "./geminiService.mock";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+const isMockMode = !apiKey || apiKey === "MY_GEMINI_API_KEY";
+
+const ai = !isMockMode ? new GoogleGenAI({ apiKey }) : null;
 
 export function createTechCoachChat(systemInstruction: string, enableSearch: boolean = false): Chat {
+  if (isMockMode || !ai) {
+    return MockService.createMockChat() as any;
+  }
+
   const config: any = {
     systemInstruction,
     temperature: 0.7,
@@ -85,6 +93,10 @@ export async function analyzeResume(
   jdText: string,
   jdUrl: string
 ) {
+  if (isMockMode || !ai) {
+    return MockService.mockAnalyzeResume();
+  }
+
   const parts: any[] = [
     { text: "You are an expert tech career coach. Analyze the provided resume against the Target Job Description. Return a JSON object with two properties: 'resumeText' (the full resume text, improved and tailored to the JD, formatted in Markdown) and 'annotations' (an array of objects highlighting specific strengths or weaknesses in the 'resumeText'). Each annotation must have 'textToHighlight' (an exact substring from 'resumeText' to highlight), 'type' (either 'strength' or 'weakness'), and 'suggestion' (your advice or explanation)." }
   ];
