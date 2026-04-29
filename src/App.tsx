@@ -4,26 +4,34 @@
  */
 
 import { useState } from "react";
-import { Sidebar, WorkflowId } from "@/components/Sidebar";
+import { Sidebar, ViewId } from "@/components/Sidebar";
 import { WorkflowView } from "@/components/WorkflowView";
+import { UnifiedWorkspace } from "@/components/UnifiedWorkspace";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { workflowsConfig } from "@/config/workflows";
 
 export default function App() {
-  const [activeWorkflow, setActiveWorkflow] = useState<WorkflowId>("linkedin");
+  const [activeView, setActiveView] = useState<ViewId>("unified");
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen w-full bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100">
-        <Sidebar activeWorkflow={activeWorkflow} onSelectWorkflow={setActiveWorkflow} />
-        {Object.keys(workflowsConfig).map((id) => (
-          <div
-            key={id}
-            className={`flex-1 h-full overflow-hidden ${activeWorkflow === id ? 'flex' : 'hidden'}`}
-          >
-            <WorkflowView workflowId={id as WorkflowId} />
-          </div>
-        ))}
+      <div className="flex h-screen w-full overflow-hidden bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100">
+        <Sidebar activeView={activeView} onSelectView={setActiveView} />
+        
+        {/* Main Workspace Area */}
+        <div className="flex-1 h-full overflow-hidden flex relative">
+          {activeView === "unified" && <UnifiedWorkspace />}
+          
+          {Object.keys(workflowsConfig).map((id) => (
+            <div
+              key={id}
+              className={`flex-1 h-full overflow-hidden ${activeView === id ? 'flex' : 'hidden'}`}
+            >
+              {/* @ts-ignore - Ensure id fits WorkflowId but dynamically string is mapped here */}
+              <WorkflowView workflowId={id as any} />
+            </div>
+          ))}
+        </div>
       </div>
     </TooltipProvider>
   );

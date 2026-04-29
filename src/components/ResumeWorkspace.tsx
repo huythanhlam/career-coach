@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ResumeRenderer } from "./ResumeRenderer";
 import { Loader2, Download, Save, Edit3, Eye } from "lucide-react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -130,45 +131,42 @@ export function ResumeWorkspace({ initialResumeText, annotations, onReset }: Res
         )}
 
         {/* Preview Pane */}
-        <div className={`flex-1 h-full overflow-y-auto p-8 bg-zinc-50 dark:bg-zinc-900 print:bg-white print:p-0 ${!isEditing ? 'max-w-4xl mx-auto' : ''}`}>
-          <div className="bg-white dark:bg-zinc-950 p-8 sm:p-12 shadow-sm border border-zinc-200 dark:border-zinc-800 min-h-[1056px] print:shadow-none print:border-0 print:m-0 print:p-0">
-            <div className="prose prose-zinc dark:prose-invert max-w-none prose-sm sm:prose-base">
-              <Markdown
-                rehypePlugins={[rehypeRaw]}
-                components={{
-                  mark: ({ node, children, ...props }) => {
-                    const indexStr = props['data-annotation-index'];
-                    if (indexStr === undefined) return <mark>{children}</mark>;
-                    
-                    const index = parseInt(indexStr as string, 10);
-                    const annotation = annotations[index];
-                    
-                    if (!annotation) return <mark>{children}</mark>;
+        <div className={`flex-1 h-full overflow-y-auto p-8 bg-zinc-50 dark:bg-zinc-900/50 print:bg-white print:p-0 custom-scrollbar ${!isEditing ? 'max-w-4xl mx-auto' : ''}`}>
+          <div className="bg-white dark:bg-zinc-950 p-8 sm:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-black/[0.04] dark:border-white/[0.04] min-h-[1056px] print:shadow-none print:border-0 print:m-0 print:p-0">
+             <ResumeRenderer
+               markdownContent={getHighlightedMarkdown()}
+               templateType="Modern & Clean"
+               customComponents={{
+                 mark: ({ node, children, ...props }: any) => {
+                   const indexStr = props['data-annotation-index'];
+                   if (indexStr === undefined) return <mark>{children}</mark>;
+                   
+                   const index = parseInt(indexStr as string, 10);
+                   const annotation = annotations[index];
+                   
+                   if (!annotation) return <mark>{children}</mark>;
 
-                    const isStrength = annotation.type === "strength";
-                    const markClass = isStrength 
-                      ? "bg-green-200 dark:bg-green-900/50 text-green-900 dark:text-green-100 cursor-help rounded px-1 print:bg-transparent print:text-inherit" 
-                      : "bg-red-200 dark:bg-red-900/50 text-red-900 dark:text-red-100 cursor-help rounded px-1 print:bg-transparent print:text-inherit";
+                   const isStrength = annotation.type === "strength";
+                   const markClass = isStrength 
+                     ? "bg-green-200 dark:bg-green-900/50 text-green-900 dark:text-green-100 cursor-help rounded px-1 print:bg-transparent print:text-inherit" 
+                     : "bg-red-200 dark:bg-red-900/50 text-red-900 dark:text-red-100 cursor-help rounded px-1 print:bg-transparent print:text-inherit";
 
-                    return (
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <mark className={markClass}>
-                            {children}
-                          </mark>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs p-3 text-sm">
-                          <p className="font-semibold mb-1">{isStrength ? "Strength" : "Suggestion"}</p>
-                          <p>{annotation.suggestion}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  }
-                }}
-              >
-                {getHighlightedMarkdown()}
-              </Markdown>
-            </div>
+                   return (
+                     <Tooltip>
+                       <TooltipTrigger>
+                         <mark className={markClass}>
+                           {children}
+                         </mark>
+                       </TooltipTrigger>
+                       <TooltipContent className="max-w-xs p-3 text-sm">
+                         <p className="font-semibold mb-1">{isStrength ? "Strength" : "Suggestion"}</p>
+                         <p>{annotation.suggestion}</p>
+                       </TooltipContent>
+                     </Tooltip>
+                   );
+                 }
+               }}
+             />
           </div>
         </div>
       </div>

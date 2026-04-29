@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { COMMON_ROLES } from "@/config/workflows";
-import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, ChevronRight, LayoutTemplate, User } from "lucide-react";
+import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, ChevronRight, LayoutTemplate, User, Wand2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { suggestWorkExperienceBullets } from "@/services/geminiService";
 
 function MiniTemplatePreview({ type }: { type: string }) {
   if (type === "Modern & Clean") {
@@ -242,11 +243,30 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
   ]);
 
   const [skills, setSkills] = useState("");
+  const [isGeneratingBullets, setIsGeneratingBullets] = useState<number | null>(null);
 
   const handleWorkChange = (index: number, field: string, value: string) => {
     const newWork = [...workHistory];
     newWork[index] = { ...newWork[index], [field]: value };
     setWorkHistory(newWork);
+  };
+
+  const handleSuggestBullets = async (index: number) => {
+    const work = workHistory[index];
+    if (!work.role) return;
+    
+    setIsGeneratingBullets(index);
+    try {
+      const suggestions = await suggestWorkExperienceBullets(work.role, targetRoleSelect === "Other" ? targetRole : targetRoleSelect);
+      const newWork = [...workHistory];
+      const currentText = newWork[index].responsibilities;
+      newWork[index].responsibilities = currentText ? currentText + "\n\n" + suggestions : suggestions;
+      setWorkHistory(newWork);
+    } catch (err) {
+      console.error("Failed to generate bullets:", err);
+    } finally {
+      setIsGeneratingBullets(null);
+    }
   };
 
   const addWork = () => setWorkHistory([...workHistory, { company: "", role: "", startDate: "", endDate: "", responsibilities: "" }]);
@@ -309,36 +329,36 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
   }
 
   return (
-    <Card className="border-zinc-200 dark:border-zinc-800 shadow-sm w-full mx-auto max-w-4xl relative animate-in slide-in-from-right-4 duration-300">
-      <CardHeader className="text-center relative pb-8 border-b border-zinc-100 dark:border-zinc-800">
+    <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] w-full mx-auto max-w-4xl relative animate-in slide-in-from-right-4 duration-300 bg-white dark:bg-zinc-900 overflow-hidden">
+      <CardHeader className="text-center relative p-8 pb-6 border-b border-zinc-100 dark:border-zinc-800/50">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={() => setStep(1)} 
-          className="absolute left-6 top-6 h-9 w-9 rounded-full bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+          className="absolute left-6 top-6 h-10 w-10 rounded-full bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Button>
-        <CardTitle className="text-2xl mt-2">Fill in your details</CardTitle>
-        <CardDescription>We'll use this information to draft your resume</CardDescription>
+        <CardTitle className="text-2xl mt-2 text-zinc-900 dark:text-zinc-100">Fill in your details</CardTitle>
+        <CardDescription className="text-base text-zinc-500">We'll use this information to draft your resume</CardDescription>
       </CardHeader>
-      <CardContent className="pt-8">
+      <CardContent className="p-8">
         <form onSubmit={handleSubmit} className="space-y-10">
           
           {/* Target Role & Selected Template status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50/50 dark:bg-indigo-950/20 p-5 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Selected Template</label>
-              <div className="flex items-center h-10 px-3 bg-white dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                <LayoutTemplate className="w-4 h-4 mr-2 text-indigo-500" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50/50 dark:bg-indigo-950/20 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-900/40">
+            <div className="space-y-3">
+              <label className="text-[15px] font-medium text-indigo-900 dark:text-indigo-200">Selected Template</label>
+              <div className="flex items-center h-14 px-4 bg-white dark:bg-zinc-950 rounded-xl border border-indigo-100 dark:border-indigo-900/60 text-[15px] font-medium text-zinc-700 dark:text-zinc-300">
+                <LayoutTemplate className="w-5 h-5 mr-3 text-indigo-500" />
                 {template}
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Target Role <span className="text-red-500">*</span></label>
+            <div className="space-y-3">
+              <label className="text-[15px] font-medium text-indigo-900 dark:text-indigo-200">Target Role <span className="text-red-500">*</span></label>
               <select
                 required
-                className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800 dark:bg-zinc-900"
+                className="flex h-14 w-full rounded-xl border border-indigo-100 bg-white px-4 text-[15px] focus:bg-white focus:ring-1 focus:ring-indigo-400 focus-visible:outline-none dark:border-indigo-900/60 dark:bg-zinc-950 outline-none transition-colors"
                 value={targetRoleSelect}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -358,83 +378,99 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
                   placeholder="Please specify your target role..."
                   value={targetRole}
                   onChange={(e) => setTargetRole(e.target.value)}
-                  className="bg-white dark:bg-zinc-900 mt-2"
+                  className="bg-white dark:bg-zinc-950 mt-3 h-14 rounded-xl border-indigo-100 dark:border-indigo-900/60 text-[15px]"
                 />
               )}
             </div>
           </div>
 
           {/* Personal Info */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b pb-2 flex items-center gap-2"><User className="w-5 h-5 text-zinc-400" /> Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-5">
+            <h3 className="text-lg font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3 flex items-center gap-2"><User className="w-5 h-5 text-zinc-400" /> Personal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name <span className="text-red-500">*</span></label>
-                <Input required value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className="bg-white dark:bg-zinc-900" />
+                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Full Name <span className="text-red-500">*</span></label>
+                <Input required value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email <span className="text-red-500">*</span></label>
-                <Input type="email" required value={personalInfo.email} onChange={e => setPersonalInfo({...personalInfo, email: e.target.value})} className="bg-white dark:bg-zinc-900" />
+                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Email <span className="text-red-500">*</span></label>
+                <Input type="email" required value={personalInfo.email} onChange={e => setPersonalInfo({...personalInfo, email: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Phone</label>
-                <Input value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className="bg-white dark:bg-zinc-900" />
+                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Phone</label>
+                <Input value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">LinkedIn URL</label>
-                <Input value={personalInfo.linkedin} onChange={e => setPersonalInfo({...personalInfo, linkedin: e.target.value})} className="bg-white dark:bg-zinc-900" />
+                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">LinkedIn URL</label>
+                <Input value={personalInfo.linkedin} onChange={e => setPersonalInfo({...personalInfo, linkedin: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">GitHub URL</label>
-                <Input value={personalInfo.github} onChange={e => setPersonalInfo({...personalInfo, github: e.target.value})} className="bg-white dark:bg-zinc-900" />
+                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">GitHub URL</label>
+                <Input value={personalInfo.github} onChange={e => setPersonalInfo({...personalInfo, github: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Portfolio / Website URL</label>
-                <Input value={personalInfo.portfolio} onChange={e => setPersonalInfo({...personalInfo, portfolio: e.target.value})} className="bg-white dark:bg-zinc-900" />
+                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Portfolio / Website URL</label>
+                <Input value={personalInfo.portfolio} onChange={e => setPersonalInfo({...personalInfo, portfolio: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
               </div>
             </div>
           </div>
 
           {/* Work History */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
+          <div className="space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
               <h3 className="text-lg font-semibold">Work History</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addWork} className="rounded-full">
+              <Button type="button" variant="outline" size="sm" onClick={addWork} className="rounded-full bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9">
                 <Plus className="w-4 h-4 mr-2" /> Add Job
               </Button>
             </div>
             {workHistory.map((work, idx) => (
-              <div key={idx} className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-4 bg-zinc-50 dark:bg-zinc-900/50">
+              <div key={idx} className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-5 bg-zinc-50/30 dark:bg-zinc-900/30">
                 <div className="flex justify-between items-center">
-                  <h4 className="font-medium text-sm text-zinc-600 dark:text-zinc-400">Position #{idx + 1}</h4>
+                  <h4 className="font-medium text-[15px] text-zinc-600 dark:text-zinc-400">Position #{idx + 1}</h4>
                   {workHistory.length > 1 && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeWork(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 h-8 px-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeWork(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 h-9 w-9 p-0 rounded-full">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Job Title / Role <span className="text-red-500">*</span></label>
-                    <Input required={idx === 0} value={work.role} onChange={e => handleWorkChange(idx, "role", e.target.value)} className="bg-white dark:bg-zinc-950" />
+                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Job Title / Role <span className="text-red-500">*</span></label>
+                    <Input required={idx === 0} value={work.role} onChange={e => handleWorkChange(idx, "role", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Company Name</label>
-                    <Input value={work.company} onChange={e => handleWorkChange(idx, "company", e.target.value)} className="bg-white dark:bg-zinc-950" />
+                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Company Name</label>
+                    <Input value={work.company} onChange={e => handleWorkChange(idx, "company", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Start Date</label>
-                    <Input placeholder="e.g., Jan 2020" value={work.startDate} onChange={e => handleWorkChange(idx, "startDate", e.target.value)} className="bg-white dark:bg-zinc-950" />
+                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Start Date</label>
+                    <Input placeholder="e.g., Jan 2020" value={work.startDate} onChange={e => handleWorkChange(idx, "startDate", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">End Date</label>
-                    <Input placeholder="e.g., Present or Dec 2023" value={work.endDate} onChange={e => handleWorkChange(idx, "endDate", e.target.value)} className="bg-white dark:bg-zinc-950" />
+                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">End Date</label>
+                    <Input placeholder="e.g., Present or Dec 2023" value={work.endDate} onChange={e => handleWorkChange(idx, "endDate", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium">Responsibilities & Achievements</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Responsibilities & Achievements</label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!work.role || isGeneratingBullets === idx || !(targetRoleSelect !== "Other" ? targetRoleSelect : targetRole)}
+                        onClick={() => handleSuggestBullets(idx)}
+                        className="h-8 text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 rounded-lg px-3 text-xs font-medium"
+                      >
+                        {isGeneratingBullets === idx ? (
+                          <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Suggesting...</>
+                        ) : (
+                          <><Wand2 className="w-3 h-3 mr-1.5" /> Auto-suggest bullets</>
+                        )}
+                      </Button>
+                    </div>
                     <Textarea 
                       placeholder="Describe your impact, scale, and technical stack used..." 
-                      className="min-h-[100px] bg-white dark:bg-zinc-950" 
+                      className="min-h-[120px] bg-white dark:bg-zinc-950 rounded-xl px-4 py-3 text-base focus:bg-white transition-colors resize-y" 
                       value={work.responsibilities} 
                       onChange={e => handleWorkChange(idx, "responsibilities", e.target.value)} 
                     />
@@ -445,35 +481,35 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
           </div>
 
           {/* Education */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
+          <div className="space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
               <h3 className="text-lg font-semibold">Education</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addEdu} className="rounded-full">
+              <Button type="button" variant="outline" size="sm" onClick={addEdu} className="rounded-full bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9">
                 <Plus className="w-4 h-4 mr-2" /> Add Education
               </Button>
             </div>
             {education.map((edu, idx) => (
-              <div key={idx} className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-4 bg-zinc-50 dark:bg-zinc-900/50">
+              <div key={idx} className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-5 bg-zinc-50/30 dark:bg-zinc-900/30">
                 <div className="flex justify-between items-center">
-                  <h4 className="font-medium text-sm text-zinc-600 dark:text-zinc-400">Education #{idx + 1}</h4>
+                  <h4 className="font-medium text-[15px] text-zinc-600 dark:text-zinc-400">Education #{idx + 1}</h4>
                   {education.length > 1 && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeEdu(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 h-8 px-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeEdu(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 h-9 w-9 p-0 rounded-full">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Institution / University <span className="text-red-500">*</span></label>
-                    <Input required={idx === 0} value={edu.university} onChange={e => handleEduChange(idx, "university", e.target.value)} className="bg-white dark:bg-zinc-950" />
+                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Institution / University <span className="text-red-500">*</span></label>
+                    <Input required={idx === 0} value={edu.university} onChange={e => handleEduChange(idx, "university", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Degree / Field of Study</label>
-                    <Input placeholder="e.g., B.S. Computer Science" value={edu.degree} onChange={e => handleEduChange(idx, "degree", e.target.value)} className="bg-white dark:bg-zinc-950" />
+                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Degree / Field of Study</label>
+                    <Input placeholder="e.g., B.S. CS" value={edu.degree} onChange={e => handleEduChange(idx, "degree", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Graduation Year</label>
-                    <Input placeholder="e.g., 2022" value={edu.year} onChange={e => handleEduChange(idx, "year", e.target.value)} className="bg-white dark:bg-zinc-950" />
+                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Graduation Year</label>
+                    <Input placeholder="e.g., 2022" value={edu.year} onChange={e => handleEduChange(idx, "year", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
                   </div>
                 </div>
               </div>
@@ -481,24 +517,25 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
           </div>
 
           {/* Skills */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b pb-2">Skills & Additional Info</h3>
+          <div className="space-y-5">
+            <h3 className="text-lg font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">Skills & Additional Info</h3>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Core Skills (comma separated)</label>
+              <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Core Skills (comma separated)</label>
               <Textarea 
                 placeholder="React, Node.js, Python, Leadership, Agile, AWS..." 
-                className="min-h-[80px] bg-white dark:bg-zinc-900"
+                className="min-h-[120px] bg-zinc-50/50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 focus:bg-white text-base transition-colors resize-y"
                 value={skills}
                 onChange={(e) => setSkills(e.target.value)}
               />
             </div>
           </div>
           
-          <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800">
+          <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/50">
             <Button
               type="submit"
               disabled={isGenerating}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-md h-12 text-base rounded-lg"
+              size="lg"
+              className="w-full text-base font-medium bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl h-14 transition-all"
             >
               {isGenerating ? (
                 <>

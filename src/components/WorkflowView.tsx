@@ -293,10 +293,10 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
       return (
         <div className="space-y-6">
           {hasFile && (
-            <Card className="border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
-              <CardHeader className="shrink-0 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
+            <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden flex flex-col">
+              <CardHeader className="shrink-0 bg-zinc-50/50 dark:bg-zinc-900/50 border-b border-zinc-100 dark:border-zinc-800/50 p-6 pb-5">
+                <CardTitle className="text-lg flex items-center gap-2 font-semibold">
+                  <FileText className="w-5 h-5 text-indigo-500" />
                   Document Preview ({Object.values(fileData)[0].name})
                 </CardTitle>
               </CardHeader>
@@ -332,10 +332,10 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
           )}
 
           {hasUrl && (
-            <Card className="border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
-              <CardHeader className="shrink-0 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <LinkIcon className="w-5 h-5" />
+            <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden flex flex-col">
+              <CardHeader className="shrink-0 bg-zinc-50/50 dark:bg-zinc-900/50 border-b border-zinc-100 dark:border-zinc-800/50 p-6 pb-5">
+                <CardTitle className="text-lg flex items-center gap-2 font-semibold">
+                  <LinkIcon className="w-5 h-5 text-indigo-500" />
                   Linked URL
                 </CardTitle>
               </CardHeader>
@@ -349,9 +349,9 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
 
           {/* Render the actual main AI result here! */}
           {(mainDocumentText || isGenerating) && workflowId !== "market" && workflowId !== "resume" && workflowId !== "resume_generation" && (
-              <Card className="border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden animate-in fade-in">
-                 <CardHeader className="bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
+              <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden animate-in fade-in">
+                 <CardHeader className="bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800/50 p-6 pb-5 flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2 font-semibold">
                        {isGenerating && !mainDocumentText.trim() ? <Loader2 className="w-5 h-5 animate-spin text-indigo-500" /> : <Sparkles className="w-5 h-5 text-indigo-500" />}
                        {isGenerating && !mainDocumentText.trim() ? "Analyzing & Generating..." : "Analysis Results"}
                     </CardTitle>
@@ -372,7 +372,7 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
           )}
 
           {workflowId !== "market" && workflowId !== "resume" && workflowId !== "resume_generation" && (
-            <Button variant="outline" className="w-full h-12 shadow-sm rounded-xl mt-4" onClick={resetSession}>
+            <Button variant="outline" className="w-full h-14 shadow-sm rounded-xl mt-4 text-base font-medium bg-white hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 transition-colors" onClick={resetSession}>
               Start New Analysis
             </Button>
           )}
@@ -382,23 +382,23 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
 
     // Form state
     return (
-      <Card className="border-zinc-200 dark:border-zinc-800 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg">Input Details</CardTitle>
-          <CardDescription>Provide the necessary information to start.</CardDescription>
+      <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden bg-white dark:bg-zinc-900">
+        <CardHeader className="p-8 pb-6 border-b border-zinc-100 dark:border-zinc-800/50">
+          <CardTitle className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Input Details</CardTitle>
+          <CardDescription className="text-base font-light text-zinc-500">Provide the necessary information to start.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleInitialSubmit} className="space-y-4">
+        <CardContent className="p-8">
+          <form onSubmit={handleInitialSubmit} className="space-y-6">
             {config.fields.map((field) => (
-              <div key={field.id} className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  {field.label} {field.required === false && <span className="text-zinc-400">(Optional)</span>}
+              <div key={field.id} className="space-y-3">
+                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">
+                  {field.label} {field.required === false && <span className="text-zinc-400 font-light ml-1">(Optional)</span>}
                 </label>
                 {field.type === "textarea" ? (
                   <Textarea
                     required={field.required !== false}
                     placeholder={field.placeholder}
-                    className="min-h-[120px] resize-y bg-white dark:bg-zinc-900"
+                    className="min-h-[140px] resize-y bg-zinc-50/50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 focus:bg-white text-base transition-colors"
                     value={formData[field.id] || ""}
                     onChange={(e) => handleInputChange(field.id, e.target.value)}
                   />
@@ -407,14 +407,14 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
                     type="file"
                     accept={field.accept}
                     required={field.required !== false}
-                    className="bg-white dark:bg-zinc-900 file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    className="bg-zinc-50/50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 rounded-xl px-4 h-14 flex items-center file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-zinc-900 file:text-white dark:file:bg-white dark:file:text-zinc-900 hover:file:opacity-90"
                     onChange={(e) => handleFileChange(field.id, e.target.files?.[0] || null)}
                   />
                 ) : field.type === "select" ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <select
                       required={field.required !== false && formData[`${field.id}_select`] !== "Other"}
-                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950 dark:placeholder:text-zinc-400 dark:focus-visible:ring-zinc-300"
+                      className="flex w-full bg-zinc-50/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 h-14 text-base focus:bg-white focus:ring-1 focus:ring-zinc-400 outline-none transition-colors dark:text-zinc-200"
                       value={formData[`${field.id}_select`] || ""}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -424,7 +424,6 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
                         } else if (val !== "Other") {
                           handleInputChange(field.id, val);
                         } else {
-                          // For 'Other', clear the main property to force the user to type it in the secondary input
                           handleInputChange(field.id, "");
                         }
                       }}
@@ -439,7 +438,7 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
                         type="text"
                         required={field.required !== false}
                         placeholder="Please specify..."
-                        className="bg-white dark:bg-zinc-900 mt-2"
+                        className="bg-zinc-50/50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 rounded-xl px-4 h-14 focus:bg-white text-base mt-3 transition-colors"
                         value={formData[field.id] || ""}
                         onChange={(e) => handleInputChange(field.id, e.target.value)}
                       />
@@ -450,30 +449,33 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
                     type={field.type}
                     required={field.required !== false}
                     placeholder={field.placeholder}
-                    className="bg-white dark:bg-zinc-900"
+                    className="bg-zinc-50/50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 rounded-xl px-4 h-14 focus:bg-white text-base transition-colors"
                     value={formData[field.id] || ""}
                     onChange={(e) => handleInputChange(field.id, e.target.value)}
                   />
                 )}
               </div>
             ))}
-            <Button
-              type="submit"
-              disabled={isGenerating}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Start Session
-                </>
-              )}
-            </Button>
+            <div className="pt-4">
+               <Button
+                 type="submit"
+                 disabled={isGenerating}
+                 size="lg"
+                 className="w-full text-base font-medium bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl h-14 transition-all"
+               >
+                 {isGenerating ? (
+                   <>
+                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                     Starting...
+                   </>
+                 ) : (
+                   <>
+                     <Sparkles className="mr-2 h-5 w-5" />
+                     Start Session
+                   </>
+                 )}
+               </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

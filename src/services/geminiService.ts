@@ -36,6 +36,49 @@ export async function sendMessageStream(
   }
 }
 
+export async function generateWorkflowData(
+  systemInstruction: string,
+  prompt: string,
+  fileData?: { data: string; mimeType: string } | null,
+  enableSearch: boolean = false
+) {
+  const parts: any[] = [{ text: prompt }];
+  if (fileData) {
+    parts.push({
+      inlineData: {
+        data: fileData.data,
+        mimeType: fileData.mimeType
+      }
+    });
+  }
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3.1-pro-preview",
+    contents: parts,
+    config: {
+      systemInstruction,
+      temperature: 0.3,
+      tools: enableSearch ? [{ googleSearch: {} }] : [],
+    }
+  });
+
+  return response.text;
+}
+
+export async function suggestWorkExperienceBullets(jobTitle: string, targetRole: string): Promise<string> {
+  const parts = [{ text: `You are an expert career coach. Provide 3-5 high-impact example resume bullet points for a "${jobTitle}" applying for a "${targetRole}" role. Focus on transferable skills, strong action verbs, and quantify achievements. Output ONLY the bullet points, starting each with a dash (-).` }];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3.1-pro-preview",
+    contents: parts,
+    config: {
+      temperature: 0.7,
+    }
+  });
+
+  return response.text || "";
+}
+
 export async function analyzeResume(
   resumeText: string,
   resumeFile: { data: string; mimeType: string } | null,
