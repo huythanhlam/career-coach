@@ -1,245 +1,330 @@
 import React, { useState } from "react";
-import { 
-  Rocket, 
-  Briefcase, 
-  FileText, 
-  Plus, 
-  Search, 
-  MoreVertical,
-  Calendar,
-  Building,
-  ArrowUpRight,
-  X,
-  Zap,
-  TrendingUp,
-  Target,
+import {
+  Plus,
+  ArrowRight,
+  FileText,
   ShieldCheck,
-  ChevronRight,
-  MessageSquare
+  Users,
+  X,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface Application {
   id: string;
   company: string;
   role: string;
-  status: 'applied' | 'interviewing' | 'offer' | 'rejected' | 'pending';
+  status: "applied" | "interviewing" | "offer" | "rejected" | "pending";
   date: string;
   location: string;
 }
 
 const initialApplications: Application[] = [
-  { id: '1', company: 'Google', role: 'Senior Frontend Engineer', status: 'interviewing', date: '2024-04-15', location: 'Mountain View, CA' },
-  { id: '2', company: 'Meta', role: 'Staff Software Engineer', status: 'applied', date: '2024-04-12', location: 'Menlo Park, CA' },
-  { id: '3', company: 'Stripe', role: 'Product Engineer', status: 'pending', date: '2024-04-20', location: 'Remote' },
+  { id: "1", company: "Stripe",    role: "Product Engineer",        status: "interviewing", date: "Apr 20", location: "Remote" },
+  { id: "2", company: "Anthropic", role: "Member of Tech Staff",    status: "applied",      date: "Apr 18", location: "SF" },
+  { id: "3", company: "Vercel",    role: "Senior Frontend",         status: "offer",        date: "Apr 15", location: "Remote" },
+  { id: "4", company: "Figma",     role: "Product Designer Eng",    status: "rejected",     date: "Apr 12", location: "NYC" },
 ];
+
+const STATUS_MAP: Record<Application["status"], { bg: string; fg: string; border: string; label: string }> = {
+  applied:      { bg: "rgba(59,130,246,0.10)",  fg: "#3B82F6", border: "rgba(59,130,246,0.25)",  label: "Applied" },
+  interviewing: { bg: "rgba(245,158,11,0.10)",  fg: "#F59E0B", border: "rgba(245,158,11,0.25)",  label: "Interviewing" },
+  offer:        { bg: "rgba(16,185,129,0.10)",  fg: "#10B981", border: "rgba(16,185,129,0.25)",  label: "Offer" },
+  rejected:     { bg: "rgba(244,63,94,0.10)",   fg: "#F43F5E", border: "rgba(244,63,94,0.25)",   label: "Rejected" },
+  pending:      { bg: "rgba(113,113,122,0.10)", fg: "#71717A", border: "rgba(113,113,122,0.25)", label: "Pending" },
+};
 
 export function Dashboard() {
   const [apps, setApps] = useState<Application[]>(initialApplications);
-  const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newApp, setNewApp] = useState<Partial<Application>>({
-    company: "",
-    role: "",
-    status: "applied",
-    location: "",
-    date: new Date().toISOString().split('T')[0]
+    company: "", role: "", status: "applied", location: "",
+    date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
   });
 
   const handleAddApplication = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newApp.company || !newApp.role) return;
-
-    const application: Application = {
-      id: Math.random().toString(36).substr(2, 9),
+    setApps([{
+      id: Math.random().toString(36).slice(2),
       company: newApp.company!,
       role: newApp.role!,
-      status: newApp.status as any || 'applied',
+      status: (newApp.status as Application["status"]) || "applied",
       date: newApp.date!,
-      location: newApp.location || 'Remote',
-    };
-
-    setApps([application, ...apps]);
+      location: newApp.location || "Remote",
+    }, ...apps]);
     setIsModalOpen(false);
-    setNewApp({ company: "", role: "", status: "applied", location: "", date: new Date().toISOString().split('T')[0] });
+    setNewApp({ company: "", role: "", status: "applied", location: "",
+      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }) });
   };
 
-  const filteredApps = apps.filter(app => 
-    app.company.toLowerCase().includes(search.toLowerCase()) || 
-    app.role.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const getStatusColor = (status: Application['status']) => {
-    switch (status) {
-      case 'applied': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'interviewing': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'offer': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'rejected': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-      default: return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
-    }
-  };
+  const interviewing = apps.filter(a => a.status === "interviewing").length;
+  const applied = apps.filter(a => a.status === "applied").length;
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-background p-8 lg:p-12 custom-scrollbar">
-      <div className="max-w-[1400px] mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        
-        {/* Elite Header */}
-        <div className="flex flex-col lg:row-span-1 lg:flex-row lg:items-end justify-between gap-8">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.3em] text-[10px]">
-              <div className="w-1 h-1 rounded-full bg-primary animate-ping" />
-              Operational Status: Active
+    <div className="flex-1 h-full overflow-y-auto no-scrollbar" style={{ background: "var(--background)", padding: "32px 40px 80px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28 }}
+        className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+        {/* ── Hero grid ──────────────────────────────────────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
+
+          {/* Welcome card — dark ink */}
+          <div style={{
+            background: "var(--foreground)", color: "var(--background)",
+            border: "1px solid var(--foreground)", borderRadius: 24,
+            padding: 32, boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+          }}>
+            <div className="eyebrow" style={{ color: "rgba(251,247,241,0.55)", marginBottom: 14 }}>
+              This morning · Tue, May 6
             </div>
-            <h1 className="text-5xl lg:text-6xl font-black text-foreground tracking-tighter leading-none italic uppercase">
-              Mission<br/>Control
-            </h1>
-            <p className="text-muted-foreground max-w-md font-medium text-sm leading-relaxed">
-              Analyzing <span className="text-foreground">12,402</span> market signals to accelerate your career trajectory.
+            <div className="font-display" style={{ fontSize: 36, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.1, color: "var(--background)" }}>
+              Hey Huy 👋 Your{" "}
+              <em style={{ color: "var(--highlight)", fontStyle: "normal" }}>Stripe</em>{" "}
+              interview is in two days.
+            </div>
+            <p style={{ fontSize: 14, color: "rgba(251,247,241,0.65)", marginTop: 14, lineHeight: 1.6, maxWidth: 500 }}>
+              We re-read your résumé and the JD over the weekend. Three things to tighten before Thursday — none of them big. Want to walk through them?
             </p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="hidden lg:flex flex-col items-end px-6 border-r border-border">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Next Engagement</span>
-                <span className="text-sm font-bold text-foreground uppercase italic">Google Technical • 2h 40m</span>
-            </div>
-            <Button 
-              onClick={() => setIsModalOpen(true)}
-              className="h-14 px-8 bg-white text-black hover:bg-primary hover:text-white transition-all duration-500 rounded-2xl font-black uppercase tracking-tight gap-3 shadow-[0_0_40px_rgba(255,255,255,0.1)]"
-            >
-              <Plus className="w-5 h-5 stroke-[3]" /> Add Application
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Grid - Neo-Brutalist / Glass */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard title="Pipeline" value={apps.length.toString()} icon={Target} sub="Active Hunts" />
-          <StatsCard title="Simulation" value="03" icon={ShieldCheck} sub="Interviews Prepped" />
-          <StatsCard title="Optimization" value="28" icon={Zap} sub="Resume Iterations" />
-          <StatsCard title="Success" value="15%" icon={TrendingUp} sub="Conversion Rate" />
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-          
-          {/* Main Application Feed */}
-          <div className="xl:col-span-8 space-y-6">
-            <div className="flex items-center justify-between">
-               <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.4em]">Target Acquisition Feed</h3>
-               <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <input 
-                    placeholder="Filter Targets..." 
-                    className="bg-secondary/50 border border-border rounded-full pl-9 pr-4 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all w-48"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-               </div>
-            </div>
-            
-            <div className="grid gap-3">
-               {filteredApps.map((app, i) => (
-                  <div key={app.id} 
-                    className="glass group p-6 rounded-3xl flex items-center justify-between hover:bg-secondary/50 transition-all duration-500 border-border hover:border-primary/20 animate-in fade-in slide-in-from-right-4 fill-mode-both"
-                    style={{ animationDelay: `${i * 100}ms` }}
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center border border-border group-hover:border-primary/50 transition-colors shadow-2xl overflow-hidden relative">
-                         <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                         <Building className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors relative z-10" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                           <h4 className="text-lg font-black text-foreground uppercase italic tracking-tighter">{app.company}</h4>
-                           <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                        </div>
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{app.role} • {app.location}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-8">
-                       <div className="text-right hidden sm:block">
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-tighter">Acquired</p>
-                          <p className="text-xs font-bold text-foreground">{app.date}</p>
-                       </div>
-                       <span className={cn(
-                         "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                         getStatusColor(app.status)
-                       )}>
-                         {app.status}
-                       </span>
-                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground rounded-full">
-                          <ChevronRight className="w-5 h-5" />
-                       </Button>
-                    </div>
-                  </div>
-               ))}
+            <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+              <button style={{
+                height: 44, padding: "0 18px", background: "var(--primary)", color: "#FFF",
+                border: "1px solid var(--primary)", borderRadius: 14, fontFamily: "inherit",
+                fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex",
+                alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(217,119,87,0.3)",
+              }}>
+                Start prep <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button style={{
+                height: 44, padding: "0 18px", background: "transparent",
+                border: "1px solid rgba(251,247,241,0.22)", color: "var(--background)",
+                borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}>
+                Skim the notes
+              </button>
             </div>
           </div>
 
-          {/* Intelligence Sidebar */}
-          <div className="xl:col-span-4 space-y-8">
-             <div className="space-y-4">
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.4em]">Real-time Intel</h3>
-                <Card className="glass border-border rounded-[2rem] overflow-hidden">
-                   <CardContent className="p-8 space-y-6">
-                      <div className="flex gap-4">
-                         <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0 shadow-[0_0_10px_#6366f1]" />
-                         <p className="text-sm font-bold text-muted-foreground leading-relaxed">
-                           <span className="text-foreground">Market Anomaly:</span> Senior Software salaries in <span className="text-primary italic">Seattle</span> rose 4.2% since your last login.
-                         </p>
-                      </div>
-                      <div className="flex gap-4">
-                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0 shadow-[0_0_10px_#10b981]" />
-                         <p className="text-sm font-bold text-muted-foreground leading-relaxed">
-                           <span className="text-foreground">Audit Result:</span> Your <span className="text-emerald-500 italic">"Cloud Architecture"</span> section ranks in the top 5% for ATS compatibility.
-                         </p>
-                      </div>
-                      <Button variant="outline" className="w-full h-12 rounded-xl border-border hover:bg-secondary text-xs font-black uppercase tracking-widest text-foreground">
-                         View All Briefings
-                      </Button>
-                   </CardContent>
-                </Card>
-             </div>
-
-             <div className="space-y-4">
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.4em]">Quick Actions</h3>
-                <div className="grid grid-cols-1 gap-3">
-                   <ActionButton icon={FileText} label="Iterate Resume" />
-                   <ActionButton icon={MessageSquare} label="Run Interview Sim" />
-                   <ActionButton icon={Search} label="Scope Competitor" />
+          {/* Stats column */}
+          <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 16 }}>
+            {/* Your week */}
+            <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 22, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+              <div className="eyebrow">Your week</div>
+              <div style={{ marginTop: 8 }}>
+                <div className="font-display" style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--foreground)", lineHeight: 1 }}>
+                  {interviewing + applied}
                 </div>
-             </div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>active conversations</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <StatusPill kind="interviewing">{interviewing} onsite</StatusPill>
+                <StatusPill kind="applied">{applied} phone</StatusPill>
+              </div>
+            </div>
+
+            {/* Reply rate */}
+            <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 22, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+              <div className="eyebrow">Reply rate</div>
+              <div style={{ marginTop: 8 }}>
+                <div className="font-display" style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--forest)", lineHeight: 1 }}>
+                  15<span style={{ fontSize: 22 }}>%</span>
+                </div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>last 30 days</div>
+              </div>
+              <div style={{ marginTop: 14, height: 6, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
+                <div style={{ width: "62%", height: "100%", background: "linear-gradient(90deg, var(--forest), var(--highlight))", borderRadius: 9999 }} />
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 8 }}>
+                Tracking just above the senior-PM benchmark (12%).
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Pipeline ───────────────────────────────────────────── */}
+        <div>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+            <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0 }}>
+              Your pipeline
+            </h3>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              style={{
+                height: 36, padding: "0 14px", background: "var(--card)", color: "var(--foreground)",
+                border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit",
+                fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex",
+                alignItems: "center", gap: 6, boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              }}
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Add application
+            </button>
           </div>
 
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", overflow: "hidden" }}>
+            {/* Table header */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "44px 1.6fr 1fr 1fr 148px", gap: 16,
+              padding: "12px 22px", borderBottom: "1px solid var(--border)",
+            }}>
+              {["", "Company · Role", "Location", "Applied", "Status"].map((h, i) => (
+                <div key={i} className="eyebrow">{h}</div>
+              ))}
+            </div>
+
+            {apps.map((app, i) => (
+              <div
+                key={app.id}
+                style={{
+                  display: "grid", gridTemplateColumns: "44px 1.6fr 1fr 1fr 148px", gap: 16,
+                  padding: "16px 22px", alignItems: "center",
+                  borderBottom: i < apps.length - 1 ? "1px solid var(--border)" : "none",
+                }}
+              >
+                {/* Avatar */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 12, background: "var(--muted)",
+                  border: "1px solid var(--border)", display: "flex", alignItems: "center",
+                  justifyContent: "center", color: "var(--primary)", fontFamily: "'Fraunces',Georgia,serif",
+                  fontSize: 13, fontWeight: 600,
+                }}>
+                  {app.company.slice(0, 2)}
+                </div>
+
+                {/* Company + role */}
+                <div>
+                  <div className="font-display" style={{ fontSize: 16, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
+                    {app.company}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{app.role}</div>
+                </div>
+
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{app.location}</div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{app.date}</div>
+                <div><StatusPill kind={app.status}>{STATUS_MAP[app.status].label}</StatusPill></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Quick tools ────────────────────────────────────────── */}
+        <div>
+          <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: "0 0 14px" }}>
+            Pick up where you left off
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            {[
+              { icon: FileText,    label: "Resume Builder", note: "v8 · 28 edits since Apr 1" },
+              { icon: ShieldCheck, label: "Impact Audit",   note: "Stripe résumé · 3 suggestions left" },
+              { icon: Users,       label: "Behavioral Sim", note: "Last topic: leadership" },
+            ].map((tool, i) => {
+              const Icon = tool.icon;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24,
+                    padding: 22, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", cursor: "pointer",
+                  }}
+                  className="group hover:border-primary/30 transition-colors duration-200"
+                >
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 14, background: "rgba(217,119,87,0.10)",
+                    border: "1px solid rgba(217,119,87,0.25)", color: "var(--primary)",
+                    display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14,
+                  }}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="font-display" style={{ fontSize: 18, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
+                    {tool.label}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 6 }}>{tool.note}</div>
+                  <div style={{ marginTop: 14, color: "var(--primary)", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                    Continue <ArrowRight className="w-3 h-3" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* High-Design Modal */}
+      {/* ── Add application modal ──────────────────────────────── */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-500">
-          <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-500">
-            <div className="p-10 border-b border-border flex justify-between items-center bg-secondary/20">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
+          style={{ background: "rgba(31,27,22,0.4)", backdropFilter: "blur(8px)" }}
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="animate-in zoom-in-95 duration-200"
+            style={{
+              background: "var(--card)", border: "1px solid var(--border)",
+              borderRadius: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+              width: "100%", maxWidth: 480, overflow: "hidden",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ padding: "24px 28px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h3 className="text-2xl font-black text-foreground italic uppercase tracking-tighter">New Target</h3>
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Initiate application tracking</p>
+                <div className="font-display" style={{ fontSize: 22, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.02em" }}>
+                  Add application
+                </div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>
+                  Track a new role in your pipeline
+                </div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
-                <X className="w-5 h-5" />
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{ width: 32, height: 32, borderRadius: 10, background: "var(--muted)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)" }}
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={handleAddApplication} className="p-10 space-y-6">
-              <div className="space-y-4">
-                <Input required placeholder="COMPANY NAME" value={newApp.company} onChange={e => setNewApp({...newApp, company: e.target.value})} className="h-14 bg-secondary border-border rounded-2xl px-6 font-bold placeholder:text-muted-foreground text-foreground focus:ring-primary" />
-                <Input required placeholder="ROLE / TITLE" value={newApp.role} onChange={e => setNewApp({...newApp, role: e.target.value})} className="h-14 bg-secondary border-border rounded-2xl px-6 font-bold placeholder:text-muted-foreground text-foreground focus:ring-primary" />
-                <Input placeholder="LOCATION" value={newApp.location} onChange={e => setNewApp({...newApp, location: e.target.value})} className="h-14 bg-secondary border-border rounded-2xl px-6 font-bold placeholder:text-muted-foreground text-foreground focus:ring-primary" />
-                <Input type="date" value={newApp.date} onChange={e => setNewApp({...newApp, date: e.target.value})} className="h-14 bg-secondary border-border rounded-2xl px-6 font-bold text-foreground focus:ring-primary" />
-              </div>
-              <Button type="submit" className="w-full h-16 bg-primary text-primary-foreground hover:bg-foreground hover:text-background transition-all duration-500 rounded-2xl font-black uppercase tracking-widest shadow-[0_0_40px_rgba(99,102,241,0.2)]">
-                Secure Target
-              </Button>
+
+            <form onSubmit={handleAddApplication} style={{ padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                { placeholder: "Company name", key: "company", required: true },
+                { placeholder: "Role / title", key: "role", required: true },
+                { placeholder: "Location (e.g. Remote, NYC)", key: "location" },
+              ].map(({ placeholder, key, required }) => (
+                <input
+                  key={key}
+                  required={required}
+                  placeholder={placeholder}
+                  value={(newApp as any)[key] || ""}
+                  onChange={e => setNewApp({ ...newApp, [key]: e.target.value })}
+                  style={{
+                    height: 52, background: "var(--muted)", border: "1px solid var(--border)",
+                    borderRadius: 14, padding: "0 16px", fontFamily: "inherit", fontSize: 14,
+                    color: "var(--foreground)", outline: "none", width: "100%",
+                  }}
+                />
+              ))}
+              <select
+                value={newApp.status || "applied"}
+                onChange={e => setNewApp({ ...newApp, status: e.target.value as Application["status"] })}
+                style={{
+                  height: 52, background: "var(--muted)", border: "1px solid var(--border)",
+                  borderRadius: 14, padding: "0 16px", fontFamily: "inherit", fontSize: 14,
+                  color: "var(--foreground)", outline: "none",
+                }}
+              >
+                <option value="applied">Applied</option>
+                <option value="interviewing">Interviewing</option>
+                <option value="offer">Offer</option>
+                <option value="rejected">Rejected</option>
+                <option value="pending">Pending</option>
+              </select>
+              <button
+                type="submit"
+                style={{
+                  height: 52, background: "var(--primary)", color: "#FFF",
+                  border: "1px solid var(--primary)", borderRadius: 14,
+                  fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  marginTop: 4, boxShadow: "0 4px 14px rgba(217,119,87,0.25)",
+                }}
+              >
+                Add to pipeline
+              </button>
             </form>
           </div>
         </div>
@@ -248,29 +333,16 @@ export function Dashboard() {
   );
 }
 
-function StatsCard({ title, value, icon: Icon, sub }: { title: string, value: string, icon: any, sub: string }) {
+function StatusPill({ kind, children }: { kind: Application["status"]; children: React.ReactNode }) {
+  const c = STATUS_MAP[kind] || STATUS_MAP.pending;
   return (
-    <Card className="glass border-border p-8 group hover:border-primary/30 transition-all duration-500 rounded-[2rem]">
-      <div className="flex items-center justify-between mb-6">
-        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500">
-          <Icon className="w-6 h-6 stroke-[2.5]" />
-        </div>
-        <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Live Status</div>
-      </div>
-      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mb-1">{title}</p>
-      <h3 className="text-4xl font-black text-foreground mt-1 italic tracking-tighter">{value}</h3>
-      <p className="text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-widest">{sub}</p>
-    </Card>
-  );
-}
-
-function ActionButton({ icon: Icon, label }: { icon: any, label: string }) {
-  return (
-    <button className="glass w-full p-4 rounded-2xl border-border flex items-center gap-4 hover:bg-secondary hover:border-primary/30 transition-all duration-300 group">
-       <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
-          <Icon className="w-5 h-5" />
-       </div>
-       <span className="text-sm font-black text-muted-foreground group-hover:text-foreground uppercase tracking-tighter italic">{label}</span>
-    </button>
+    <span style={{
+      background: c.bg, color: c.fg, border: `1px solid ${c.border}`,
+      padding: "5px 12px", borderRadius: 9999,
+      fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.18em",
+      whiteSpace: "nowrap", display: "inline-block",
+    }}>
+      {children}
+    </span>
   );
 }

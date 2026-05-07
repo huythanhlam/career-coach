@@ -38,14 +38,22 @@ export default function App() {
               </div>
             ))}
 
-            {/* Chat Toggle Button (Visible when chat is closed) */}
+            {/* Coach FAB */}
             {!isChatOpen && (
               <button
                 onClick={() => setIsChatOpen(true)}
-                className="absolute bottom-8 right-8 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-40 border-4 border-background animate-in zoom-in duration-500"
+                className="absolute bottom-6 right-7 w-14 h-14 rounded-full flex items-center justify-center z-40 transition-transform hover:scale-105 animate-in zoom-in duration-300"
+                style={{
+                  background: "var(--primary)", color: "#FFF",
+                  border: "none", cursor: "pointer",
+                  boxShadow: "0 12px 30px rgba(217,119,87,0.35)",
+                }}
               >
                 <MessageCircle className="w-6 h-6" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-background animate-pulse" />
+                <div
+                  className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 animate-pulse"
+                  style={{ background: "var(--forest)", borderColor: "var(--background)" }}
+                />
               </button>
             )}
           </div>

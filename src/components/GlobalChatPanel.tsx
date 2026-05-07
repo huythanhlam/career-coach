@@ -77,64 +77,76 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   if (!isOpen) return null;
 
   return (
-    <div className="w-[400px] h-full bg-card border-l border-border flex flex-col shadow-2xl animate-in slide-in-from-right duration-300 z-50">
+    <div className="w-[400px] h-full border-l border-border flex flex-col shadow-xl animate-in slide-in-from-right duration-300 z-50"
+      style={{ background: "var(--card)" }}>
+
       {/* Header */}
-      <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/10">
+      <div className="flex items-center justify-between gap-3 border-b border-border"
+        style={{ padding: "14px 18px", background: "var(--muted)" }}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-            <Bot className="w-5 h-5" />
+          <div className="w-[30px] h-[30px] rounded-[10px] flex items-center justify-center border"
+            style={{ background: "rgba(217,119,87,0.10)", borderColor: "rgba(217,119,87,0.25)", color: "var(--primary)" }}>
+            <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-foreground uppercase tracking-tight italic">Coach Intelligence</h3>
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">
-              Active Context: {workflowConfig?.title || "Global"}
-            </p>
+            <div className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>The Coach</div>
+            <div className="text-[10px] font-semibold" style={{ color: "var(--forest)" }}>
+              ● Listening · {workflowConfig?.title || "All tools"}
+            </div>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-secondary">
+        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-muted w-8 h-8">
           <X className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-6">
-        <div className="space-y-8 pb-4">
+      <ScrollArea className="flex-1" style={{ padding: "18px" }}>
+        <div className="space-y-4 pb-4">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center text-center py-12 space-y-4">
-              <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center text-primary/30">
-                <MessageSquare className="w-8 h-8" />
+            <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(217,119,87,0.08)", color: "rgba(217,119,87,0.35)" }}>
+                <MessageSquare className="w-7 h-7" />
               </div>
-              <div className="space-y-1">
-                 <h4 className="font-bold text-foreground text-sm uppercase">Mission Briefing</h4>
-                 <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
-                   I am monitoring your current workspace. Ask me anything about your career strategy.
-                 </p>
+              <div>
+                <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>
+                  Hey, I'm your coach 👋
+                </div>
+                <p className="text-xs leading-relaxed max-w-[200px] mx-auto" style={{ color: "var(--muted-foreground)" }}>
+                  I'm watching your current workspace. Ask me anything about your strategy.
+                </p>
               </div>
             </div>
           )}
+
           {messages.map((msg, idx) => (
-            <div key={idx} className={cn("flex gap-4", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
+            <div key={idx} className={cn("flex gap-3 items-end", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
               <div className={cn(
-                "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border",
-                msg.role === "user" 
-                  ? "bg-secondary border-border text-foreground" 
-                  : "bg-primary/10 border-primary/20 text-primary"
-              )}>
-                {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                "w-[34px] h-[34px] rounded-xl flex items-center justify-center shrink-0 border text-xs font-semibold",
+                msg.role === "user"
+                  ? "border-border text-foreground"
+                  : "border-primary/20 text-primary"
+              )} style={{ background: msg.role === "user" ? "var(--muted)" : "rgba(217,119,87,0.10)" }}>
+                {msg.role === "user" ? "HL" : <Sparkles className="w-3.5 h-3.5" />}
               </div>
               <div className={cn(
-                "max-w-[85%] rounded-[1.5rem] px-5 py-4 text-sm leading-relaxed",
-                msg.role === "user" 
-                  ? "bg-primary text-primary-foreground font-medium rounded-tr-none shadow-lg shadow-primary/10" 
-                  : "bg-secondary/50 border border-border text-foreground rounded-tl-none"
-              )}>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
+                "max-w-[80%] rounded-[18px] px-4 py-3 text-sm leading-relaxed",
+                msg.role === "user"
+                  ? "rounded-tr-[4px] text-white"
+                  : "rounded-tl-[4px] border border-border"
+              )} style={{
+                background: msg.role === "user" ? "var(--primary)" : "var(--card)",
+                color: msg.role === "user" ? "#FFF" : "var(--foreground)",
+                boxShadow: msg.role === "user" ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
+              }}>
+                <div className="prose prose-sm max-w-none" style={{ color: "inherit" }}>
                   <Markdown>{msg.text}</Markdown>
                   {msg.role === "model" && !msg.text && (
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" />
-                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
-                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+                    <div className="flex items-center gap-1 h-4">
+                      <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--primary)" }} />
+                      <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s]" style={{ background: "var(--primary)" }} />
+                      <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s]" style={{ background: "var(--primary)" }} />
                     </div>
                   )}
                 </div>
@@ -146,40 +158,41 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-6 border-t border-border bg-card">
+      <div className="border-t border-border" style={{ padding: 12, background: "var(--muted)" }}>
         {workflowConfig?.suggestedPrompts && messages.length < 2 && (
-           <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar pb-1">
-              {workflowConfig.suggestedPrompts.slice(0, 3).map((p, i) => (
-                <button 
-                  key={i} 
-                  onClick={() => handleSend(undefined, p)}
-                  className="whitespace-nowrap px-4 py-2 rounded-full bg-secondary border border-border text-[10px] font-bold text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all uppercase tracking-wider"
-                >
-                  {p}
-                </button>
-              ))}
-           </div>
+          <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
+            {workflowConfig.suggestedPrompts.slice(0, 3).map((p, i) => (
+              <button
+                key={i}
+                onClick={() => handleSend(undefined, p)}
+                className="whitespace-nowrap px-3 py-1.5 rounded-full border border-border text-[11px] font-medium transition-colors hover:border-primary/40"
+                style={{ background: "var(--card)", color: "var(--muted-foreground)", fontFamily: "inherit" }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         )}
-        <form onSubmit={handleSend} className="relative group">
-          <Input 
+        <form onSubmit={handleSend} className="flex items-center gap-2 rounded-[14px] border border-border"
+          style={{ background: "var(--card)", padding: "8px 8px 8px 14px" }}>
+          <Sparkles className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
+          <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="TYPE MISSION COMMAND..."
-            className="h-14 bg-secondary/50 border-border rounded-2xl px-6 pr-14 text-xs font-bold text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/20 transition-all"
+            placeholder="Ask the coach…"
+            className="flex-1 h-9 border-0 bg-transparent text-sm outline-none shadow-none focus-visible:ring-0 p-0"
+            style={{ color: "var(--foreground)" }}
           />
-          <Button 
-            type="submit" 
-            size="icon" 
+          <Button
+            type="submit"
+            size="icon"
             disabled={isGenerating || !input.trim()}
-            className="absolute right-2 top-2 w-10 h-10 rounded-xl bg-primary text-primary-foreground hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+            className="w-9 h-9 rounded-[10px] flex-shrink-0"
+            style={{ background: "var(--primary)", color: "#FFF", border: "none" }}
           >
             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </form>
-        <div className="mt-4 flex items-center justify-center gap-2 opacity-50">
-           <Sparkles className="w-3 h-3 text-primary" />
-           <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Neural Engine Secured</span>
-        </div>
       </div>
     </div>
   );

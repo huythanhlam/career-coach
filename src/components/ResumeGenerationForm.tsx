@@ -4,53 +4,64 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { COMMON_ROLES } from "@/config/workflows";
 import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, ChevronRight, LayoutTemplate, User, Wand2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { suggestWorkExperienceBullets } from "@/services/geminiService";
+
+const fieldStyle: React.CSSProperties = {
+  background: "var(--muted)",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  height: 48,
+  fontSize: 14,
+  padding: "0 14px",
+  color: "var(--foreground)",
+  width: "100%",
+  outline: "none",
+  fontFamily: "inherit",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--foreground)",
+  marginBottom: 6,
+  display: "block",
+};
 
 function MiniTemplatePreview({ type }: { type: string }) {
   if (type === "Modern & Clean") {
     return (
-      <div className="w-full h-full bg-white shadow-sm border border-zinc-200 p-2.5 flex flex-col gap-2 rounded-sm overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between items-center border-b border-zinc-100 pb-1.5">
+      <div className="w-full h-full bg-white shadow-sm p-2.5 flex flex-col gap-2 rounded-sm overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+        <div className="flex justify-between items-center pb-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
           <div className="flex flex-col gap-1 w-2/3">
-            <div className="h-2.5 w-3/4 bg-zinc-800 rounded-sm"></div>
-            <div className="h-1.5 w-1/2 bg-zinc-400 rounded-sm"></div>
+            <div className="h-2.5 w-3/4 rounded-sm" style={{ background: "var(--foreground)" }}></div>
+            <div className="h-1.5 w-1/2 rounded-sm" style={{ background: "var(--muted-foreground)", opacity: 0.5 }}></div>
           </div>
           <div className="flex gap-1.5 flex-col items-end">
-             <div className="h-1 w-12 bg-zinc-300 rounded-px"></div>
-             <div className="h-1 w-16 bg-zinc-300 rounded-px"></div>
+            <div className="h-1 w-12 rounded-px" style={{ background: "var(--border)" }}></div>
+            <div className="h-1 w-16 rounded-px" style={{ background: "var(--border)" }}></div>
           </div>
         </div>
-        
-        {/* Body 2 columns */}
         <div className="flex gap-2.5 h-full pt-1">
-          {/* Left Column (Skills/Contact) */}
-          <div className="w-1/3 flex flex-col gap-2 border-r border-zinc-100 pr-2">
-            <div className="h-1.5 w-full bg-indigo-100 rounded-sm"></div>
+          <div className="w-1/3 flex flex-col gap-2 pr-2" style={{ borderRight: "1px solid var(--border)" }}>
+            <div className="h-1.5 w-full rounded-sm" style={{ background: "rgba(217,119,87,0.18)" }}></div>
             <div className="space-y-1">
-              <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
-              <div className="h-1 w-5/6 bg-zinc-200 rounded-px"></div>
-              <div className="h-1 w-4/5 bg-zinc-200 rounded-px"></div>
+              <div className="h-1 w-full rounded-px" style={{ background: "var(--border)" }}></div>
+              <div className="h-1 w-5/6 rounded-px" style={{ background: "var(--border)" }}></div>
             </div>
-            <div className="h-1.5 w-full bg-indigo-100 rounded-sm mt-1"></div>
+            <div className="h-1.5 w-full rounded-sm mt-1" style={{ background: "rgba(217,119,87,0.18)" }}></div>
             <div className="space-y-1">
-              <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
-              <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
+              <div className="h-1 w-full rounded-px" style={{ background: "var(--border)" }}></div>
+              <div className="h-1 w-full rounded-px" style={{ background: "var(--border)" }}></div>
             </div>
           </div>
-          {/* Right Column (Experience) */}
           <div className="w-2/3 flex flex-col gap-2">
-            <div className="h-1.5 w-1/3 bg-zinc-200 rounded-sm"></div>
+            <div className="h-1.5 w-1/3 rounded-sm" style={{ background: "var(--border)" }}></div>
             <div className="space-y-1 pb-1">
-              <div className="flex justify-between"><div className="h-1.5 w-1/2 bg-zinc-700 rounded-px"></div><div className="h-1 w-1/5 bg-zinc-300 rounded-px"></div></div>
-              <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
-              <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between"><div className="h-1.5 w-2/5 bg-zinc-700 rounded-px"></div><div className="h-1 w-1/5 bg-zinc-300 rounded-px"></div></div>
-              <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
-              <div className="h-1 w-11/12 bg-zinc-200 rounded-px"></div>
+              <div className="flex justify-between">
+                <div className="h-1.5 w-1/2 rounded-px" style={{ background: "var(--foreground)", opacity: 0.7 }}></div>
+                <div className="h-1 w-1/5 rounded-px" style={{ background: "var(--border)" }}></div>
+              </div>
+              <div className="h-1 w-full rounded-px" style={{ background: "var(--border)" }}></div>
             </div>
           </div>
         </div>
@@ -66,27 +77,17 @@ function MiniTemplatePreview({ type }: { type: string }) {
           <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
           <div className="ml-2 h-1 w-16 bg-zinc-700 rounded-px"></div>
         </div>
-        
         <div className="h-2.5 w-1/2 bg-blue-400/80 rounded-sm mt-1"></div>
         <div className="h-1 w-1/3 bg-emerald-400/80 rounded-sm mb-1"></div>
-        
         <div className="flex gap-1 flex-wrap mb-1">
           <div className="h-1.5 w-8 bg-zinc-800 rounded-sm"></div>
           <div className="h-1.5 w-12 bg-zinc-800 rounded-sm"></div>
           <div className="h-1.5 w-10 bg-zinc-800 rounded-sm"></div>
-          <div className="h-1.5 w-6 bg-zinc-800 rounded-sm"></div>
         </div>
-        
         <div className="space-y-1 mt-1">
-          <div className="flex gap-2 items-center"><div className="w-0.5 h-3 bg-blue-500 text-xs rounded-full"></div><div className="h-1.5 w-1/3 bg-zinc-300 rounded-sm"></div></div>
+          <div className="flex gap-2 items-center"><div className="w-0.5 h-3 bg-blue-500 rounded-full"></div><div className="h-1.5 w-1/3 bg-zinc-300 rounded-sm"></div></div>
           <div className="h-1 w-full bg-zinc-600 rounded-px ml-2.5"></div>
           <div className="h-1 w-5/6 bg-zinc-600 rounded-px ml-2.5"></div>
-        </div>
-        
-        <div className="space-y-1 mt-1">
-          <div className="flex gap-2 items-center"><div className="w-0.5 h-3 bg-purple-500 text-xs rounded-full"></div><div className="h-1.5 w-2/5 bg-zinc-300 rounded-sm"></div></div>
-          <div className="h-1 w-11/12 bg-zinc-600 rounded-px ml-2.5"></div>
-          <div className="h-1 w-3/4 bg-zinc-600 rounded-px ml-2.5"></div>
         </div>
       </div>
     );
@@ -98,10 +99,8 @@ function MiniTemplatePreview({ type }: { type: string }) {
         <div className="flex gap-3 mb-0.5">
           <div className="h-1 w-8 bg-slate-400 rounded-px"></div>
           <div className="h-1 w-8 bg-slate-400 rounded-px"></div>
-          <div className="h-1 w-8 bg-slate-400 rounded-px"></div>
         </div>
         <div className="w-full h-[2px] bg-slate-900 mt-1 mb-1"></div>
-        
         <div className="w-full text-left flex flex-col gap-2">
           <div>
             <div className="h-1.5 w-1/4 bg-slate-800 rounded-sm mb-1"></div>
@@ -111,18 +110,7 @@ function MiniTemplatePreview({ type }: { type: string }) {
             </div>
             <div className="space-y-1 w-full">
               <div className="h-1 w-full bg-slate-200 rounded-px"></div>
-              <div className="h-1 w-full bg-slate-200 rounded-px"></div>
               <div className="h-1 w-3/4 bg-slate-200 rounded-px"></div>
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between w-full mb-0.5">
-              <div className="h-1 w-2/5 bg-slate-700 rounded-px"></div>
-              <div className="h-1 w-1/6 bg-slate-400 rounded-px"></div>
-            </div>
-            <div className="space-y-1 w-full">
-              <div className="h-1 w-full bg-slate-200 rounded-px"></div>
-              <div className="h-1 w-5/6 bg-slate-200 rounded-px"></div>
             </div>
           </div>
         </div>
@@ -131,27 +119,21 @@ function MiniTemplatePreview({ type }: { type: string }) {
   }
   if (type === "Creative / Portfolio") {
     return (
-      <div className="w-full h-full bg-[#fdfbf7] p-2 flex flex-col gap-2 rounded-sm overflow-hidden border border-orange-200/50">
+      <div className="w-full h-full bg-[#fdfbf7] p-2 flex flex-col gap-2 rounded-sm overflow-hidden" style={{ border: "1px solid rgba(217,119,87,0.25)" }}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-pink-400 to-orange-400 shrink-0 shadow-sm border border-white"></div>
+          <div className="w-7 h-7 rounded-full shrink-0 shadow-sm" style={{ background: "linear-gradient(135deg, #E8B948, #D97757)" }}></div>
           <div className="flex flex-col gap-1 w-full">
-            <div className="h-2 w-2/3 bg-zinc-800 rounded-sm"></div>
-            <div className="h-1.5 w-1/3 bg-orange-400/80 rounded-sm"></div>
+            <div className="h-2 w-2/3 rounded-sm" style={{ background: "var(--foreground)" }}></div>
+            <div className="h-1.5 w-1/3 rounded-sm" style={{ background: "rgba(217,119,87,0.6)" }}></div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-1">
-          <div className="h-10 bg-zinc-100 rounded-sm border border-zinc-200/60 p-1 flex items-end">
-            <div className="h-1 w-1/2 bg-zinc-300 rounded-px"></div>
+          <div className="h-10 rounded-sm p-1 flex items-end" style={{ background: "var(--muted)", border: "1px solid var(--border)" }}>
+            <div className="h-1 w-1/2 rounded-px" style={{ background: "var(--border)" }}></div>
           </div>
-          <div className="h-10 bg-zinc-100 rounded-sm border border-zinc-200/60 p-1 flex items-end">
-            <div className="h-1 w-2/3 bg-zinc-300 rounded-px"></div>
+          <div className="h-10 rounded-sm p-1 flex items-end" style={{ background: "var(--muted)", border: "1px solid var(--border)" }}>
+            <div className="h-1 w-2/3 rounded-px" style={{ background: "var(--border)" }}></div>
           </div>
-        </div>
-        <div className="h-1.5 w-1/3 bg-zinc-800 rounded-sm mt-1"></div>
-        <div className="space-y-1">
-          <div className="h-1 w-full bg-zinc-300 rounded-px"></div>
-          <div className="h-1 w-full bg-zinc-300 rounded-px"></div>
-          <div className="h-1 w-4/5 bg-zinc-300 rounded-px"></div>
         </div>
       </div>
     );
@@ -160,52 +142,32 @@ function MiniTemplatePreview({ type }: { type: string }) {
     return (
       <div className="w-full h-full bg-zinc-950 p-2 flex flex-col gap-2 rounded-sm overflow-hidden border border-zinc-800">
         <div className="flex justify-center w-full mb-1">
-           <div className="h-2 w-1/3 bg-zinc-100 tracking-[0.2em] rounded-sm"></div>
+          <div className="h-2 w-1/3 bg-zinc-100 rounded-sm"></div>
         </div>
         <div className="columns-2 gap-1.5 space-y-1.5">
-           <div className="w-full h-8 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
-           <div className="w-full h-12 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
-           <div className="w-full h-10 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
-           <div className="w-full h-6 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
-        </div>
-        <div className="flex-1"></div>
-        <div className="flex justify-center flex-wrap gap-1 mt-auto pb-1">
-          <div className="h-0.5 w-6 bg-zinc-500 rounded-px"></div>
-          <div className="h-0.5 w-6 bg-zinc-500 rounded-px"></div>
-          <div className="h-0.5 w-6 bg-zinc-500 rounded-px"></div>
+          <div className="w-full h-8 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
+          <div className="w-full h-12 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
+          <div className="w-full h-10 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
+          <div className="w-full h-6 bg-zinc-800 rounded-sm opacity-80 border border-zinc-700"></div>
         </div>
       </div>
     );
   }
   // Academic / Research
   return (
-    <div className="w-full h-full bg-white border border-zinc-200 p-2.5 flex flex-col gap-1.5 rounded-sm overflow-hidden">
-      <div className="h-2.5 w-2/5 bg-zinc-900 mb-1.5 rounded-sm"></div>
-      
-      <div className="flex gap-2.5 mb-1.5">
-        <div className="w-0.5 h-full bg-zinc-300 ml-1 rounded-full"></div>
-        <div className="flex flex-col gap-1.5 w-full -ml-1">
-          <div className="h-1.5 w-3/4 bg-zinc-400 rounded-px"></div>
-          <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
-          <div className="h-1 w-5/6 bg-zinc-200 rounded-px"></div>
+    <div className="w-full h-full bg-white p-2.5 flex flex-col gap-1.5 rounded-sm overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      <div className="h-2.5 w-2/5 mb-1.5 rounded-sm" style={{ background: "var(--foreground)" }}></div>
+      {[["3/4", "full", "5/6"], ["2/3", "full"], ["4/5", "11/12"]].map((lines, i) => (
+        <div key={i} className="flex gap-2.5 mb-1.5">
+          <div className="w-0.5 h-full ml-1 rounded-full" style={{ background: "var(--border)" }}></div>
+          <div className="flex flex-col gap-1.5 w-full -ml-1">
+            <div className={`h-1.5 w-${lines[0]} rounded-px`} style={{ background: "var(--muted-foreground)", opacity: 0.5 }}></div>
+            {lines.slice(1).map((w, j) => (
+              <div key={j} className={`h-1 w-${w} rounded-px`} style={{ background: "var(--border)" }}></div>
+            ))}
+          </div>
         </div>
-      </div>
-      
-       <div className="flex gap-2.5 mb-1.5">
-        <div className="w-0.5 h-full bg-zinc-300 ml-1 rounded-full"></div>
-        <div className="flex flex-col gap-1.5 w-full -ml-1">
-          <div className="h-1.5 w-2/3 bg-zinc-400 rounded-px"></div>
-          <div className="h-1 w-full bg-zinc-200 rounded-px"></div>
-        </div>
-      </div>
-      
-      <div className="flex gap-2.5">
-        <div className="w-0.5 h-full bg-zinc-300 ml-1 rounded-full"></div>
-        <div className="flex flex-col gap-1.5 w-full -ml-1">
-          <div className="h-1.5 w-4/5 bg-zinc-400 rounded-px"></div>
-          <div className="h-1 w-11/12 bg-zinc-200 rounded-px"></div>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -224,14 +186,9 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
   const [template, setTemplate] = useState("Modern & Clean");
   const [targetRoleSelect, setTargetRoleSelect] = useState("");
   const [targetRole, setTargetRole] = useState("");
-  
+
   const [personalInfo, setPersonalInfo] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    linkedin: "",
-    github: "",
-    portfolio: ""
+    name: "", email: "", phone: "", linkedin: "", github: "", portfolio: ""
   });
 
   const [workHistory, setWorkHistory] = useState([
@@ -254,7 +211,6 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
   const handleSuggestBullets = async (index: number) => {
     const work = workHistory[index];
     if (!work.role) return;
-    
     setIsGeneratingBullets(index);
     try {
       const suggestions = await suggestWorkExperienceBullets(work.role, targetRoleSelect === "Other" ? targetRole : targetRoleSelect);
@@ -283,219 +239,239 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      template,
-      targetRole: targetRoleSelect === "Other" ? targetRole : targetRoleSelect,
-      personalInfo,
-      workHistory,
-      education,
-      skills
-    });
+    onSubmit({ template, targetRole: targetRoleSelect === "Other" ? targetRole : targetRoleSelect, personalInfo, workHistory, education, skills });
+  };
+
+  const sectionHeadStyle: React.CSSProperties = {
+    fontSize: 15,
+    fontWeight: 600,
+    color: "var(--foreground)",
+    paddingBottom: 12,
+    marginBottom: 16,
+    borderBottom: "1px solid var(--border)",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  };
+
+  const entryCardStyle: React.CSSProperties = {
+    padding: 20,
+    border: "1px solid var(--border)",
+    borderRadius: 16,
+    background: "var(--muted)",
+    marginBottom: 16,
   };
 
   if (step === 1) {
     return (
       <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Choose a template</h2>
-          <p className="text-zinc-500 mt-2">Start with a design, then easily customize it with your details.</p>
+          <h2 className="font-display text-3xl font-semibold" style={{ color: "var(--foreground)" }}>Choose a template</h2>
+          <p className="mt-2 text-sm" style={{ color: "var(--muted-foreground)" }}>Start with a design, then customize it with your details.</p>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {TEMPLATES.map(t => (
-            <Card 
-              key={t.id} 
-              className={`cursor-pointer overflow-hidden border-2 transition-all hover:border-indigo-400 group ${template === t.id ? 'border-indigo-600 ring-4 ring-indigo-500/10 dark:ring-indigo-500/20' : 'border-zinc-200 dark:border-zinc-800'}`} 
+            <div
+              key={t.id}
               onClick={() => setTemplate(t.id)}
+              style={{
+                cursor: "pointer",
+                borderRadius: 16,
+                overflow: "hidden",
+                border: template === t.id ? "2px solid var(--primary)" : "2px solid var(--border)",
+                boxShadow: template === t.id ? "0 0 0 3px rgba(217,119,87,0.12)" : "none",
+                transition: "border-color 0.15s, box-shadow 0.15s",
+                background: "var(--card)",
+              }}
             >
-              <div className="aspect-[1/1.2] bg-zinc-100/50 dark:bg-zinc-900/50 p-6 flex flex-col justify-center transition-transform group-hover:scale-[1.02]">
-                 <MiniTemplatePreview type={t.id} />
+              <div style={{ aspectRatio: "1/1.2", background: "var(--muted)", padding: 20, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <MiniTemplatePreview type={t.id} />
               </div>
-              <div className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-900">
-                <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{t.name}</h3>
-                <p className="text-xs text-zinc-500 mt-1">{t.description}</p>
+              <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", background: "var(--card)" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 2 }}>{t.name}</div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{t.description}</div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
-        
-        <div className="flex justify-end pt-6 border-t border-zinc-200 dark:border-zinc-800 mt-8">
-          <Button onClick={() => setStep(2)} disabled={!template} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm h-11 px-8 rounded-full text-base">
-            Customize this template <ChevronRight className="ml-2 w-5 h-5" />
-          </Button>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 24, borderTop: "1px solid var(--border)", marginTop: 32 }}>
+          <button
+            onClick={() => setStep(2)}
+            disabled={!template}
+            style={{ height: 44, padding: "0 32px", background: "var(--primary)", border: "none", borderRadius: 9999, fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#FFF", cursor: template ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 8, opacity: template ? 1 : 0.5 }}
+          >
+            Customize this template <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] w-full mx-auto max-w-4xl relative animate-in slide-in-from-right-4 duration-300 bg-white dark:bg-zinc-900 overflow-hidden">
-      <CardHeader className="text-center relative p-8 pb-6 border-b border-zinc-100 dark:border-zinc-800/50">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => setStep(1)} 
-          className="absolute left-6 top-6 h-10 w-10 rounded-full bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+    <div className="w-full mx-auto max-w-4xl animate-in slide-in-from-right-4 duration-300" style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, overflow: "hidden" }}>
+      {/* Card header */}
+      <div style={{ padding: "28px 32px 20px", borderBottom: "1px solid var(--border)", position: "relative", textAlign: "center" }}>
+        <button
+          onClick={() => setStep(1)}
+          style={{ position: "absolute", left: 20, top: 24, width: 36, height: 36, borderRadius: "50%", background: "var(--muted)", border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)" }}
         >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <CardTitle className="text-2xl mt-2 text-zinc-900 dark:text-zinc-100">Fill in your details</CardTitle>
-        <CardDescription className="text-base text-zinc-500">We'll use this information to draft your resume</CardDescription>
-      </CardHeader>
-      <CardContent className="p-8">
-        {/* User Guidance Section */}
-        <div className="mb-10 p-6 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
-          <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-400 mb-3 flex items-center gap-2">
-            <Sparkles className="w-4 h-4" /> 
-            How to get the best results
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800/70 dark:text-amber-500/70">What happens next?</h4>
-              <p className="text-sm text-amber-800/80 dark:text-zinc-400 leading-relaxed">
-                After you submit, we'll open a <strong>Resume Workspace</strong>. You'll see your AI-generated resume on the left and a live editor/chat on the right to refine it until it's perfect.
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <h2 className="font-display text-2xl font-semibold mt-1" style={{ color: "var(--foreground)" }}>Fill in your details</h2>
+        <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 4 }}>We'll use this to draft your resume</p>
+      </div>
+
+      <div style={{ padding: "28px 32px" }}>
+        {/* Guidance tip */}
+        <div style={{ marginBottom: 32, padding: 20, background: "rgba(232,185,72,0.08)", border: "1px solid rgba(232,185,72,0.25)", borderRadius: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--highlight)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <Sparkles className="w-3.5 h-3.5" /> How to get the best results
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-foreground)", marginBottom: 6 }}>What happens next?</div>
+              <p style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.6 }}>
+                After you submit, we'll open a <strong>Resume Workspace</strong>. You'll see your AI-generated resume and a live chat to refine it until it's perfect.
               </p>
             </div>
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800/70 dark:text-amber-500/70">Pro Tips for Accuracy</h4>
-              <ul className="text-sm text-amber-800/80 dark:text-zinc-400 space-y-1 list-disc pl-4">
-                <li><strong>Be Specific:</strong> The more detail you provide in your Work History, the better the AI can tailor your impact.</li>
-                <li><strong>Blank is OK:</strong> If you leave responsibilities blank, the AI will generate high-quality bullet points based on your job title.</li>
-                <li><strong>Include Skills:</strong> List your core tech stack to ensure the template highlights your expertise.</li>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-foreground)", marginBottom: 6 }}>Pro Tips</div>
+              <ul style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.7, paddingLeft: 16, listStyle: "disc" }}>
+                <li><strong>Be specific</strong> — more detail = better AI output.</li>
+                <li><strong>Blank is OK</strong> — AI generates bullets from job title.</li>
+                <li><strong>Include skills</strong> — ensures the template highlights your stack.</li>
               </ul>
             </div>
           </div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-10">
-          
-          {/* Target Role & Selected Template status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50/50 dark:bg-indigo-950/20 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-900/40">
-            <div className="space-y-3">
-              <label className="text-[15px] font-medium text-indigo-900 dark:text-indigo-200">Selected Template</label>
-              <div className="flex items-center h-14 px-4 bg-white dark:bg-zinc-950 rounded-xl border border-indigo-100 dark:border-indigo-900/60 text-[15px] font-medium text-zinc-700 dark:text-zinc-300">
-                <LayoutTemplate className="w-5 h-5 mr-3 text-indigo-500" />
-                {template}
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 36 }}>
+
+          {/* Template + Target Role */}
+          <div style={{ padding: 20, background: "rgba(217,119,87,0.05)", border: "1px solid rgba(217,119,87,0.15)", borderRadius: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label style={labelStyle}>Selected Template</label>
+                <div style={{ ...fieldStyle, display: "flex", alignItems: "center", gap: 10, cursor: "default" }}>
+                  <LayoutTemplate className="w-4 h-4" style={{ color: "var(--primary)", flexShrink: 0 }} />
+                  {template}
+                </div>
               </div>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[15px] font-medium text-indigo-900 dark:text-indigo-200">Target Role <span className="text-red-500">*</span></label>
-              <select
-                required
-                className="flex h-14 w-full rounded-xl border border-indigo-100 bg-white px-4 text-[15px] focus:bg-white focus:ring-1 focus:ring-indigo-400 focus-visible:outline-none dark:border-indigo-900/60 dark:bg-zinc-950 outline-none transition-colors"
-                value={targetRoleSelect}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setTargetRoleSelect(val);
-                  if (val !== "Other") setTargetRole(val);
-                  else setTargetRole("");
-                }}
-              >
-                <option value="" disabled>Select an option...</option>
-                {COMMON_ROLES.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              {targetRoleSelect === "Other" && (
-                <Input
+              <div>
+                <label style={labelStyle}>Target Role <span style={{ color: "#e05c5c" }}>*</span></label>
+                <select
                   required
-                  placeholder="Please specify your target role..."
-                  value={targetRole}
-                  onChange={(e) => setTargetRole(e.target.value)}
-                  className="bg-white dark:bg-zinc-950 mt-3 h-14 rounded-xl border-indigo-100 dark:border-indigo-900/60 text-[15px]"
-                />
-              )}
+                  style={{ ...fieldStyle }}
+                  value={targetRoleSelect}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTargetRoleSelect(val);
+                    if (val !== "Other") setTargetRole(val); else setTargetRole("");
+                  }}
+                >
+                  <option value="" disabled>Select an option…</option>
+                  {COMMON_ROLES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                {targetRoleSelect === "Other" && (
+                  <Input
+                    required
+                    placeholder="Please specify your target role…"
+                    value={targetRole}
+                    onChange={(e) => setTargetRole(e.target.value)}
+                    style={{ ...fieldStyle, marginTop: 8 }}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
           {/* Personal Info */}
-          <div className="space-y-5">
-            <h3 className="text-lg font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3 flex items-center gap-2"><User className="w-5 h-5 text-zinc-400" /> Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Full Name <span className="text-red-500">*</span></label>
-                <Input required value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Email <span className="text-red-500">*</span></label>
-                <Input type="email" required value={personalInfo.email} onChange={e => setPersonalInfo({...personalInfo, email: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Phone</label>
-                <Input value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">LinkedIn URL</label>
-                <Input value={personalInfo.linkedin} onChange={e => setPersonalInfo({...personalInfo, linkedin: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">GitHub URL</label>
-                <Input value={personalInfo.github} onChange={e => setPersonalInfo({...personalInfo, github: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Portfolio / Website URL</label>
-                <Input value={personalInfo.portfolio} onChange={e => setPersonalInfo({...personalInfo, portfolio: e.target.value})} className="bg-zinc-50/50 dark:bg-zinc-950/50 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors border-zinc-200 dark:border-zinc-800" />
-              </div>
+          <div>
+            <div style={sectionHeadStyle}><User className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} /> Personal Information</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { label: "Full Name", key: "name", required: true },
+                { label: "Email", key: "email", required: true, type: "email" },
+                { label: "Phone", key: "phone" },
+                { label: "LinkedIn URL", key: "linkedin" },
+                { label: "GitHub URL", key: "github" },
+                { label: "Portfolio / Website", key: "portfolio" },
+              ].map(({ label, key, required, type }) => (
+                <div key={key}>
+                  <label style={labelStyle}>{label} {required && <span style={{ color: "#e05c5c" }}>*</span>}</label>
+                  <Input
+                    type={type || "text"}
+                    required={required}
+                    value={(personalInfo as any)[key]}
+                    onChange={e => setPersonalInfo({ ...personalInfo, [key]: e.target.value })}
+                    style={fieldStyle}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Work History */}
-          <div className="space-y-5">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              <h3 className="text-lg font-semibold">Work History</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addWork} className="rounded-full bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9">
-                <Plus className="w-4 h-4 mr-2" /> Add Job
-              </Button>
+          <div>
+            <div style={{ ...sectionHeadStyle, justifyContent: "space-between" }}>
+              <span>Work History</span>
+              <button type="button" onClick={addWork} style={{ height: 32, padding: "0 12px", background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 9999, fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--foreground)" }}>
+                <Plus className="w-3.5 h-3.5" /> Add Job
+              </button>
             </div>
             {workHistory.map((work, idx) => (
-              <div key={idx} className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-5 bg-zinc-50/30 dark:bg-zinc-900/30">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-medium text-[15px] text-zinc-600 dark:text-zinc-400">Position #{idx + 1}</h4>
+              <div key={idx} style={entryCardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>Position #{idx + 1}</span>
                   {workHistory.length > 1 && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeWork(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 h-9 w-9 p-0 rounded-full">
+                    <button type="button" onClick={() => removeWork(idx)} style={{ width: 32, height: 32, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#e05c5c" }}>
                       <Trash2 className="w-4 h-4" />
-                    </Button>
+                    </button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-2">
-                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Job Title / Role <span className="text-red-500">*</span></label>
-                    <Input required={idx === 0} value={work.role} onChange={e => handleWorkChange(idx, "role", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label style={labelStyle}>Job Title / Role <span style={{ color: "#e05c5c" }}>*</span></label>
+                    <Input required={idx === 0} value={work.role} onChange={e => handleWorkChange(idx, "role", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Company Name</label>
-                    <Input value={work.company} onChange={e => handleWorkChange(idx, "company", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
+                  <div>
+                    <label style={labelStyle}>Company Name</label>
+                    <Input value={work.company} onChange={e => handleWorkChange(idx, "company", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Start Date</label>
-                    <Input placeholder="e.g., Jan 2020" value={work.startDate} onChange={e => handleWorkChange(idx, "startDate", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
+                  <div>
+                    <label style={labelStyle}>Start Date</label>
+                    <Input placeholder="e.g., Jan 2020" value={work.startDate} onChange={e => handleWorkChange(idx, "startDate", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">End Date</label>
-                    <Input placeholder="e.g., Present or Dec 2023" value={work.endDate} onChange={e => handleWorkChange(idx, "endDate", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
+                  <div>
+                    <label style={labelStyle}>End Date</label>
+                    <Input placeholder="e.g., Present" value={work.endDate} onChange={e => handleWorkChange(idx, "endDate", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Responsibilities & Achievements</label>
-                      <Button
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <label style={{ ...labelStyle, marginBottom: 0 }}>Responsibilities & Achievements</label>
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
                         disabled={!work.role || isGeneratingBullets === idx || !(targetRoleSelect !== "Other" ? targetRoleSelect : targetRole)}
                         onClick={() => handleSuggestBullets(idx)}
-                        className="h-8 text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 rounded-lg px-3 text-xs font-medium"
+                        style={{ height: 28, padding: "0 10px", background: "rgba(217,119,87,0.10)", border: "1px solid rgba(217,119,87,0.25)", borderRadius: 8, fontFamily: "inherit", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: "var(--primary)", opacity: (!work.role || isGeneratingBullets === idx) ? 0.5 : 1 }}
                       >
                         {isGeneratingBullets === idx ? (
-                          <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Suggesting...</>
+                          <><Loader2 className="w-3 h-3 animate-spin" /> Suggesting…</>
                         ) : (
-                          <><Wand2 className="w-3 h-3 mr-1.5" /> Auto-suggest bullets</>
+                          <><Wand2 className="w-3 h-3" /> Auto-suggest bullets</>
                         )}
-                      </Button>
+                      </button>
                     </div>
-                    <Textarea 
-                      placeholder="Describe your impact, scale, and technical stack used..." 
-                      className="min-h-[120px] bg-white dark:bg-zinc-950 rounded-xl px-4 py-3 text-base focus:bg-white transition-colors resize-y" 
-                      value={work.responsibilities} 
-                      onChange={e => handleWorkChange(idx, "responsibilities", e.target.value)} 
+                    <Textarea
+                      placeholder="Describe your impact, scale, and technical stack used…"
+                      className="min-h-[120px] resize-y"
+                      style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "var(--foreground)", width: "100%" }}
+                      value={work.responsibilities}
+                      onChange={e => handleWorkChange(idx, "responsibilities", e.target.value)}
                     />
                   </div>
                 </div>
@@ -504,35 +480,35 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
           </div>
 
           {/* Education */}
-          <div className="space-y-5">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              <h3 className="text-lg font-semibold">Education</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addEdu} className="rounded-full bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9">
-                <Plus className="w-4 h-4 mr-2" /> Add Education
-              </Button>
+          <div>
+            <div style={{ ...sectionHeadStyle, justifyContent: "space-between" }}>
+              <span>Education</span>
+              <button type="button" onClick={addEdu} style={{ height: 32, padding: "0 12px", background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 9999, fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--foreground)" }}>
+                <Plus className="w-3.5 h-3.5" /> Add Education
+              </button>
             </div>
             {education.map((edu, idx) => (
-              <div key={idx} className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-5 bg-zinc-50/30 dark:bg-zinc-900/30">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-medium text-[15px] text-zinc-600 dark:text-zinc-400">Education #{idx + 1}</h4>
+              <div key={idx} style={entryCardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>Education #{idx + 1}</span>
                   {education.length > 1 && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeEdu(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 h-9 w-9 p-0 rounded-full">
+                    <button type="button" onClick={() => removeEdu(idx)} style={{ width: 32, height: 32, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#e05c5c" }}>
                       <Trash2 className="w-4 h-4" />
-                    </Button>
+                    </button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="space-y-2">
-                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Institution / University <span className="text-red-500">*</span></label>
-                    <Input required={idx === 0} value={edu.university} onChange={e => handleEduChange(idx, "university", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label style={labelStyle}>Institution <span style={{ color: "#e05c5c" }}>*</span></label>
+                    <Input required={idx === 0} value={edu.university} onChange={e => handleEduChange(idx, "university", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Degree / Field of Study</label>
-                    <Input placeholder="e.g., B.S. CS" value={edu.degree} onChange={e => handleEduChange(idx, "degree", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
+                  <div>
+                    <label style={labelStyle}>Degree / Field</label>
+                    <Input placeholder="e.g., B.S. CS" value={edu.degree} onChange={e => handleEduChange(idx, "degree", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Graduation Year</label>
-                    <Input placeholder="e.g., 2022" value={edu.year} onChange={e => handleEduChange(idx, "year", e.target.value)} className="bg-white dark:bg-zinc-950 rounded-xl px-4 h-14 text-base focus:bg-white transition-colors" />
+                  <div>
+                    <label style={labelStyle}>Graduation Year</label>
+                    <Input placeholder="e.g., 2022" value={edu.year} onChange={e => handleEduChange(idx, "year", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
                 </div>
               </div>
@@ -540,41 +516,33 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
           </div>
 
           {/* Skills */}
-          <div className="space-y-5">
-            <h3 className="text-lg font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">Skills & Additional Info</h3>
-            <div className="space-y-2">
-              <label className="text-[15px] font-medium text-zinc-800 dark:text-zinc-200">Core Skills (comma separated)</label>
-              <Textarea 
-                placeholder="React, Node.js, Python, Leadership, Agile, AWS..." 
-                className="min-h-[120px] bg-zinc-50/50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 focus:bg-white text-base transition-colors resize-y"
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
-              />
-            </div>
+          <div>
+            <div style={sectionHeadStyle}>Skills & Additional Info</div>
+            <label style={labelStyle}>Core Skills (comma separated)</label>
+            <Textarea
+              placeholder="React, Node.js, Python, Leadership, Agile, AWS…"
+              className="min-h-[100px] resize-y"
+              style={{ background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "var(--foreground)", width: "100%" }}
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+            />
           </div>
-          
-          <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/50">
-            <Button
+
+          <div style={{ paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+            <button
               type="submit"
               disabled={isGenerating}
-              size="lg"
-              className="w-full text-base font-medium bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl h-14 transition-all"
+              style={{ width: "100%", height: 52, background: isGenerating ? "var(--muted-foreground)" : "var(--foreground)", border: "none", borderRadius: 14, fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: "var(--background)", cursor: isGenerating ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }}
             >
               {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Analyzing and Drafting Template...
-                </>
+                <><Loader2 className="w-5 h-5 animate-spin" /> Drafting your resume…</>
               ) : (
-                <>
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Generate Resume Workspace
-                </>
+                <><Sparkles className="w-5 h-5" /> Generate Resume Workspace</>
               )}
-            </Button>
+            </button>
           </div>
         </form>
-      </CardContent>
-    </Card>
-  )
+      </div>
+    </div>
+  );
 }

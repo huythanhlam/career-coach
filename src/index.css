@@ -5,11 +5,9 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --font-sans: 'Geist Variable', sans-serif;
-  --font-heading: 'Geist Variable', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -39,61 +37,66 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Legacy Shadcn aliases for compatibility */
-  --color-border-border: var(--border);
-  --color-border-input: var(--input);
-  --color-ring-ring: var(--ring);
-  --color-bg-muted: var(--muted);
-  --color-text-muted-foreground: var(--muted-foreground);
+  /* Mentor semantic extras */
+  --color-paper: var(--paper);
+  --color-forest: var(--forest);
+  --color-highlight: var(--highlight);
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-sm: calc(var(--radius) * 0.6);
 }
 
+/* ── Mentor mode (warm, welcoming — default per brief) ───────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #020617; /* Darker for better contrast */
-  --card: #ffffff;
-  --card-foreground: #020617;
-  --popover: #ffffff;
-  --popover-foreground: #020617;
-  --primary: #4f46e5; /* Slightly darker indigo */
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #475569; /* Darker gray for readability */
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #4f46e5;
-  --radius: 0.75rem;
-}
+  /* Surfaces */
+  --background: #FBF7F1;   /* cream */
+  --paper:      #F4EEE3;   /* warm paper */
+  --card:       #FFFFFF;
+  --muted:      #F0E9DC;
 
-.dark {
-  --background: #020617; /* Deeper black/blue */
-  --foreground: #f8fafc;
-  --card: #020617;
-  --card-foreground: #f8fafc;
-  --popover: #020617;
-  --popover-foreground: #f8fafc;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #f8fafc;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8; /* Brighter gray for dark mode readability */
-  --accent: #1e293b;
-  --accent-foreground: #f8fafc;
-  --destructive: #991b1b;
-  --destructive-foreground: #f8fafc;
-  --border: #1e293b;
-  --input: #1e293b;
-  --ring: #6366f1;
+  /* Text */
+  --foreground:       #1F1B16;  /* warm near-black */
+  --card-foreground:  #1F1B16;
+  --muted-foreground: #6E6557;  /* warm stone */
+
+  /* Brand */
+  --primary:            #D97757;  /* terracotta */
+  --primary-foreground: #FFFFFF;
+
+  /* Forest — "you've got this" */
+  --forest: #2F6B4F;
+
+  /* Highlight — small wins */
+  --highlight: #E8B948;
+
+  /* Secondary (warm muted) */
+  --secondary:            #F0E9DC;
+  --secondary-foreground: #1F1B16;
+
+  /* Accent */
+  --accent:            #F0E9DC;
+  --accent-foreground: #1F1B16;
+
+  /* Status / semantic */
+  --destructive:            #F43F5E;
+  --destructive-foreground: #FFFFFF;
+
+  /* Popover */
+  --popover:            #FFFFFF;
+  --popover-foreground: #1F1B16;
+
+  /* Lines */
+  --border: #E8DFCE;
+  --input:  #E8DFCE;
+  --ring:   #D97757;
+  --radius: 0.75rem;
+
+  /* Status (shared — never reinvent) */
+  --status-applied:      #3B82F6;
+  --status-interviewing: #F59E0B;
+  --status-offer:        #10B981;
+  --status-rejected:     #F43F5E;
 }
 
 @layer base {
@@ -102,19 +105,38 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Geist Variable', sans-serif;
   }
 }
 
+/* ── Utility classes ──────────────────────────────────────────────── */
 @layer utilities {
-  .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  .font-display {
+    font-family: 'Fraunces', Georgia, serif;
   }
-  
-  .dark .glass {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+
+  .paper {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
   }
+
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--muted-foreground);
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Status pills */
+  .status-applied      { background: rgba(59,130,246,0.10);  color: #3B82F6; border-color: rgba(59,130,246,0.25); }
+  .status-interviewing { background: rgba(245,158,11,0.10);  color: #F59E0B; border-color: rgba(245,158,11,0.25); }
+  .status-offer        { background: rgba(16,185,129,0.10);  color: #10B981; border-color: rgba(16,185,129,0.25); }
+  .status-rejected     { background: rgba(244,63,94,0.10);   color: #F43F5E; border-color: rgba(244,63,94,0.25); }
+  .status-pending      { background: rgba(113,113,122,0.10); color: #71717A; border-color: rgba(113,113,122,0.25); }
 }

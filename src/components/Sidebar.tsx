@@ -4,15 +4,15 @@ import {
   FileText,
   LineChart,
   Map,
-  MessageSquare,
   DollarSign,
   Building,
   Users,
   PenTool,
   Code,
-  Rocket,
   ShieldCheck,
-  Zap
+  Compass,
+  Grid,
+  Plus,
 } from "lucide-react";
 
 export type ViewId =
@@ -37,110 +37,119 @@ interface SidebarProps {
   onSelectView: (id: ViewId) => void;
 }
 
-type Category = {
-  name: string;
-  items: {
-    id: ViewId;
-    name: string;
-    icon: React.ElementType;
-    isHighlight?: boolean;
-    badge?: string;
-  }[];
+type NavItem = {
+  id: ViewId;
+  label: string;
+  icon: React.ElementType;
+  badge?: string;
 };
 
-const viewCategories: Category[] = [
+type NavGroup = {
+  name: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
-    name: "Command Center",
+    name: "Plan",
     items: [
-      { id: "dashboard", name: "Overview", icon: Zap, isHighlight: true },
-      { id: "unified", name: "Strategy Engine", icon: Rocket, badge: "AI" },
+      { id: "dashboard",       label: "Overview",       icon: Grid },
+      { id: "unified",         label: "Strategy Engine", icon: Compass, badge: "AI" },
+      { id: "career",          label: "Career Roadmap", icon: Map },
     ],
   },
   {
-    name: "Artifacts",
+    name: "Apply",
     items: [
-      { id: "resume_generation", name: "Resume Builder", icon: FileText },
-      { id: "resume", name: "Impact Audit", icon: ShieldCheck },
-      { id: "linkedin", name: "Profile Lab", icon: Briefcase },
+      { id: "resume_generation", label: "Resume Builder", icon: FileText },
+      { id: "resume",            label: "Impact Audit",   icon: ShieldCheck },
+      { id: "linkedin",          label: "Profile Lab",    icon: Briefcase },
     ],
   },
   {
-    name: "Simulations",
+    name: "Practice",
     items: [
-      { id: "mock_behavioral", name: "Behavioral", icon: Users },
-      { id: "mock_tech", name: "Technical", icon: Code },
-      { id: "mock_case_study", name: "Case Study", icon: PenTool },
+      { id: "mock_behavioral", label: "Behavioral Sim",  icon: Users },
+      { id: "mock_tech",       label: "Technical Sim",   icon: Code },
+      { id: "mock_case_study", label: "Case Study",      icon: PenTool },
     ],
   },
   {
-    name: "Intelligence",
+    name: "Research",
     items: [
-      { id: "company_research", name: "Company Intel", icon: Building },
-      { id: "market", name: "Market Data", icon: LineChart },
-      { id: "salary", name: "Negotiator", icon: DollarSign },
-      { id: "career", name: "Roadmap", icon: Map },
+      { id: "company_research", label: "Company Intel", icon: Building },
+      { id: "market",           label: "Market Data",   icon: LineChart },
+      { id: "salary",           label: "Negotiator",    icon: DollarSign },
     ],
   },
 ];
 
 export function Sidebar({ activeView, onSelectView }: SidebarProps) {
   return (
-    <div className="w-64 bg-background backdrop-blur-xl text-foreground flex flex-col h-full border-r border-border flex-shrink-0 z-30 overflow-hidden">
-      {/* Premium Logo Header */}
-      <div className="p-8 shrink-0 flex flex-col gap-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground shadow-[0_0_20px_rgba(99,102,241,0.3)] animate-pulse">
-            <Rocket className="w-5 h-5 fill-current" />
+    <aside className="w-[280px] h-full bg-paper border-r border-border flex flex-col flex-shrink-0 z-30 overflow-hidden"
+      style={{ background: "var(--paper)" }}>
+
+      {/* Brand mark */}
+      <div className="px-[22px] pt-5 pb-[18px] flex items-center gap-3">
+        <div className="w-9 h-9 rounded-[10px] bg-primary flex items-center justify-center text-white flex-shrink-0 shadow-[0_0_16px_rgba(217,119,87,0.25)]">
+          <Compass className="w-[18px] h-[18px]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-base font-semibold tracking-[-0.01em] text-foreground leading-[1.1] whitespace-nowrap">
+            Career Coach <em className="not-italic text-primary">AI</em>
           </div>
-          <div>
-            <h1 className="text-lg font-black tracking-tighter text-foreground leading-none uppercase italic">
-              TechCoach<span className="text-primary not-italic">AI</span>
-            </h1>
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Elite Strategist</p>
+          <div className="text-[9px] text-muted-foreground font-bold tracking-[0.16em] uppercase mt-0.5 whitespace-nowrap">
+            Mentor mode
           </div>
         </div>
       </div>
-      
-      {/* Navigation */}
-      <nav className="flex-1 px-4 pb-8 space-y-8 overflow-y-auto custom-scrollbar">
-        {viewCategories.map((category) => (
-          <div key={category.name} className="space-y-4">
-            <h3 className="px-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
-              {category.name}
-            </h3>
-            <div className="space-y-1">
-              {category.items.map((view) => {
-                const Icon = view.icon;
-                const isActive = activeView === view.id;
-                return (
-                   <button
-                     key={view.id}
-                     onClick={() => onSelectView(view.id)}
-                     className={cn(
-                       "w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300 group relative",
-                       isActive
-                         ? "bg-secondary text-foreground shadow-sm"
-                         : "hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
-                     )}
-                   >
-                     <div className="flex items-center gap-3">
-                        <Icon className={cn(
-                          "w-4 h-4 transition-all duration-500",
-                          isActive ? "text-primary scale-110 rotate-3" : "text-muted-foreground group-hover:text-primary/70"
-                        )} />
-                        <span className="tracking-tight">{view.name}</span>
-                     </div>
-                     
-                     {view.badge && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black border border-primary/20">
-                          {view.badge}
-                        </span>
-                     )}
 
-                     {isActive && (
-                        <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-full shadow-[0_0_15px_#6366f1] animate-in slide-in-from-left-2 duration-500" />
-                     )}
-                   </button>
+      {/* New plan CTA */}
+      <div className="px-3 pb-3">
+        <button
+          onClick={() => onSelectView("unified")}
+          className="w-full h-10 bg-foreground text-background border-0 rounded-xl font-semibold text-[13px] cursor-pointer flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+        >
+          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          New plan
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-auto px-3 pb-3 no-scrollbar">
+        {navGroups.map((group) => (
+          <div key={group.name} className="mb-3.5">
+            <div className="text-[10px] font-bold text-muted-foreground tracking-[0.22em] uppercase px-[10px] pt-2 pb-1.5">
+              {group.name}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {group.items.map((item) => {
+                const isActive = item.id === activeView;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelectView(item.id)}
+                    className={cn(
+                      "relative flex items-center gap-3 px-3 py-[9px] rounded-[10px] text-[13px] text-left w-full border-0 cursor-pointer transition-all duration-200",
+                      isActive
+                        ? "bg-card text-foreground font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                        : "bg-transparent text-muted-foreground font-medium hover:bg-card/60 hover:text-foreground"
+                    )}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-[10px] bottom-[10px] w-[3px] rounded-full bg-primary" />
+                    )}
+                    <span className={cn("transition-colors", isActive ? "text-primary" : "text-muted-foreground")}>
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge && (
+                      <span className="text-[9px] font-black text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md tracking-[0.05em]">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
                 );
               })}
             </div>
@@ -148,18 +157,18 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
         ))}
       </nav>
 
-      {/* User Session / Privacy Footer */}
-      <div className="p-6 border-t border-border bg-secondary/20">
-        <div className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border shadow-sm">
-           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">
-              HL
-           </div>
-           <div className="flex-1 overflow-hidden">
-              <p className="text-[11px] font-bold text-foreground truncate">Huy Lam</p>
-              <p className="text-[9px] text-muted-foreground font-medium truncate uppercase tracking-wider">Premium Access</p>
-           </div>
+      {/* User footer */}
+      <div className="p-3 border-t border-border">
+        <div className="flex items-center gap-2.5 p-2">
+          <div className="w-8 h-8 rounded-[10px] bg-card border border-border flex items-center justify-center text-xs font-semibold text-foreground">
+            HL
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-foreground">Huy Lam</div>
+            <div className="text-[10px] text-muted-foreground">Senior PM track</div>
+          </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }

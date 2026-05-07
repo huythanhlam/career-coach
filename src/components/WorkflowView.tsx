@@ -1,13 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { WorkflowId } from "@/components/Sidebar";
 import { workflowsConfig } from "@/config/workflows";
 import { createTechCoachChat, sendMessageStream, analyzeResume } from "@/services/geminiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Sparkles, Send, User, Bot, FileText, Link as LinkIcon, ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
+import {
+  Loader2, Sparkles, FileText, Link as LinkIcon,
+  ChevronLeft, ChevronRight,
+} from "lucide-react";
 import Markdown from "react-markdown";
 import type { Chat } from "@google/genai";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -20,97 +22,58 @@ import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompen
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-interface Message {
-  role: "user" | "model";
-  text: string;
-}
+interface FileData { data: string; mimeType: string; objectUrl: string; name: string; }
 
-interface FileData {
-  data: string;
-  mimeType: string;
-  objectUrl: string;
-  name: string;
-}
+interface WorkflowViewProps { workflowId: WorkflowId; }
 
-interface WorkflowViewProps {
-  workflowId: WorkflowId;
-}
+/* shared inline styles */
+const fieldStyle: React.CSSProperties = {
+  width: "100%", height: 52, background: "var(--muted)", border: "1px solid var(--border)",
+  borderRadius: 14, padding: "0 16px", fontFamily: "inherit", fontSize: 14,
+  color: "var(--foreground)", outline: "none",
+};
 
 export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const config = workflowsConfig[workflowId];
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [fileData, setFileData] = useState<Record<string, FileData>>({});
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  // Resume Workspace State
   const [resumeWorkspaceData, setResumeWorkspaceData] = useState<{ resumeText: string; annotations: any[] } | null>(null);
-
-  // Resume Generator State
   const [resumeGeneratorData, setResumeGeneratorData] = useState<Record<string, any> | null>(null);
+  const [marketData, setMarketData] = useState<MarketCompData | null>(null);
+  const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
+  const [numPages, setNumPages] = useState<number>();
+  const [pageNumber, setPageNumber] = useState(1);
+  const [mainDocumentText, setMainDocumentText] = useState("");
 
   const tryParseMarketData = (text: string): MarketCompData | null => {
     try {
       const match = text.match(/```json\s*([\s\S]*?)\s*(?:```|$)/);
-      if (match && match[1]) {
+      if (match?.[1]) {
         const parsed = JSON.parse(match[1]);
         if (parsed.locations && Array.isArray(parsed.locations)) return parsed;
       }
-    } catch (e) {
-      // ignore parsing errors
-    }
+    } catch { /* ignore */ }
     return null;
   };
 
-  // Market Workflow State
-  const [marketData, setMarketData] = useState<MarketCompData | null>(null);
-  const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
-
-  // PDF state
-  const [numPages, setNumPages] = useState<number>();
-  const [pageNumber, setPageNumber] = useState<number>(1);
-
-  // Standard Text Workflows State
-  const [mainDocumentText, setMainDocumentText] = useState("");
-
-  // Use a key to force re-render when workflowId changes
-  const key = workflowId;
-
-  const handleInputChange = (id: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [id]: value }));
-  };
+  const handleInputChange = (id: string, value: string) =>
+    setFormData(prev => ({ ...prev, [id]: value }));
 
   const handleFileChange = async (id: string, file: File | null) => {
     if (!file) {
-      setFileData((prev) => {
-        const next = { ...prev };
-        if (next[id]?.objectUrl) URL.revokeObjectURL(next[id].objectUrl);
-        delete next[id];
-        return next;
-      });
-      setFormData((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+      setFileData(prev => { const n = { ...prev }; if (n[id]?.objectUrl) URL.revokeObjectURL(n[id].objectUrl); delete n[id]; return n; });
+      setFormData(prev => { const n = { ...prev }; delete n[id]; return n; });
       return;
     }
-
     const objectUrl = URL.createObjectURL(file);
     const reader = new FileReader();
-    
-    reader.onload = (e) => {
+    reader.onload = e => {
       const base64 = (e.target?.result as string).split(",")[1];
-      const newFileData = {
-        data: base64,
-        mimeType: file.type,
-        objectUrl,
-        name: file.name
-      };
-      
-      setFileData((prev) => ({ ...prev, [id]: newFileData }));
-      setFormData((prev) => ({ ...prev, [id]: newFileData }));
+      const fd = { data: base64, mimeType: file.type, objectUrl, name: file.name };
+      setFileData(prev => ({ ...prev, [id]: fd }));
+      setFormData(prev => ({ ...prev, [id]: fd }));
     };
-    
     reader.readAsDataURL(file);
   };
 
@@ -121,294 +84,55 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
     if (workflowId === "market") {
       setIsGeneratingMarketData(true);
       const prompt = config.generatePrompt(formData);
-      const newChat = createTechCoachChat(config.systemInstruction, config.enableSearch);
-      
+      const chat = createTechCoachChat(config.systemInstruction, config.enableSearch);
       try {
-        let fullResponse = "";
-        await sendMessageStream(newChat, prompt as string, (chunk) => {
-          fullResponse += chunk;
-        });
-        const parsed = tryParseMarketData(fullResponse);
-        if (parsed) {
-          setMarketData(parsed);
-        } else {
-           // fallback if parse fails
-           setMarketData(null);
-           setMainDocumentText(fullResponse);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsGeneratingMarketData(false);
-      }
+        let full = "";
+        await sendMessageStream(chat, prompt as string, chunk => { full += chunk; });
+        setMarketData(tryParseMarketData(full) ?? null);
+        if (!tryParseMarketData(full)) setMainDocumentText(full);
+      } catch (err) { console.error(err); }
+      finally { setIsGeneratingMarketData(false); }
       return;
     }
 
-    setIsGenerating(true);
-
     if (workflowId === "resume") {
+      setIsGenerating(true);
       try {
         const result = await analyzeResume(
-          formData.resumeText || "",
-          fileData.resumeFile || null,
-          formData.jd || "",
-          formData.jdUrl || ""
+          formData.resumeText || "", fileData.resumeFile || null, formData.jd || "", formData.jdUrl || ""
         );
         setResumeWorkspaceData(result);
-      } catch (error) {
-        console.error("Error analyzing resume:", error);
-        alert("Failed to analyze resume. Please try again.");
-      } finally {
-        setIsGenerating(false);
-      }
+      } catch { alert("Failed to analyze resume."); }
+      finally { setIsGenerating(false); }
       return;
     }
 
     if (workflowId === "resume_generation") {
       setResumeGeneratorData(formData);
-      setIsGenerating(false);
       return;
     }
 
-    // Handle generic text-based workflows (linkedin, interview, career, salary)
     setIsGenerating(true);
-    setMainDocumentText(" "); // Set to space to trigger UI transition
-    
+    setMainDocumentText(" ");
     const prompt = config.generatePrompt(formData);
-    const newChat = createTechCoachChat(config.systemInstruction, config.enableSearch);
-
+    const chat = createTechCoachChat(config.systemInstruction, config.enableSearch);
     try {
-      let isFirstChunk = true;
-      await sendMessageStream(newChat, prompt as string, (chunk) => {
-        setMainDocumentText((prev) => {
-           if (isFirstChunk) {
-              isFirstChunk = false;
-              return chunk; 
-           }
-           return prev + chunk;
-        });
+      let first = true;
+      await sendMessageStream(chat, prompt as string, chunk => {
+        setMainDocumentText(prev => { if (first) { first = false; return chunk; } return prev + chunk; });
       });
-    } catch (error) {
-      console.error(error);
-      setMainDocumentText("**Error:** Failed to generate response.");
-    } finally {
-      setIsGenerating(false);
-    }
+    } catch { setMainDocumentText("**Error:** Failed to generate response."); }
+    finally { setIsGenerating(false); }
   };
 
-  const renderLeftColumn = () => {
-    if (mainDocumentText || isGenerating) {
-      // Session started, show preview if available
-      const hasFile = Object.values(fileData).length > 0;
-      const hasUrl = formData.url;
-
-      const resetSession = () => {
-        setMainDocumentText("");
-        setFormData({});
-        setFileData({});
-      };
-
-      return (
-        <div className="space-y-6">
-          {hasFile && (
-            <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden flex flex-col">
-              <CardHeader className="shrink-0 bg-secondary/50 border-b border-border p-6 pb-5">
-                <CardTitle className="text-lg flex items-center gap-2 font-semibold">
-                  <FileText className="w-5 h-5 text-primary" />
-                  Document Preview ({Object.values(fileData)[0].name})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 overflow-hidden flex flex-col bg-secondary/20">
-                {Object.values(fileData)[0].mimeType === "application/pdf" ? (
-                  <div className="overflow-auto flex flex-col items-center p-4">
-                    <Document
-                      file={Object.values(fileData)[0].objectUrl}
-                      onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                      className="max-w-full"
-                      loading={<div className="p-4 text-muted-foreground">Loading PDF...</div>}
-                      error={<div className="p-4 text-destructive">Failed to load PDF.</div>}
-                    >
-                      <Page pageNumber={pageNumber} renderTextLayer={false} renderAnnotationLayer={false} className="shadow-md" width={400} />
-                    </Document>
-                    {numPages && numPages > 1 && (
-                      <div className="flex items-center gap-4 mt-4 bg-background p-2 rounded-full shadow-sm border border-border">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" disabled={pageNumber <= 1} onClick={() => setPageNumber(prev => Math.max(prev - 1, 1))}>
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm font-medium">{pageNumber} of {numPages}</span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" disabled={pageNumber >= numPages} onClick={() => setPageNumber(prev => Math.min(prev + 1, numPages))}>
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4 text-muted-foreground">Preview not available for this file type.</div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {hasUrl && (
-            <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden flex flex-col">
-              <CardHeader className="shrink-0 bg-secondary/50 border-b border-border p-6 pb-5">
-                <CardTitle className="text-lg flex items-center gap-2 font-semibold">
-                  <LinkIcon className="w-5 h-5 text-primary" />
-                  Linked URL
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 break-all bg-card">
-                <a href={formData.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  {formData.url}
-                </a>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Render the actual main AI result here! */}
-          {(mainDocumentText || isGenerating) && workflowId !== "market" && workflowId !== "resume" && workflowId !== "resume_generation" && (
-              <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden animate-in fade-in">
-                 <CardHeader className="bg-card border-b border-border p-6 pb-5 flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2 font-semibold">
-                       {isGenerating && !mainDocumentText.trim() ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Sparkles className="w-5 h-5 text-primary" />}
-                       {isGenerating && !mainDocumentText.trim() ? "Analyzing & Generating..." : "Analysis Results"}
-                    </CardTitle>
-                 </CardHeader>
-                 <CardContent className="p-6 md:p-8 bg-card">
-                    {mainDocumentText.trim() ? (
-                       <div className="prose prose-zinc dark:prose-invert max-w-none">
-                          <Markdown>{mainDocumentText}</Markdown>
-                       </div>
-                    ) : (
-                       <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-                          <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
-                          <p>Processing your request...</p>
-                       </div>
-                    )}
-                 </CardContent>
-              </Card>
-          )}
-
-          {workflowId !== "market" && workflowId !== "resume" && workflowId !== "resume_generation" && (
-            <Button variant="outline" className="w-full h-14 shadow-sm rounded-xl mt-4 text-base font-medium bg-background hover:bg-secondary transition-colors" onClick={resetSession}>
-              Start New Analysis
-            </Button>
-          )}
-        </div>
-      );
-    }
-
-    // Form state
-    return (
-      <Card className="border border-black/[0.04] dark:border-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[32px] overflow-hidden bg-card">
-        <CardHeader className="p-8 pb-6 border-b border-border">
-          <CardTitle className="text-xl font-semibold text-foreground">Input Details</CardTitle>
-          <CardDescription className="text-base font-light text-muted-foreground">Provide the necessary information to start.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-8">
-          <form onSubmit={handleInitialSubmit} className="space-y-6">
-            {config.fields.map((field) => (
-              <div key={field.id} className="space-y-3">
-                <label className="text-[15px] font-medium text-foreground">
-                  {field.label} {field.required === false && <span className="text-muted-foreground font-light ml-1">(Optional)</span>}
-                </label>
-                {field.type === "textarea" ? (
-                  <Textarea
-                    required={field.required !== false}
-                    placeholder={field.placeholder}
-                    className="min-h-[140px] resize-y bg-secondary/50 border-border rounded-xl px-4 py-3 focus:bg-background text-base transition-colors"
-                    value={formData[field.id] || ""}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
-                  />
-                ) : field.type === "file" ? (
-                  <Input
-                    type="file"
-                    accept={field.accept}
-                    required={field.required !== false}
-                    className="bg-secondary/50 border-border rounded-xl px-4 h-14 flex items-center file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-foreground file:text-background hover:file:opacity-90"
-                    onChange={(e) => handleFileChange(field.id, e.target.files?.[0] || null)}
-                  />
-                ) : field.type === "select" ? (
-                  <div className="space-y-3">
-                    <select
-                      required={field.required !== false && formData[`${field.id}_select`] !== "Other"}
-                      className="flex w-full bg-secondary/50 border border-border rounded-xl px-4 h-14 text-base focus:bg-background focus:ring-1 focus:ring-primary/20 outline-none transition-colors text-foreground"
-                      value={formData[`${field.id}_select`] || ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        handleInputChange(`${field.id}_select`, val);
-                        if (val === "") {
-                          handleInputChange(field.id, "");
-                        } else if (val !== "Other") {
-                          handleInputChange(field.id, val);
-                        } else {
-                          handleInputChange(field.id, "");
-                        }
-                      }}
-                    >
-                      <option value="" disabled={field.required !== false}>Select an option...</option>
-                      {field.options?.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                    {field.allowCustom && formData[`${field.id}_select`] === "Other" && (
-                      <Input
-                        type="text"
-                        required={field.required !== false}
-                        placeholder="Please specify..."
-                        className="bg-secondary/50 border-border rounded-xl px-4 h-14 focus:bg-background text-base mt-3 transition-colors"
-                        value={formData[field.id] || ""}
-                        onChange={(e) => handleInputChange(field.id, e.target.value)}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <Input
-                    type={field.type}
-                    required={field.required !== false}
-                    placeholder={field.placeholder}
-                    className="bg-secondary/50 border-border rounded-xl px-4 h-14 focus:bg-background text-base transition-colors"
-                    value={formData[field.id] || ""}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
-                  />
-                )}
-              </div>
-            ))}
-            <div className="pt-4">
-               <Button
-                 type="submit"
-                 disabled={isGenerating}
-                 size="lg"
-                 className="w-full text-base font-medium bg-foreground text-background hover:bg-foreground/90 rounded-xl h-14 transition-all"
-               >
-                 {isGenerating ? (
-                   <>
-                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                     Starting...
-                   </>
-                 ) : (
-                   <>
-                     <Sparkles className="mr-2 h-5 w-5" />
-                     Start Session
-                   </>
-                 )}
-               </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    );
-  };
-
+  /* ── Resume & Generator pass-through ─────────────────────────── */
   if (workflowId === "resume" && resumeWorkspaceData) {
     return (
       <div className="flex-1 flex flex-col h-full relative">
         <ResumeWorkspace
           initialResumeText={resumeWorkspaceData.resumeText}
           annotations={resumeWorkspaceData.annotations}
-          onReset={() => {
-            setResumeWorkspaceData(null);
-          }}
+          onReset={() => setResumeWorkspaceData(null)}
         />
       </div>
     );
@@ -419,69 +143,265 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
       <div className="flex-1 flex flex-col h-full relative">
         <ResumeGeneratorWorkspace
           initialFormData={resumeGeneratorData}
-          onReset={() => {
-            setResumeGeneratorData(null);
-          }}
+          onReset={() => setResumeGeneratorData(null)}
         />
       </div>
     );
   }
 
-  if (workflowId === "resume_generation" && !resumeGeneratorData) {
+  if (workflowId === "resume_generation") {
     return (
-      <div key={key} className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-        <header className="px-8 py-6 border-b bg-card border-border shrink-0">
-          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            {config.title}
-          </h2>
-          <p className="text-muted-foreground mt-1">{config.description}</p>
-        </header>
-
-        <div className="flex-1 overflow-auto p-8">
-          <ResumeGenerationForm 
-            isGenerating={isGenerating} 
-            onSubmit={(data) => {
-              setResumeGeneratorData(data);
-            }} 
-          />
+      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+        <PageHeader title={config.title} description={config.description} />
+        <div className="flex-1 overflow-auto no-scrollbar p-8">
+          <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} />
         </div>
       </div>
     );
   }
 
-  return (
-    <div key={key} className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-      <header className="px-8 py-6 border-b bg-card border-border shrink-0">
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          {config.title}
-        </h2>
-        <p className="text-muted-foreground mt-1">{config.description}</p>
-      </header>
+  /* ── Market workflow ──────────────────────────────────────────── */
+  if (workflowId === "market") {
+    return (
+      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+        <PageHeader title={config.title} description={config.description} />
+        <div className="flex-1 overflow-auto no-scrollbar p-8">
+          <div style={{ maxWidth: 760, margin: "0 auto" }}>
+            {!isGeneratingMarketData && !marketData && <FormCard config={config} formData={formData} fileData={fileData} isGenerating={isGenerating} handleInputChange={handleInputChange} handleFileChange={handleFileChange} handleInitialSubmit={handleInitialSubmit} />}
 
-      <div className="flex-1 overflow-auto p-4 md:p-8">
-        <div className="max-w-3xl mx-auto space-y-6">
-          {workflowId !== "market" && renderLeftColumn()}
-          
-          {workflowId === "market" && !isGeneratingMarketData && !marketData && renderLeftColumn()}
-          
-          {workflowId === "market" && isGeneratingMarketData && (
-               <Card className="border-border shadow-sm p-12 flex flex-col items-center justify-center text-center">
-                 <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-                 <h3 className="text-xl font-medium text-foreground">Researching Compensation</h3>
-                 <p className="text-muted-foreground mt-2">Analyzing market data and building models. This may take a moment...</p>
-               </Card>
+            {isGeneratingMarketData && (
+              <MentorCard style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16 }}>
+                <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--primary)" }} />
+                <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}>Researching compensation</div>
+                <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Analysing market data — just a moment…</div>
+              </MentorCard>
+            )}
+
+            {marketData && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <MarketCompensationViz data={marketData} />
+                <button onClick={() => { setMarketData(null); setMainDocumentText(""); }} style={{ height: 48, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--foreground)" }}>
+                  Start new analysis
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Generic text workflows ───────────────────────────────────── */
+  return (
+    <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+      <PageHeader title={config.title} description={config.description} />
+      <div className="flex-1 overflow-auto no-scrollbar p-8">
+        <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Form state */}
+          {!mainDocumentText && !isGenerating && (
+            <FormCard config={config} formData={formData} fileData={fileData} isGenerating={isGenerating} handleInputChange={handleInputChange} handleFileChange={handleFileChange} handleInitialSubmit={handleInitialSubmit} />
           )}
 
-          {workflowId === "market" && marketData && (
-             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <MarketCompensationViz data={marketData} />
-               <Button variant="outline" onClick={() => { setMarketData(null); setMainDocumentText(""); }} className="w-full h-12 shadow-sm rounded-xl">
-                  Start New Analysis
-               </Button>
-             </div>
+          {/* File preview */}
+          {(mainDocumentText || isGenerating) && Object.values(fileData).length > 0 && (
+            <MentorCard style={{ padding: 0, overflow: "hidden" }}>
+              <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
+                <FileText className="w-4 h-4" style={{ color: "var(--primary)" }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
+                  {Object.values(fileData)[0].name}
+                </span>
+              </div>
+              <div style={{ background: "var(--muted)", display: "flex", flexDirection: "column", alignItems: "center", padding: 16 }}>
+                {Object.values(fileData)[0].mimeType === "application/pdf" ? (
+                  <>
+                    <Document
+                      file={Object.values(fileData)[0].objectUrl}
+                      onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                      loading={<div style={{ padding: 16, color: "var(--muted-foreground)" }}>Loading PDF…</div>}
+                      error={<div style={{ padding: 16, color: "var(--destructive)" }}>Failed to load PDF.</div>}
+                    >
+                      <Page pageNumber={pageNumber} renderTextLayer={false} renderAnnotationLayer={false} width={420} />
+                    </Document>
+                    {numPages && numPages > 1 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 9999, padding: "6px 12px" }}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" disabled={pageNumber <= 1} onClick={() => setPageNumber(p => Math.max(p - 1, 1))}>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span style={{ fontSize: 13, fontWeight: 500 }}>{pageNumber} of {numPages}</span>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" disabled={pageNumber >= numPages} onClick={() => setPageNumber(p => Math.min(p + 1, numPages))}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ padding: 16, color: "var(--muted-foreground)", fontSize: 14 }}>Preview not available for this file type.</div>
+                )}
+              </div>
+            </MentorCard>
+          )}
+
+          {/* URL reference */}
+          {(mainDocumentText || isGenerating) && formData.url && (
+            <MentorCard style={{ padding: "16px 22px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <LinkIcon className="w-4 h-4" style={{ color: "var(--primary)" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Linked URL</span>
+              </div>
+              <a href={formData.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--primary)", wordBreak: "break-all" }}>{formData.url}</a>
+            </MentorCard>
+          )}
+
+          {/* Main AI result */}
+          {(mainDocumentText || isGenerating) && (
+            <MentorCard style={{ overflow: "hidden" }} className="animate-in fade-in duration-300">
+              <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
+                {isGenerating && !mainDocumentText.trim()
+                  ? <Loader2 className="w-4 h-4 animate-spin" style={{ color: "var(--primary)" }} />
+                  : <Sparkles className="w-4 h-4" style={{ color: "var(--primary)" }} />}
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
+                  {isGenerating && !mainDocumentText.trim() ? "Analysing…" : "Results"}
+                </span>
+              </div>
+              <div style={{ padding: "20px 22px" }}>
+                {mainDocumentText.trim() ? (
+                  <div className="prose prose-sm max-w-none" style={{ color: "var(--foreground)" }}>
+                    <Markdown>{mainDocumentText}</Markdown>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: 48, color: "var(--muted-foreground)" }}>
+                    <Loader2 className="w-8 h-8 animate-spin mb-4" style={{ color: "var(--primary)" }} />
+                    <p style={{ fontSize: 14 }}>Processing your request…</p>
+                  </div>
+                )}
+              </div>
+            </MentorCard>
+          )}
+
+          {mainDocumentText && (
+            <button onClick={() => { setMainDocumentText(""); setFormData({}); setFileData({}); }} style={{ height: 48, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--foreground)" }}>
+              Start new analysis
+            </button>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+/* ── Shared helper components ──────────────────────────────────── */
+
+function PageHeader({ title, description }: { title: string; description: string }) {
+  return (
+    <header style={{ padding: "20px 32px", borderBottom: "1px solid var(--border)", background: "var(--background)", flexShrink: 0 }}>
+      <h2 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: "0 0 4px" }}>
+        {title}
+      </h2>
+      <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>{description}</p>
+    </header>
+  );
+}
+
+function MentorCard({ children, style = {}, className = "" }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  return (
+    <div className={className} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function FormCard({ config, formData, fileData, isGenerating, handleInputChange, handleFileChange, handleInitialSubmit }: any) {
+  const fieldStyle: React.CSSProperties = {
+    width: "100%", background: "var(--muted)", border: "1px solid var(--border)",
+    borderRadius: 14, padding: "0 16px", fontFamily: "inherit", fontSize: 14,
+    color: "var(--foreground)", outline: "none",
+  };
+
+  return (
+    <MentorCard>
+      <div style={{ padding: "22px 28px 18px", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)" }}>Details</div>
+        <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>Provide the info below to get started.</div>
+      </div>
+      <form onSubmit={handleInitialSubmit} style={{ padding: 28, display: "flex", flexDirection: "column", gap: 20 }}>
+        {config.fields.map((field: any) => (
+          <div key={field.id}>
+            <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--foreground)", marginBottom: 8 }}>
+              {field.label}
+              {field.required === false && <span style={{ fontSize: 12, fontWeight: 400, color: "var(--muted-foreground)", marginLeft: 6 }}>(optional)</span>}
+            </label>
+            {field.type === "textarea" ? (
+              <textarea
+                required={field.required !== false}
+                placeholder={field.placeholder}
+                value={formData[field.id] || ""}
+                onChange={e => handleInputChange(field.id, e.target.value)}
+                style={{ ...fieldStyle, height: "auto", minHeight: 120, padding: "12px 16px", resize: "vertical" }}
+              />
+            ) : field.type === "file" ? (
+              <input
+                type="file"
+                accept={field.accept}
+                onChange={e => handleFileChange(field.id, e.target.files?.[0] || null)}
+                style={{ ...fieldStyle, height: 48, cursor: "pointer" }}
+              />
+            ) : field.type === "select" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <select
+                  required={field.required !== false && formData[`${field.id}_select`] !== "Other"}
+                  value={formData[`${field.id}_select`] || ""}
+                  onChange={e => {
+                    const v = e.target.value;
+                    handleInputChange(`${field.id}_select`, v);
+                    handleInputChange(field.id, v === "Other" ? "" : v);
+                  }}
+                  style={{ ...fieldStyle, height: 52, cursor: "pointer" }}
+                >
+                  <option value="" disabled={field.required !== false}>Select an option…</option>
+                  {field.options?.map((opt: any) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                {field.allowCustom && formData[`${field.id}_select`] === "Other" && (
+                  <input
+                    type="text"
+                    required={field.required !== false}
+                    placeholder="Please specify…"
+                    value={formData[field.id] || ""}
+                    onChange={e => handleInputChange(field.id, e.target.value)}
+                    style={{ ...fieldStyle, height: 52 }}
+                  />
+                )}
+              </div>
+            ) : (
+              <input
+                type={field.type}
+                required={field.required !== false}
+                placeholder={field.placeholder}
+                value={formData[field.id] || ""}
+                onChange={e => handleInputChange(field.id, e.target.value)}
+                style={{ ...fieldStyle, height: 52 }}
+              />
+            )}
+          </div>
+        ))}
+        <button
+          type="submit"
+          disabled={isGenerating}
+          style={{
+            height: 52, background: "var(--primary)", color: "#FFF",
+            border: "1px solid var(--primary)", borderRadius: 14,
+            fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: isGenerating ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            boxShadow: "0 4px 14px rgba(217,119,87,0.25)", opacity: isGenerating ? 0.7 : 1,
+          }}
+        >
+          {isGenerating
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> Starting…</>
+            : <><Sparkles className="w-4 h-4" /> Start session</>}
+        </button>
+      </form>
+    </MentorCard>
   );
 }

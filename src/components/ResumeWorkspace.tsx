@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResumeRenderer } from "./ResumeRenderer";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Download, Save, Edit3, Eye, CheckCircle2, AlertCircle, Sparkles, X, ChevronRight, FileText } from "lucide-react";
+import {
+  Loader2, Download, Save, Edit3, Eye, CheckCircle2, AlertCircle, Sparkles, ChevronRight, FileText,
+} from "lucide-react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 
@@ -26,244 +27,219 @@ export function ResumeWorkspace({ initialResumeText, annotations, onReset }: Res
   const [activeTab, setActiveTab] = useState<"suggestions" | "edit">("suggestions");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "">("");
   const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState<number | null>(null);
-  
-  // Auto-save visual feedback
+
   useEffect(() => {
     setSaveStatus("saving");
-    const timer = setTimeout(() => {
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus(""), 2000);
-    }, 1000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => { setSaveStatus("saved"); setTimeout(() => setSaveStatus(""), 2000); }, 1000);
+    return () => clearTimeout(t);
   }, [resumeText]);
 
-  const handleExportPDF = () => {
-    window.print();
-  };
+  const handleExportPDF = () => window.print();
 
   const handleExportDocx = () => {
-    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Resume Export</title></head><body>";
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Resume</title></head><body>";
     const footer = "</body></html>";
-    const sourceHTML = header + "<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>" + resumeText.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</pre>" + footer;
-    const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-    const fileDownload = document.createElement("a");
-    document.body.appendChild(fileDownload);
-    fileDownload.href = source;
-    fileDownload.download = 'resume.doc';
-    fileDownload.click();
-    document.body.removeChild(fileDownload);
+    const src = header + "<pre style='font-family: Arial,sans-serif; white-space:pre-wrap;'>" + resumeText.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</pre>" + footer;
+    const a = document.createElement("a");
+    document.body.appendChild(a);
+    a.href = "data:application/vnd.ms-word;charset=utf-8," + encodeURIComponent(src);
+    a.download = "resume.doc";
+    a.click();
+    document.body.removeChild(a);
   };
 
   const getHighlightedMarkdown = () => {
-    let highlighted = resumeText;
-    const sortedAnnotations = [...annotations]
-      .map((ann, originalIndex) => ({ ...ann, originalIndex }))
-      .sort((a, b) => b.textToHighlight.length - a.textToHighlight.length);
-    
-    sortedAnnotations.forEach((ann) => {
+    let out = resumeText;
+    [...annotations].map((a, i) => ({ ...a, i })).sort((a, b) => b.textToHighlight.length - a.textToHighlight.length).forEach(ann => {
       if (!ann.textToHighlight) return;
-      const safeText = ann.textToHighlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(${safeText})`, 'g');
-      highlighted = highlighted.replace(regex, `<mark data-annotation-index="${ann.originalIndex}">$1</mark>`);
+      const safe = ann.textToHighlight.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      out = out.replace(new RegExp(`(${safe})`, "g"), `<mark data-annotation-index="${ann.i}">$1</mark>`);
     });
-    
-    return highlighted;
+    return out;
   };
 
   const strengths = annotations.filter(a => a.type === "strength");
   const suggestions = annotations.filter(a => a.type === "weakness");
 
   return (
-    <div className="flex flex-col h-full w-full bg-zinc-100 dark:bg-zinc-950 absolute inset-0 z-50 overflow-hidden font-sans">
-      {/* Header Toolbar */}
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 py-3 shrink-0 shadow-sm z-20 print:hidden">
+    <div className="flex flex-col h-full w-full absolute inset-0 z-50 overflow-hidden" style={{ background: "var(--muted)" }}>
+
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-3 shrink-0 print:hidden"
+        style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}>
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-600 rounded-md text-white shadow-sm">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(217,119,87,0.10)", color: "var(--primary)" }}>
+            <Sparkles className="w-4 h-4" />
           </div>
-          <div className="flex flex-col">
-            <h2 className="text-sm font-semibold tracking-wide text-zinc-900 dark:text-zinc-100 leading-tight">Resume Analysis</h2>
-            <div className="flex items-center text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-              {saveStatus === "saving" && <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Analyzing...</>}
-              {saveStatus === "saved" && <><Save className="w-3 h-3 mr-1 text-green-600" /> <span className="text-green-600">Syncing edits</span></>}
-              {saveStatus === "" && <span>Interactive Report</span>}
+          <div>
+            <div className="font-display text-sm font-semibold" style={{ color: "var(--foreground)" }}>Impact Audit</div>
+            <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              {saveStatus === "saving" && <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Syncing…</span>}
+              {saveStatus === "saved" && <span className="flex items-center gap-1" style={{ color: "var(--forest)" }}><Save className="w-3 h-3" /> Saved</span>}
+              {saveStatus === "" && "Interactive report"}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex space-x-2 border-r border-zinc-200 dark:border-zinc-800 pr-3 mr-1">
-             <Button variant="outline" size="sm" onClick={handleExportDocx} className="h-9">
-               <Download className="w-4 h-4 mr-2" /> DOCX
-             </Button>
-             <Button variant="default" size="sm" onClick={handleExportPDF} className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
-               <Download className="w-4 h-4 mr-2" /> PDF
-             </Button>
+          <div className="flex gap-2 pr-3 mr-1" style={{ borderRight: "1px solid var(--border)" }}>
+            <button onClick={handleExportDocx} style={{ height: 36, padding: "0 14px", background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 10, fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--foreground)" }}>
+              <Download className="w-3.5 h-3.5" /> DOCX
+            </button>
+            <button onClick={handleExportPDF} style={{ height: 36, padding: "0 14px", background: "var(--primary)", border: "1px solid var(--primary)", borderRadius: 10, fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "#FFF" }}>
+              <Download className="w-3.5 h-3.5" /> PDF
+            </button>
           </div>
-          <Button variant="ghost" size="sm" onClick={onReset} className="h-9 text-zinc-600 hover:text-zinc-900 dark:text-zinc-300">
+          <button onClick={onReset} style={{ height: 36, padding: "0 14px", background: "transparent", border: "none", fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--muted-foreground)" }}>
             Exit
-          </Button>
+          </button>
         </div>
       </header>
 
-      {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">
-        
-        {/* Left Mini Sidebar (Canva Style Toolbar) */}
-        <div className="w-16 bg-zinc-950 dark:bg-zinc-900 flex flex-col items-center py-6 gap-6 z-10 shrink-0 print:hidden">
-           <div 
-             onClick={() => setActiveTab("suggestions")}
-             className={`group flex flex-col items-center gap-1 cursor-pointer transition-colors ${activeTab === "suggestions" ? "text-indigo-400" : "text-zinc-500 hover:text-zinc-300"}`}
-           >
-             <div className={`p-3 rounded-xl transition-all ${activeTab === "suggestions" ? "bg-zinc-800 text-indigo-400" : "bg-transparent text-inherit"}`}>
-               <Eye className="w-5 h-5" />
-             </div>
-             <span className="text-[10px] font-medium tracking-wider">Report</span>
-           </div>
-           <div 
-             onClick={() => setActiveTab("edit")}
-             className={`group flex flex-col items-center gap-1 cursor-pointer transition-colors ${activeTab === "edit" ? "text-indigo-400" : "text-zinc-500 hover:text-zinc-300"}`}
-           >
-             <div className={`p-3 rounded-xl transition-all ${activeTab === "edit" ? "bg-zinc-800 text-indigo-400" : "bg-transparent text-inherit"}`}>
-               <Edit3 className="w-5 h-5" />
-             </div>
-             <span className="text-[10px] font-medium tracking-wider">Editor</span>
-           </div>
+        {/* Left mini toolbar */}
+        <div className="w-16 flex flex-col items-center py-6 gap-6 shrink-0 print:hidden"
+          style={{ background: "var(--foreground)" }}>
+          {[
+            { id: "suggestions" as const, icon: Eye, label: "Report" },
+            { id: "edit" as const, icon: Edit3, label: "Editor" },
+          ].map(({ id, icon: Icon, label }) => (
+            <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "transparent", border: "none" }}>
+              <div style={{ padding: 12, borderRadius: 12, background: activeTab === id ? "rgba(217,119,87,0.20)" : "transparent", color: activeTab === id ? "var(--primary)" : "rgba(251,247,241,0.45)", transition: "all 0.2s" }}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 600, color: activeTab === id ? "var(--primary)" : "rgba(251,247,241,0.4)", letterSpacing: "0.05em" }}>{label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Center Canvas Area (Resume Preview) */}
-        <div className="flex-1 overflow-y-auto bg-[#f3f4f6] dark:bg-zinc-900 relative flex justify-center py-10 px-4 sm:px-8 print:bg-white print:p-0 print:overflow-visible">
-           <div className="bg-white dark:bg-zinc-950 shadow-[0_4px_25px_rgba(0,0,0,0.06)] dark:shadow-none dark:border w-full max-w-[850px] min-h-[1100px] p-10 sm:p-14 shrink-0 print:shadow-none print:border-0 print:m-0 print:p-0 transition-all">
-             <ResumeRenderer
-               markdownContent={getHighlightedMarkdown()}
-               templateType="Modern & Clean"
-               customComponents={{
-                 mark: ({ node, children, ...props }: any) => {
-                   const indexStr = props['data-annotation-index'];
-                   if (indexStr === undefined) return <mark>{children}</mark>;
-                   const index = parseInt(indexStr as string, 10);
-                   const annotation = annotations[index];
-                   if (!annotation) return <mark>{children}</mark>;
-                   const isStrength = annotation.type === "strength";
-                   const isSelected = selectedAnnotationIndex === index;
-                   
-                   const markClass = isStrength 
-                     ? `bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-100 border-b-2 border-green-500 cursor-pointer px-0.5 transition-all ${isSelected ? 'bg-green-200 dark:bg-green-800/50 scale-[1.02]' : 'hover:bg-green-200/50'}` 
-                     : `bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-100 border-b-2 border-red-500 cursor-pointer px-0.5 transition-all ${isSelected ? 'bg-red-200 dark:bg-red-800/50 scale-[1.02]' : 'hover:bg-red-200/50'}`;
-
-                   return (
-                     <Tooltip>
-                       <TooltipTrigger asChild>
-                         <mark className={markClass} onClick={() => { setActiveTab("suggestions"); setSelectedAnnotationIndex(index); }}>
-                           {children}
-                         </mark>
-                       </TooltipTrigger>
-                       <TooltipContent className="max-w-xs p-3 text-sm shadow-xl">
-                         <p className="font-semibold mb-1 flex items-center gap-1.5">
-                           {isStrength ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <AlertCircle className="w-3.5 h-3.5 text-red-500" />}
-                           {isStrength ? "Strength Identified" : "Improvement Suggestion"}
-                         </p>
-                         <p className="text-zinc-400 italic mb-2">"{annotation.textToHighlight}"</p>
-                         <p className="text-zinc-100 leading-relaxed">{annotation.suggestion}</p>
-                       </TooltipContent>
-                     </Tooltip>
-                   );
-                 }
-               }}
-             />
-           </div>
+        {/* Resume canvas */}
+        <div className="flex-1 overflow-y-auto no-scrollbar flex justify-center py-10 px-4 sm:px-8 print:p-0"
+          style={{ background: "var(--muted)" }}>
+          <div className="w-full max-w-[850px] min-h-[1100px] p-10 sm:p-14 shrink-0 print:shadow-none print:m-0 print:p-0"
+            style={{ background: "var(--card)", boxShadow: "0 4px 25px rgba(0,0,0,0.06)" }}>
+            <ResumeRenderer
+              markdownContent={getHighlightedMarkdown()}
+              templateType="Modern & Clean"
+              customComponents={{
+                mark: ({ node, children, ...props }: any) => {
+                  const idx = parseInt(props["data-annotation-index"] as string, 10);
+                  const ann = annotations[idx];
+                  if (!ann) return <mark>{children}</mark>;
+                  const isStrength = ann.type === "strength";
+                  const isSelected = selectedAnnotationIndex === idx;
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <mark
+                          className={`cursor-pointer px-0.5 transition-all border-b-2 ${isStrength
+                            ? `bg-green-100 text-green-900 border-green-500 ${isSelected ? "bg-green-200" : "hover:bg-green-200/50"}`
+                            : `border-b-2 ${isSelected ? "bg-orange-100" : "hover:bg-orange-50"}`
+                          }`}
+                          style={!isStrength ? { background: isSelected ? "rgba(217,119,87,0.18)" : "rgba(217,119,87,0.10)", borderBottomColor: "var(--primary)", color: "var(--foreground)" } : {}}
+                          onClick={() => { setActiveTab("suggestions"); setSelectedAnnotationIndex(idx); }}
+                        >
+                          {children}
+                        </mark>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs p-3 text-sm shadow-xl">
+                        <p className="font-semibold mb-1 flex items-center gap-1.5">
+                          {isStrength ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <AlertCircle className="w-3.5 h-3.5" style={{ color: "var(--primary)" }} />}
+                          {isStrength ? "Strength" : "Suggestion"}
+                        </p>
+                        <p className="italic mb-1" style={{ color: "var(--muted-foreground)", fontSize: 11 }}>"{ann.textToHighlight}"</p>
+                        <p style={{ lineHeight: 1.5 }}>{ann.suggestion}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+              }}
+            />
+          </div>
         </div>
 
-        {/* Right Sidebar: Analysis Report & Editor */}
-        <div className="w-full lg:w-[420px] bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col z-20 shrink-0 print:hidden">
-           {activeTab === "suggestions" ? (
-             <div className="flex-1 flex flex-col min-h-0">
-               <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex justify-between items-center">
-                  <h3 className="font-bold text-sm tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-indigo-500" />
-                    Analysis Report
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded-full uppercase">
-                      {annotations.length} Finds
-                    </span>
-                  </div>
-               </div>
-               <ScrollArea className="flex-1">
-                 <div className="p-5 space-y-6">
-                    {/* Overall Summary Stats */}
-                    <div className="grid grid-cols-2 gap-3 mb-2">
-                       <div className="bg-green-50/50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30 p-3 rounded-xl">
-                          <p className="text-[10px] font-bold text-green-700 dark:text-green-500 uppercase tracking-wider mb-1">Strengths</p>
-                          <p className="text-2xl font-black text-green-800 dark:text-green-400">{strengths.length}</p>
-                       </div>
-                       <div className="bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 p-3 rounded-xl">
-                          <p className="text-[10px] font-bold text-red-700 dark:text-red-500 uppercase tracking-wider mb-1">Suggestions</p>
-                          <p className="text-2xl font-black text-red-800 dark:text-red-400">{suggestions.length}</p>
-                       </div>
+        {/* Right panel */}
+        <div className="w-full lg:w-[420px] flex flex-col shrink-0 print:hidden"
+          style={{ background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
+
+          {activeTab === "suggestions" ? (
+            <>
+              <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
+                <div className="flex items-center gap-2" style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                  <AlertCircle className="w-4 h-4" style={{ color: "var(--primary)" }} />
+                  Analysis report
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 900, color: "var(--primary)", background: "rgba(217,119,87,0.10)", border: "1px solid rgba(217,119,87,0.25)", padding: "2px 8px", borderRadius: 9999, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                  {annotations.length} finds
+                </span>
+              </div>
+              <ScrollArea className="flex-1">
+                <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Stats */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ background: "rgba(47,107,79,0.06)", border: "1px solid rgba(47,107,79,0.18)", borderRadius: 14, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--forest)", marginBottom: 4 }}>Strengths</div>
+                      <div className="font-display" style={{ fontSize: 28, fontWeight: 600, color: "var(--forest)" }}>{strengths.length}</div>
                     </div>
+                    <div style={{ background: "rgba(217,119,87,0.06)", border: "1px solid rgba(217,119,87,0.18)", borderRadius: 14, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", color: "var(--primary)", marginBottom: 4 }}>Suggestions</div>
+                      <div className="font-display" style={{ fontSize: 28, fontWeight: 600, color: "var(--primary)" }}>{suggestions.length}</div>
+                    </div>
+                  </div>
 
-                    {annotations.length === 0 ? (
-                       <div className="py-12 text-center space-y-3">
-                          <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-400">
-                             <CheckCircle2 className="w-6 h-6" />
-                          </div>
-                          <p className="text-sm text-zinc-500 font-medium">No granular issues found. Your resume looks strong!</p>
-                       </div>
-                    ) : (
-                       <div className="space-y-4">
-                          {annotations.map((ann, idx) => (
-                             <Card 
-                               key={idx} 
-                               className={`transition-all border shadow-none cursor-pointer group ${selectedAnnotationIndex === idx ? 'border-indigo-500 ring-1 ring-indigo-500 dark:bg-zinc-900' : 'hover:border-zinc-300 dark:hover:border-zinc-700 dark:bg-zinc-950/50'}`}
-                               onClick={() => setSelectedAnnotationIndex(idx)}
-                             >
-                               <CardContent className="p-4 space-y-3">
-                                  <div className="flex justify-between items-start">
-                                     <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${ann.type === "strength" ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"}`}>
-                                        {ann.type}
-                                     </div>
-                                     <ChevronRight className={`w-4 h-4 text-zinc-300 transition-transform ${selectedAnnotationIndex === idx ? 'rotate-90 text-indigo-500' : ''}`} />
-                                  </div>
-                                  <div className="space-y-2">
-                                     <p className="text-xs font-mono text-zinc-500 italic bg-zinc-50 dark:bg-zinc-900 p-2 rounded border border-dashed dark:border-zinc-800">
-                                        "{ann.textToHighlight}"
-                                     </p>
-                                     <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
-                                        {ann.suggestion}
-                                     </p>
-                                  </div>
-                               </CardContent>
-                             </Card>
-                          ))}
-                       </div>
-                    )}
-                 </div>
-               </ScrollArea>
-             </div>
-           ) : (
-             <div className="flex-1 flex flex-col min-h-0">
-                <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex justify-between items-center">
-                  <h3 className="font-bold text-sm tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Edit3 className="w-4 h-4 text-indigo-500" />
-                    Interactive Editor
-                  </h3>
-               </div>
-               <Textarea
-                 value={resumeText}
-                 onChange={(e) => setResumeText(e.target.value)}
-                 className="flex-1 border-0 focus-visible:ring-0 p-5 resize-none rounded-none font-mono text-xs leading-relaxed bg-white dark:bg-zinc-950"
-                 placeholder="Markdown formatted resume text will appear here..."
-               />
-               <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
-                  <p className="text-[10px] text-zinc-500 flex items-center gap-1.5 font-medium">
-                     <Sparkles className="w-3 h-3" />
-                     Edits here will instantly update the report preview on the left.
-                  </p>
-               </div>
-             </div>
-           )}
+                  {annotations.length === 0 ? (
+                    <div style={{ padding: "32px 0", textAlign: "center" }}>
+                      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: "var(--muted-foreground)" }}>
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <p style={{ fontSize: 13, color: "var(--muted-foreground)" }}>No issues found — your résumé looks strong!</p>
+                    </div>
+                  ) : annotations.map((ann, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedAnnotationIndex(idx)}
+                      style={{
+                        background: "var(--card)", border: `1px solid ${selectedAnnotationIndex === idx ? "var(--primary)" : "var(--border)"}`,
+                        borderRadius: 16, padding: 16, cursor: "pointer", transition: "border-color 0.15s",
+                        boxShadow: selectedAnnotationIndex === idx ? "0 0 0 1px var(--primary)" : "none",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", padding: "3px 8px", borderRadius: 9999,
+                          background: ann.type === "strength" ? "rgba(47,107,79,0.10)" : "rgba(217,119,87,0.10)",
+                          color: ann.type === "strength" ? "var(--forest)" : "var(--primary)",
+                        }}>{ann.type}</span>
+                        <ChevronRight className={`w-4 h-4 transition-transform ${selectedAnnotationIndex === idx ? "rotate-90" : ""}`} style={{ color: "var(--muted-foreground)" }} />
+                      </div>
+                      <p style={{ fontSize: 11, fontFamily: "ui-monospace,monospace", fontStyle: "italic", background: "var(--muted)", padding: "6px 10px", borderRadius: 8, color: "var(--muted-foreground)", marginBottom: 8 }}>
+                        "{ann.textToHighlight}"
+                      </p>
+                      <p style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.55 }}>{ann.suggestion}</p>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border)", background: "var(--muted)", fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                <Edit3 className="w-4 h-4" style={{ color: "var(--primary)" }} />
+                Interactive editor
+              </div>
+              <Textarea
+                value={resumeText}
+                onChange={e => setResumeText(e.target.value)}
+                className="flex-1 border-0 focus-visible:ring-0 p-5 resize-none rounded-none font-mono text-xs leading-relaxed"
+                style={{ background: "var(--card)", color: "var(--foreground)" }}
+                placeholder="Markdown-formatted résumé text…"
+              />
+              <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 6 }}>
+                <Sparkles className="w-3 h-3" style={{ color: "var(--primary)" }} />
+                Edits here instantly update the highlighted preview.
+              </div>
+            </>
+          )}
         </div>
-
       </div>
     </div>
   );
