@@ -10,7 +10,9 @@ import {
   Users,
   PenTool,
   Code,
-  Rocket
+  Rocket,
+  ShieldCheck,
+  Zap
 } from "lucide-react";
 
 export type ViewId =
@@ -42,57 +44,68 @@ type Category = {
     name: string;
     icon: React.ElementType;
     isHighlight?: boolean;
+    badge?: string;
   }[];
 };
 
 const viewCategories: Category[] = [
   {
-    name: "Overview",
+    name: "Command Center",
     items: [
-      { id: "dashboard", name: "Dashboard", icon: Rocket, isHighlight: true },
+      { id: "dashboard", name: "Overview", icon: Zap, isHighlight: true },
+      { id: "unified", name: "Strategy Engine", icon: Rocket, badge: "AI" },
     ],
   },
   {
-    name: "Complete Auto-Pilot",
+    name: "Artifacts",
     items: [
-      { id: "unified", name: "Career War Room", icon: Briefcase },
+      { id: "resume_generation", name: "Resume Builder", icon: FileText },
+      { id: "resume", name: "Impact Audit", icon: ShieldCheck },
+      { id: "linkedin", name: "Profile Lab", icon: Briefcase },
     ],
   },
   {
-    name: "The Toolkit (Individual)",
+    name: "Simulations",
     items: [
-      { id: "linkedin", name: "LinkedIn Optimization", icon: Briefcase },
-      { id: "resume_generation", name: "Resume Generator", icon: FileText },
-      { id: "resume", name: "Resume Analysis", icon: FileText },
-      { id: "company_research", name: "Company Research", icon: Building },
-      { id: "interview", name: "Interview Guide", icon: MessageSquare },
-      { id: "mock_behavioral", name: "Mock Behavioral", icon: Users },
-      { id: "mock_case_study", name: "Mock Case Study", icon: PenTool },
-      { id: "mock_tech", name: "Mock Tech Interview", icon: Code },
-      { id: "market", name: "Market Compensation", icon: LineChart },
-      { id: "salary", name: "Salary Negotiation", icon: DollarSign },
-      { id: "career", name: "Career Cartographer", icon: Map },
+      { id: "mock_behavioral", name: "Behavioral", icon: Users },
+      { id: "mock_tech", name: "Technical", icon: Code },
+      { id: "mock_case_study", name: "Case Study", icon: PenTool },
+    ],
+  },
+  {
+    name: "Intelligence",
+    items: [
+      { id: "company_research", name: "Company Intel", icon: Building },
+      { id: "market", name: "Market Data", icon: LineChart },
+      { id: "salary", name: "Negotiator", icon: DollarSign },
+      { id: "career", name: "Roadmap", icon: Map },
     ],
   },
 ];
 
 export function Sidebar({ activeView, onSelectView }: SidebarProps) {
   return (
-    <div className="w-64 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 flex flex-col h-full border-r border-zinc-200 dark:border-zinc-800 flex-shrink-0">
-      <div className="p-6 shrink-0 z-10 sticky top-0 bg-zinc-50 dark:bg-zinc-950">
-        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-            <Rocket className="w-5 h-5" />
+    <div className="w-64 bg-background backdrop-blur-xl text-foreground flex flex-col h-full border-r border-border flex-shrink-0 z-30 overflow-hidden">
+      {/* Premium Logo Header */}
+      <div className="p-8 shrink-0 flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground shadow-[0_0_20px_rgba(99,102,241,0.3)] animate-pulse">
+            <Rocket className="w-5 h-5 fill-current" />
           </div>
-          TechCoach AI
-        </h1>
-        <p className="text-xs text-zinc-500 mt-2 font-medium">Your elite career strategist</p>
+          <div>
+            <h1 className="text-lg font-black tracking-tighter text-foreground leading-none uppercase italic">
+              TechCoach<span className="text-primary not-italic">AI</span>
+            </h1>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Elite Strategist</p>
+          </div>
+        </div>
       </div>
       
-      <nav className="flex-1 px-4 pb-4 space-y-8 overflow-y-auto w-[240px] hover:w-[248px] custom-scrollbar transition-all">
+      {/* Navigation */}
+      <nav className="flex-1 px-4 pb-8 space-y-8 overflow-y-auto custom-scrollbar">
         {viewCategories.map((category) => (
-          <div key={category.name}>
-            <h3 className="px-3 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-3">
+          <div key={category.name} className="space-y-4">
+            <h3 className="px-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
               {category.name}
             </h3>
             <div className="space-y-1">
@@ -104,15 +117,29 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
                      key={view.id}
                      onClick={() => onSelectView(view.id)}
                      className={cn(
-                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group",
+                       "w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300 group relative",
                        isActive
-                         ? "bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300"
-                         : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100",
-                       view.isHighlight && !isActive && "border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/40"
+                         ? "bg-secondary text-foreground shadow-sm"
+                         : "hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
                      )}
                    >
-                     <Icon className={cn("w-4 h-4", isActive || view.isHighlight ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors")} />
-                     {view.name}
+                     <div className="flex items-center gap-3">
+                        <Icon className={cn(
+                          "w-4 h-4 transition-all duration-500",
+                          isActive ? "text-primary scale-110 rotate-3" : "text-muted-foreground group-hover:text-primary/70"
+                        )} />
+                        <span className="tracking-tight">{view.name}</span>
+                     </div>
+                     
+                     {view.badge && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black border border-primary/20">
+                          {view.badge}
+                        </span>
+                     )}
+
+                     {isActive && (
+                        <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-full shadow-[0_0_15px_#6366f1] animate-in slide-in-from-left-2 duration-500" />
+                     )}
                    </button>
                 );
               })}
@@ -120,8 +147,18 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
           </div>
         ))}
       </nav>
-      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 text-xs text-zinc-400 shrink-0 text-center font-light">
-        &copy; 2026 TechCoach AI
+
+      {/* User Session / Privacy Footer */}
+      <div className="p-6 border-t border-border bg-secondary/20">
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border shadow-sm">
+           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">
+              HL
+           </div>
+           <div className="flex-1 overflow-hidden">
+              <p className="text-[11px] font-bold text-foreground truncate">Huy Lam</p>
+              <p className="text-[9px] text-muted-foreground font-medium truncate uppercase tracking-wider">Premium Access</p>
+           </div>
+        </div>
       </div>
     </div>
   );

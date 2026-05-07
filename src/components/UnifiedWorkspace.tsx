@@ -259,28 +259,6 @@ export function UnifiedWorkspace() {
           </div>
         </div>
 
-        {/* Master AI Agent Chat */}
-        <div className="fixed bottom-6 right-6 w-[400px] bg-white dark:bg-zinc-900 rounded-[28px] shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-black/[0.05] dark:border-zinc-800 overflow-hidden flex flex-col h-[500px] z-50">
-          <div className="bg-zinc-900 text-white shrink-0 flex items-center justify-between p-4 px-5">
-             <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/20">
-                  <Bot className="w-4 h-4" />
-               </div>
-               <div>
-                  <h3 className="font-semibold text-[15px]">TechCoach Assistant</h3>
-                  <p className="text-[11px] text-zinc-400 font-light">Online</p>
-               </div>
-             </div>
-          </div>
-          <div className="flex-1 p-5 overflow-y-auto bg-[#fafafa] dark:bg-zinc-950/50">
-             <div className="bg-white dark:bg-zinc-800 rounded-2xl rounded-tl-sm p-4 text-[13px] shadow-sm border border-zinc-100 dark:border-zinc-700 w-[85%] text-zinc-700 dark:text-zinc-300 font-light leading-relaxed">
-               I've analyzed all the dimensions of your application. Feel free to ask me to refine your resume fit, negotiate your compensation, or practice specific interview questions!
-             </div>
-          </div>
-          <div className="p-4 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800">
-            <Input placeholder="Message TechCoach..." className="rounded-full bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-inner h-12 px-5 text-sm" />
-          </div>
-        </div>
       </div>
     );
   }
