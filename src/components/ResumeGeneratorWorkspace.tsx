@@ -6,7 +6,8 @@ import { Loader2, Download, Save, Edit3, FileText, Send, Sparkles } from "lucide
 import Markdown from "react-markdown";
 import { createTechCoachChat, sendMessageStream } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
-import type { Chat } from "@google/genai";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Chat = any;
 import { ResumeRenderer } from "./ResumeRenderer";
 
 interface Message {

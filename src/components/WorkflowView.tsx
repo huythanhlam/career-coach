@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { WorkflowId } from "@/components/Sidebar";
 import { workflowsConfig } from "@/config/workflows";
-import { createTechCoachChat, sendMessageStream, analyzeResume } from "@/services/geminiService";
+import { createTechCoachChat, sendMessageStream, analyzeResume, ResumeAnalysisResult } from "@/services/geminiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,23 @@ import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompen
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+async function extractPDFText(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    pages.push(
+      content.items
+        .filter((x: any) => 'str' in x)
+        .map((x: any) => x.str)
+        .join(' ')
+    );
+  }
+  return pages.join('\n\n');
+}
+
 interface FileData { data: string; mimeType: string; objectUrl: string; name: string; }
 
 interface WorkflowViewProps { workflowId: WorkflowId; }
@@ -38,7 +55,9 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [fileData, setFileData] = useState<Record<string, FileData>>({});
   const [isGenerating, setIsGenerating] = useState(false);
-  const [resumeWorkspaceData, setResumeWorkspaceData] = useState<{ resumeText: string; annotations: any[] } | null>(null);
+  const [resumeWorkspaceData, setResumeWorkspaceData] = useState<ResumeAnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const rawFileMap = useRef<Record<string, File>>({});
   const [resumeGeneratorData, setResumeGeneratorData] = useState<Record<string, any> | null>(null);
   const [marketData, setMarketData] = useState<MarketCompData | null>(null);
   const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
@@ -62,10 +81,12 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
 
   const handleFileChange = async (id: string, file: File | null) => {
     if (!file) {
+      delete rawFileMap.current[id];
       setFileData(prev => { const n = { ...prev }; if (n[id]?.objectUrl) URL.revokeObjectURL(n[id].objectUrl); delete n[id]; return n; });
       setFormData(prev => { const n = { ...prev }; delete n[id]; return n; });
       return;
     }
+    rawFileMap.current[id] = file;
     const objectUrl = URL.createObjectURL(file);
     const reader = new FileReader();
     reader.onload = e => {
@@ -96,14 +117,35 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
     }
 
     if (workflowId === "resume") {
-      setIsGenerating(true);
-      try {
-        const result = await analyzeResume(
-          formData.resumeText || "", fileData.resumeFile || null, formData.jd || "", formData.jdUrl || ""
-        );
-        setResumeWorkspaceData(result);
-      } catch { alert("Failed to analyze resume."); }
-      finally { setIsGenerating(false); }
+      const rawFile = rawFileMap.current['resumeFile'];
+      const pastedText = (formData.resumeText as string | undefined)?.trim();
+
+      if (!rawFile && !pastedText) {
+        alert('Please upload a PDF or paste your resume text.');
+        return;
+      }
+
+      let extractedText = pastedText ?? '';
+      if (rawFile) {
+        try {
+          extractedText = await extractPDFText(rawFile);
+        } catch (err) {
+          console.error('PDF extraction failed:', err);
+          alert('Could not read the PDF. Please try a different file or paste the text.');
+          return;
+        }
+      }
+
+      // Show workspace immediately with extracted text
+      setResumeWorkspaceData({ resumeText: extractedText, overallScore: null, summary: '', improvements: [] });
+      setIsAnalyzing(true);
+
+      // Fire analysis in background — do not await
+      analyzeResume(extractedText, formData.jd || '', formData.jdUrl || '')
+        .then(result => setResumeWorkspaceData(result))
+        .catch(() => setResumeWorkspaceData(prev => prev ? { ...prev, improvements: [] } : prev))
+        .finally(() => setIsAnalyzing(false));
+
       return;
     }
 
@@ -131,8 +173,11 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
       <div className="flex-1 flex flex-col h-full relative">
         <ResumeWorkspace
           initialResumeText={resumeWorkspaceData.resumeText}
-          annotations={resumeWorkspaceData.annotations}
-          onReset={() => setResumeWorkspaceData(null)}
+          improvements={resumeWorkspaceData.improvements}
+          overallScore={resumeWorkspaceData.overallScore}
+          summary={resumeWorkspaceData.summary}
+          isAnalyzing={isAnalyzing}
+          onReset={() => { setResumeWorkspaceData(null); setIsAnalyzing(false); }}
         />
       </div>
     );
