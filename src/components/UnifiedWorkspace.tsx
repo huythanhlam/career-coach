@@ -122,7 +122,7 @@ export function UnifiedWorkspace() {
     });
 
     if (resumeData) {
-      analyzeResume("Please use the attached resume file.", resumeData, jobInput, "").then(res => {
+      analyzeResume("Please use the attached resume file.", jobInput, "").then(res => {
         setResumeFit(res);
         setGenerationProgress(p => ({ ...p, resume: "done" }));
       }).catch(e => {
