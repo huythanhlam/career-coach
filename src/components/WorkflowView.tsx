@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { WorkflowId } from "@/components/Sidebar";
 import { workflowsConfig } from "@/config/workflows";
+import { useUserProfile } from "@/context/UserProfileContext";
 import { createTechCoachChat, sendMessageStream, analyzeResume } from "@/services/geminiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,14 @@ const fieldStyle: React.CSSProperties = {
 
 export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const config = workflowsConfig[workflowId];
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const { profile } = useUserProfile();
+  const [formData, setFormData] = useState<Record<string, any>>(() => {
+    if (workflowId === "resume" && profile.resumeText)
+      return { resumeText: profile.resumeText };
+    if (workflowId === "linkedin")
+      return { url: profile.linkedin ?? "", profile: profile.linkedinText ?? "" };
+    return {};
+  });
   const [fileData, setFileData] = useState<Record<string, FileData>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [resumeWorkspaceData, setResumeWorkspaceData] = useState<{ resumeText: string; annotations: any[] } | null>(null);

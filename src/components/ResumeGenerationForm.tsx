@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { COMMON_ROLES } from "@/config/workflows";
 import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, ChevronRight, LayoutTemplate, User, Wand2 } from "lucide-react";
 import { suggestWorkExperienceBullets } from "@/services/geminiService";
+import { useUserProfile } from "@/context/UserProfileContext";
 
 const fieldStyle: React.CSSProperties = {
   background: "var(--muted)",
@@ -182,24 +183,36 @@ const TEMPLATES = [
 ];
 
 export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (data: any) => void; isGenerating: boolean }) {
+  const { profile } = useUserProfile();
   const [step, setStep] = useState<1 | 2>(1);
   const [template, setTemplate] = useState("Modern & Clean");
-  const [targetRoleSelect, setTargetRoleSelect] = useState("");
-  const [targetRole, setTargetRole] = useState("");
+  const [targetRoleSelect, setTargetRoleSelect] = useState(profile.targetRole ? "Other" : "");
+  const [targetRole, setTargetRole] = useState(profile.targetRole ?? "");
 
-  const [personalInfo, setPersonalInfo] = useState({
-    name: "", email: "", phone: "", linkedin: "", github: "", portfolio: ""
-  });
+  const [personalInfo, setPersonalInfo] = useState(() => ({
+    name: profile.name ?? "",
+    email: profile.email ?? "",
+    phone: profile.phone ?? "",
+    linkedin: profile.linkedin ?? "",
+    github: profile.github ?? "",
+    portfolio: profile.portfolio ?? "",
+  }));
 
-  const [workHistory, setWorkHistory] = useState([
-    { company: "", role: "", startDate: "", endDate: "", responsibilities: "" }
-  ]);
+  const [workHistory, setWorkHistory] = useState(() =>
+    profile.workHistory?.length
+      ? profile.workHistory.map(({ company, role, startDate, endDate, responsibilities }) => ({
+          company, role, startDate, endDate, responsibilities,
+        }))
+      : [{ company: "", role: "", startDate: "", endDate: "", responsibilities: "" }]
+  );
 
-  const [education, setEducation] = useState([
-    { university: "", degree: "", year: "" }
-  ]);
+  const [education, setEducation] = useState(() =>
+    profile.education?.length
+      ? profile.education.map(({ university, degree, year }) => ({ university, degree, year }))
+      : [{ university: "", degree: "", year: "" }]
+  );
 
-  const [skills, setSkills] = useState("");
+  const [skills, setSkills] = useState(() => (profile.skills ?? []).join(", "));
   const [isGeneratingBullets, setIsGeneratingBullets] = useState<number | null>(null);
 
   const handleWorkChange = (index: number, field: string, value: string) => {
