@@ -13,7 +13,9 @@ import {
   Compass,
   Grid,
   Plus,
+  UserCog,
 } from "lucide-react";
+import { useUserProfile } from "@/context/UserProfileContext";
 
 export type ViewId =
   | "dashboard"
@@ -28,9 +30,10 @@ export type ViewId =
   | "company_research"
   | "mock_behavioral"
   | "mock_case_study"
-  | "mock_tech";
+  | "mock_tech"
+  | "profile_settings";
 
-export type WorkflowId = Exclude<ViewId, "unified" | "dashboard">;
+export type WorkflowId = Exclude<ViewId, "unified" | "dashboard" | "profile_settings">;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -85,6 +88,17 @@ const navGroups: NavGroup[] = [
 ];
 
 export function Sidebar({ activeView, onSelectView }: SidebarProps) {
+  const { profile } = useUserProfile();
+
+  const displayName = profile.name || "Your Profile";
+  const initials = displayName
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase() || "YP";
+  const trackLabel = profile.targetRole || profile.currentRole || "Career track";
+
   return (
     <aside className="w-[280px] h-full bg-paper border-r border-border flex flex-col flex-shrink-0 z-30 overflow-hidden"
       style={{ background: "var(--paper)" }}>
@@ -159,15 +173,24 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
 
       {/* User footer */}
       <div className="p-3 border-t border-border">
-        <div className="flex items-center gap-2.5 p-2">
-          <div className="w-8 h-8 rounded-[10px] bg-card border border-border flex items-center justify-center text-xs font-semibold text-foreground">
-            HL
+        <button
+          onClick={() => onSelectView("profile_settings")}
+          className={cn(
+            "flex items-center gap-2.5 p-2 w-full rounded-[10px] text-left transition-all duration-200 group",
+            activeView === "profile_settings"
+              ? "bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+              : "hover:bg-card/60"
+          )}
+        >
+          <div className="w-8 h-8 rounded-[10px] bg-card border border-border flex items-center justify-center text-xs font-semibold text-foreground flex-shrink-0">
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-foreground">Huy Lam</div>
-            <div className="text-[10px] text-muted-foreground">Senior PM track</div>
+            <div className="text-xs font-semibold text-foreground truncate">{displayName}</div>
+            <div className="text-[10px] text-muted-foreground truncate">{trackLabel}</div>
           </div>
-        </div>
+          <UserCog className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+        </button>
       </div>
     </aside>
   );

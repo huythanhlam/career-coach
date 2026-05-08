@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { Sidebar, ViewId } from "@/components/Sidebar";
+import { Sidebar, type ViewId } from "@/components/Sidebar";
 import { Dashboard } from "@/components/Dashboard";
 import { WorkflowView } from "@/components/WorkflowView";
 import { UnifiedWorkspace } from "@/components/UnifiedWorkspace";
@@ -12,8 +12,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { workflowsConfig } from "@/config/workflows";
 import { GlobalChatPanel } from "@/components/GlobalChatPanel";
 import { MessageCircle } from "lucide-react";
+import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContext";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { ProfileSettings } from "@/components/ProfileSettings";
 
-export default function App() {
+function AppInner() {
+  const { profile } = useUserProfile();
   const [activeView, setActiveView] = useState<ViewId>("dashboard");
   const [isChatOpen, setIsChatOpen] = useState(false);
 
@@ -21,13 +25,14 @@ export default function App() {
     <TooltipProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans text-foreground">
         <Sidebar activeView={activeView} onSelectView={setActiveView} />
-        
+
         {/* Main Workspace Area */}
         <div className="flex-1 h-full overflow-hidden flex relative">
           <div className="flex-1 h-full overflow-hidden flex flex-col relative">
             {activeView === "dashboard" && <Dashboard />}
             {activeView === "unified" && <UnifiedWorkspace />}
-            
+            {activeView === "profile_settings" && <ProfileSettings />}
+
             {Object.keys(workflowsConfig).map((id) => (
               <div
                 key={id}
@@ -59,14 +64,24 @@ export default function App() {
           </div>
 
           {/* Right Side Chat Panel */}
-          <GlobalChatPanel 
-            isOpen={isChatOpen} 
-            onClose={() => setIsChatOpen(false)} 
+          <GlobalChatPanel
+            isOpen={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
             activeView={activeView}
           />
         </div>
       </div>
+
+      {/* Onboarding overlay — shown on first visit */}
+      {!profile.onboardingComplete && <OnboardingWizard />}
     </TooltipProvider>
   );
 }
 
+export default function App() {
+  return (
+    <UserProfileProvider>
+      <AppInner />
+    </UserProfileProvider>
+  );
+}
