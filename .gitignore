@@ -10,3 +10,4 @@ src/services/geminiService.mock.ts
 techcoach-ai (1).zip
 test_acp.cjs
 test_acp_final.cjs
+.claude/
