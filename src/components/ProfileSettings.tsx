@@ -2,11 +2,12 @@ import { useState } from "react";
 import {
   Plus, Trash2, Save, RotateCcw, Pencil, Check, X,
   Linkedin, Github, Globe, Mail, Phone, MapPin, Briefcase,
-  GraduationCap, Sparkles, ExternalLink,
+  GraduationCap, Sparkles, ExternalLink, LogOut,
 } from "lucide-react";
 import type { WorkExperience, Education } from "@/types/userProfile";
 import { generateId } from "@/types/userProfile";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { useAuth } from "@/context/AuthContext";
 
 /* ── tiny inline-edit hook ───────────────────────────────────── */
 function useInlineEdit(initial: string, onSave: (v: string) => void) {
@@ -182,6 +183,7 @@ const lStyle: React.CSSProperties = {
 /* ── main component ──────────────────────────────────────────── */
 export function ProfileSettings() {
   const { profile, updateProfile, resetProfile } = useUserProfile();
+  const { signOut } = useAuth();
 
   const [name, setName] = useState(profile.name ?? "");
   const [email, setEmail] = useState(profile.email ?? "");
@@ -532,8 +534,8 @@ export function ProfileSettings() {
             </div>
           </section>
 
-          {/* Reset */}
-          <section className="mt-auto pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+          {/* Reset + Sign out */}
+          <section className="mt-auto pt-4 flex flex-col gap-2" style={{ borderTop: "1px solid var(--border)" }}>
             <button
               onClick={() => confirm("Reset your profile and re-run onboarding?") && resetProfile()}
               className="flex items-center gap-2 text-xs transition-opacity hover:opacity-70 w-full"
@@ -541,6 +543,14 @@ export function ProfileSettings() {
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset &amp; re-run onboarding
+            </button>
+            <button
+              onClick={() => signOut()}
+              className="flex items-center gap-2 text-xs transition-opacity hover:opacity-70 w-full"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign out
             </button>
           </section>
         </div>

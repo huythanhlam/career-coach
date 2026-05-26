@@ -1,49 +1,65 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from "react";
 import { type UserProfile, createEmptyProfile } from "@/types/userProfile";
-
-const STORAGE_KEY = "careerCoach_userProfile";
-
-function loadProfile(): UserProfile {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as UserProfile;
-  } catch {
-    // ignore parse errors
-  }
-  return createEmptyProfile();
-}
-
-function saveProfile(profile: UserProfile) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-}
+import { supabase } from "@/lib/supabaseClient";
+import { rowToProfile, profileToRow } from "@/lib/profileMapper";
+import { useAuth } from "./AuthContext";
 
 interface UserProfileContextValue {
   profile: UserProfile;
-  updateProfile: (patch: Partial<UserProfile>) => void;
-  resetProfile: () => void;
+  updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
+  resetProfile: () => Promise<void>;
+  loading: boolean;
 }
 
 const UserProfileContext = createContext<UserProfileContextValue | null>(null);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<UserProfile>(loadProfile);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<UserProfile>(createEmptyProfile());
+  const [loading, setLoading] = useState(true);
 
-  const updateProfile = useCallback((patch: Partial<UserProfile>) => {
-    setProfile((prev) => {
-      const next = { ...prev, ...patch, updatedAt: new Date().toISOString() };
-      saveProfile(next);
-      return next;
-    });
-  }, []);
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setProfile(rowToProfile(data));
+        setLoading(false);
+      });
+  }, [user?.id]);
 
-  const resetProfile = useCallback(() => {
+  const updateProfile = useCallback(
+    async (patch: Partial<UserProfile>) => {
+      if (!user) return;
+      const next = { ...profile, ...patch, updatedAt: new Date().toISOString() };
+      setProfile(next);
+      await supabase.from("profiles").upsert(profileToRow(next, user.id));
+    },
+    [profile, user]
+  );
+
+  const resetProfile = useCallback(async () => {
+    if (!user) return;
     const fresh = createEmptyProfile();
-    saveProfile(fresh);
     setProfile(fresh);
-  }, []);
+    await supabase.from("profiles").upsert(profileToRow(fresh, user.id));
+  }, [user]);
 
   return (
-    <UserProfileContext.Provider value={{ profile, updateProfile, resetProfile }}>
+    <UserProfileContext.Provider
+      value={{ profile, updateProfile, resetProfile, loading }}
+    >
       {children}
     </UserProfileContext.Provider>
   );
@@ -51,6 +67,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
 export function useUserProfile(): UserProfileContextValue {
   const ctx = useContext(UserProfileContext);
-  if (!ctx) throw new Error("useUserProfile must be used within UserProfileProvider");
+  if (!ctx)
+    throw new Error("useUserProfile must be used within UserProfileProvider");
   return ctx;
 }

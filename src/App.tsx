@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState } from "react";
 import { Sidebar, type ViewId } from "@/components/Sidebar";
 import { Dashboard } from "@/components/Dashboard";
@@ -13,8 +8,10 @@ import { workflowsConfig } from "@/config/workflows";
 import { GlobalChatPanel } from "@/components/GlobalChatPanel";
 import { MessageCircle } from "lucide-react";
 import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { ProfileSettings } from "@/components/ProfileSettings";
+import { AuthPage } from "@/components/AuthPage";
 
 function AppInner() {
   const { profile } = useUserProfile();
@@ -38,7 +35,7 @@ function AppInner() {
                 key={id}
                 className={`flex-1 h-full overflow-hidden ${activeView === id ? 'flex' : 'hidden'}`}
               >
-                {/* @ts-ignore - Ensure id fits WorkflowId but dynamically string is mapped here */}
+                {/* @ts-ignore */}
                 <WorkflowView workflowId={id as any} />
               </div>
             ))}
@@ -78,10 +75,48 @@ function AppInner() {
   );
 }
 
-export default function App() {
+function AuthGate() {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--background)",
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            border: "3px solid var(--border)",
+            borderTopColor: "var(--primary)",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (!session) return <AuthPage />;
+
   return (
     <UserProfileProvider>
       <AppInner />
     </UserProfileProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   );
 }

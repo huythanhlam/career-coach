@@ -8,22 +8,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Application {
-  id: string;
-  company: string;
-  role: string;
-  status: "applied" | "interviewing" | "offer" | "rejected" | "pending";
-  date: string;
-  location: string;
-}
-
-const initialApplications: Application[] = [
-  { id: "1", company: "Stripe",    role: "Product Engineer",        status: "interviewing", date: "Apr 20", location: "Remote" },
-  { id: "2", company: "Anthropic", role: "Member of Tech Staff",    status: "applied",      date: "Apr 18", location: "SF" },
-  { id: "3", company: "Vercel",    role: "Senior Frontend",         status: "offer",        date: "Apr 15", location: "Remote" },
-  { id: "4", company: "Figma",     role: "Product Designer Eng",    status: "rejected",     date: "Apr 12", location: "NYC" },
-];
+import { useJobApplications, type Application } from "@/hooks/useJobApplications";
+import { useUserProfile } from "@/context/UserProfileContext";
 
 const STATUS_MAP: Record<Application["status"], { bg: string; fg: string; border: string; label: string }> = {
   applied:      { bg: "rgba(59,130,246,0.10)",  fg: "#3B82F6", border: "rgba(59,130,246,0.25)",  label: "Applied" },
@@ -34,24 +20,24 @@ const STATUS_MAP: Record<Application["status"], { bg: string; fg: string; border
 };
 
 export function Dashboard() {
-  const [apps, setApps] = useState<Application[]>(initialApplications);
+  const { apps, addApplication } = useJobApplications();
+  const { profile } = useUserProfile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newApp, setNewApp] = useState<Partial<Application>>({
     company: "", role: "", status: "applied", location: "",
     date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
   });
 
-  const handleAddApplication = (e: React.FormEvent) => {
+  const handleAddApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newApp.company || !newApp.role) return;
-    setApps([{
-      id: Math.random().toString(36).slice(2),
+    await addApplication({
       company: newApp.company!,
       role: newApp.role!,
       status: (newApp.status as Application["status"]) || "applied",
       date: newApp.date!,
       location: newApp.location || "Remote",
-    }, ...apps]);
+    });
     setIsModalOpen(false);
     setNewApp({ company: "", role: "", status: "applied", location: "",
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }) });
@@ -78,9 +64,7 @@ export function Dashboard() {
               This morning · Tue, May 6
             </div>
             <div className="font-display" style={{ fontSize: 36, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.1, color: "var(--background)" }}>
-              Hey Huy 👋 Your{" "}
-              <em style={{ color: "var(--highlight)", fontStyle: "normal" }}>Stripe</em>{" "}
-              interview is in two days.
+              Hey {profile.name ? profile.name.split(" ")[0] : "there"} 👋 Welcome back to your career coach.
             </div>
             <p style={{ fontSize: 14, color: "rgba(251,247,241,0.65)", marginTop: 14, lineHeight: 1.6, maxWidth: 500 }}>
               We re-read your résumé and the JD over the weekend. Three things to tighten before Thursday — none of them big. Want to walk through them?

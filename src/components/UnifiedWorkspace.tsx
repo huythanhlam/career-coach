@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import {
   Building,
   Map,
@@ -51,12 +52,7 @@ export function UnifiedWorkspace() {
     };
     reader.readAsDataURL(file);
   };
-  const [savedAnalyses, setSavedAnalyses] = useState<any[]>([]);
-
-  React.useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("tc_saved_analyses") || "[]");
-    setSavedAnalyses(saved);
-  }, [step]);
+  const { analyses: savedAnalyses, saveAnalysis: persistAnalysis, deleteAnalysis: removeAnalysis } = useSavedAnalyses();
 
   const loadAnalysis = (data: any) => {
     setJobInput(data.jobInput || "");
@@ -72,9 +68,7 @@ export function UnifiedWorkspace() {
 
   const deleteAnalysis = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = savedAnalyses.filter(a => a.id !== id);
-    localStorage.setItem("tc_saved_analyses", JSON.stringify(updated));
-    setSavedAnalyses(updated);
+    removeAnalysis(id);
   };
 
   const handleStartAnalysis = async (e: React.FormEvent) => {
@@ -136,10 +130,8 @@ export function UnifiedWorkspace() {
     setTimeout(() => setStep("results"), 8000);
   };
 
-  const saveAnalysis = () => {
-    const id = Date.now().toString();
-    const data = {
-      id,
+  const saveAnalysis = async () => {
+    await persistAnalysis({
       jobInput,
       yoe,
       level,
@@ -147,10 +139,8 @@ export function UnifiedWorkspace() {
       companyIntel,
       resumeFit,
       interviewStrategy,
-      resumeData: resumeData ? { name: resumeData.name } : null // Only saving metadata
-    };
-    const saved = JSON.parse(localStorage.getItem("tc_saved_analyses") || "[]");
-    localStorage.setItem("tc_saved_analyses", JSON.stringify([...saved, data]));
+      resumeFileName: resumeData?.name ?? null,
+    });
     alert("Analysis saved successfully!");
   };
 
@@ -410,13 +400,13 @@ export function UnifiedWorkspace() {
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>{item.jobInput || "Untitled Role"}</div>
                       <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
-                        {item.level} · {item.yoe} YOE{item.resumeData ? ` · ${item.resumeData.name}` : ""}
+                        {item.level} · {item.yoe} YOE{item.resumeFileName ? ` · ${item.resumeFileName}` : ""}
                       </div>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-                      {new Date(parseInt(item.id)).toLocaleDateString()}
+                      {new Date(item.createdAt).toLocaleDateString()}
                     </span>
                     <Button variant="ghost" size="sm" onClick={(e) => deleteAnalysis(item.id, e)} className="text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
                       Delete

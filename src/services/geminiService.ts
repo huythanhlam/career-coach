@@ -1,7 +1,7 @@
-import * as MockService from "./geminiService.mock";
 import type { UserProfile } from "@/types/userProfile";
 
-const GATEWAY_URL = "http://localhost:4000/api/ai/generate";
+const GATEWAY_URL =
+  (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
 
 const PROFILE_EXTRACTION_SYSTEM = `You are a structured data extractor. Given career content (LinkedIn profile text or resume text), return ONLY a valid JSON object — no markdown fences, no explanation — matching this exact schema:
 {
