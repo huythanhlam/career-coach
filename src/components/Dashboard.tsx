@@ -64,7 +64,7 @@ export function Dashboard() {
               This morning · Tue, May 6
             </div>
             <div className="font-display" style={{ fontSize: 36, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.1, color: "var(--background)" }}>
-              Hey {profile.name ? profile.name.split(" ")[0] : "there"} 👋 Welcome back to your career coach.
+              Hey {profile.preferredName || profile.fullName.split(" ")[0] || "there"} 👋 Welcome back to your career coach.
             </div>
             <p style={{ fontSize: 14, color: "rgba(251,247,241,0.65)", marginTop: 14, lineHeight: 1.6, maxWidth: 500 }}>
               We re-read your résumé and the JD over the weekend. Three things to tighten before Thursday — none of them big. Want to walk through them?

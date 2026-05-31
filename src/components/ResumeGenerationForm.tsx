@@ -190,7 +190,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
   const [targetRole, setTargetRole] = useState(profile.targetRole ?? "");
 
   const [personalInfo, setPersonalInfo] = useState(() => ({
-    name: profile.name ?? "",
+    name: profile.fullName ?? "",
     email: profile.email ?? "",
     phone: profile.phone ?? "",
     linkedin: profile.linkedin ?? "",
@@ -208,8 +208,8 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
 
   const [education, setEducation] = useState(() =>
     profile.education?.length
-      ? profile.education.map(({ university, degree, year }) => ({ university, degree, year }))
-      : [{ university: "", degree: "", year: "" }]
+      ? profile.education.map(({ university, degree, graduationYear }) => ({ university, degree, graduationYear }))
+      : [{ university: "", degree: "", graduationYear: "" }]
   );
 
   const [skills, setSkills] = useState(() => (profile.skills ?? []).join(", "));
@@ -247,7 +247,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
     setEducation(newEdu);
   };
 
-  const addEdu = () => setEducation([...education, { university: "", degree: "", year: "" }]);
+  const addEdu = () => setEducation([...education, { university: "", degree: "", graduationYear: "" }]);
   const removeEdu = (index: number) => setEducation(education.filter((_, i) => i !== index));
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -521,7 +521,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
                   </div>
                   <div>
                     <label style={labelStyle}>Graduation Year</label>
-                    <Input placeholder="e.g., 2022" value={edu.year} onChange={e => handleEduChange(idx, "year", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
+                    <Input placeholder="e.g., 2022" value={edu.graduationYear} onChange={e => handleEduChange(idx, "graduationYear", e.target.value)} style={{ ...fieldStyle, background: "var(--card)" }} />
                   </div>
                 </div>
               </div>

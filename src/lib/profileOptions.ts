@@ -1,0 +1,150 @@
+export const JOB_TITLES = [
+  "Account Executive", "Account Manager", "Backend Engineer", "Business Analyst",
+  "Chief Executive Officer", "Chief Financial Officer", "Chief Marketing Officer",
+  "Chief Operating Officer", "Chief Technology Officer", "Content Strategist",
+  "Customer Success Manager", "Data Analyst", "Data Engineer", "Data Scientist",
+  "DevOps Engineer", "Director of Engineering", "Director of Marketing",
+  "Director of Product", "Engineering Manager", "Financial Analyst",
+  "Frontend Engineer", "Full Stack Engineer", "Growth Manager",
+  "Head of Design", "Head of Engineering", "Head of Product",
+  "Human Resources Manager", "Infrastructure Engineer", "Machine Learning Engineer",
+  "Marketing Manager", "Mobile Engineer", "Operations Manager",
+  "Product Designer", "Product Manager", "Program Manager",
+  "Project Manager", "Recruiter", "Sales Engineer", "Sales Manager",
+  "Scrum Master", "Security Engineer", "Senior Software Engineer",
+  "Site Reliability Engineer", "Software Engineer", "Solutions Architect",
+  "Strategy & Operations", "Technical Lead", "Technical Program Manager",
+  "Technical Recruiter", "UX Designer", "UX Researcher", "VP of Engineering",
+  "VP of Marketing", "VP of Product", "VP of Sales",
+];
+
+export const SP500_COMPANIES = [
+  "3M", "Abbott Laboratories", "Adobe", "Advanced Micro Devices", "Agilent Technologies",
+  "Airbnb", "Akamai Technologies", "Albemarle", "Alphabet (Google)", "Amazon",
+  "American Express", "American Tower", "Amgen", "Analog Devices", "Apple",
+  "Applied Materials", "AT&T", "Autodesk", "Bank of America", "Berkshire Hathaway",
+  "BlackRock", "Boeing", "Broadcom", "Capital One", "Caterpillar",
+  "Chevron", "Cigna", "Cisco Systems", "Citigroup", "Coca-Cola",
+  "Cognizant", "Colgate-Palmolive", "Comcast", "ConocoPhillips", "Costco",
+  "CVS Health", "Danaher", "Deere & Company", "Dell Technologies", "DocuSign",
+  "Dow", "DuPont", "Eaton", "eBay", "Eli Lilly",
+  "Emerson Electric", "ExxonMobil", "FedEx", "Fidelity", "Ford Motor",
+  "General Dynamics", "General Electric", "General Mills", "General Motors",
+  "Goldman Sachs", "Honeywell", "HP", "Humana", "IBM",
+  "Intel", "Intuit", "Johnson & Johnson", "JPMorgan Chase", "KLA Corporation",
+  "Kraft Heinz", "Lam Research", "Lockheed Martin", "Lowe's", "Mastercard",
+  "McDonald's", "Medtronic", "Merck", "Meta", "Microsoft",
+  "Morgan Stanley", "Netflix", "Nike", "Northrop Grumman", "NVIDIA",
+  "Oracle", "Palo Alto Networks", "PayPal", "PepsiCo", "Pfizer",
+  "Philip Morris", "Procter & Gamble", "Qualcomm", "Raytheon Technologies",
+  "Salesforce", "ServiceNow", "Simon Property Group", "Snap", "Snowflake",
+  "Spotify", "Starbucks", "Stripe", "Target", "Tesla",
+  "Texas Instruments", "The Home Depot", "Thermo Fisher Scientific", "T-Mobile",
+  "Twitter / X", "Uber", "Union Pacific", "United Health Group", "UPS",
+  "Verizon", "Visa", "Walmart", "Walt Disney", "Wells Fargo",
+  "Workday", "Zoom",
+];
+
+export const UNIVERSITIES = [
+  "Arizona State University", "Boston University", "Brown University",
+  "California Institute of Technology (Caltech)", "Carnegie Mellon University",
+  "Columbia University", "Cornell University", "Dartmouth College",
+  "Duke University", "Emory University", "Florida State University",
+  "Georgetown University", "Georgia Institute of Technology",
+  "Harvard University", "Indiana University", "Johns Hopkins University",
+  "Massachusetts Institute of Technology (MIT)", "Michigan State University",
+  "New York University (NYU)", "Northwestern University", "Ohio State University",
+  "Penn State University", "Princeton University", "Purdue University",
+  "Rice University", "Rutgers University", "Stanford University",
+  "Tufts University", "Tulane University", "UC Berkeley",
+  "UC Davis", "UC Los Angeles (UCLA)", "UC San Diego",
+  "UC Santa Barbara", "University of Chicago", "University of Florida",
+  "University of Illinois Urbana-Champaign", "University of Maryland",
+  "University of Michigan", "University of Minnesota",
+  "University of North Carolina", "University of Notre Dame",
+  "University of Pennsylvania", "University of Southern California (USC)",
+  "University of Texas at Austin", "University of Virginia",
+  "University of Washington", "University of Wisconsin-Madison",
+  "Vanderbilt University", "Virginia Tech", "Wake Forest University",
+  "Washington University in St. Louis", "Yale University",
+];
+
+export const DEGREE_TYPES = [
+  "Associate of Arts (A.A.)",
+  "Associate of Science (A.S.)",
+  "Bachelor of Arts (B.A.)",
+  "Bachelor of Science (B.S.)",
+  "Bachelor of Business Administration (B.B.A.)",
+  "Bachelor of Engineering (B.E.)",
+  "Bachelor of Fine Arts (B.F.A.)",
+  "Master of Arts (M.A.)",
+  "Master of Science (M.S.)",
+  "Master of Business Administration (M.B.A.)",
+  "Master of Engineering (M.Eng.)",
+  "Master of Fine Arts (M.F.A.)",
+  "Master of Public Administration (M.P.A.)",
+  "Master of Public Policy (M.P.P.)",
+  "Juris Doctor (J.D.)",
+  "Doctor of Medicine (M.D.)",
+  "Doctor of Philosophy (Ph.D.)",
+  "Doctor of Business Administration (D.B.A.)",
+];
+
+export const SKILLS_BY_CATEGORY: Record<string, string[]> = {
+  "Programming Languages": [
+    "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust",
+    "Ruby", "Swift", "Kotlin", "PHP", "Scala", "R", "MATLAB",
+  ],
+  "Web & Frontend": [
+    "React", "Next.js", "Vue.js", "Angular", "HTML", "CSS", "Tailwind CSS",
+    "GraphQL", "REST APIs", "WebSockets", "Figma", "Responsive Design",
+  ],
+  "Backend & Infrastructure": [
+    "Node.js", "Express", "Django", "FastAPI", "Spring Boot", "PostgreSQL",
+    "MySQL", "MongoDB", "Redis", "Kafka", "Docker", "Kubernetes",
+    "AWS", "Google Cloud", "Azure", "Terraform", "CI/CD", "Linux",
+  ],
+  "Data & AI": [
+    "Machine Learning", "Deep Learning", "NLP", "Computer Vision",
+    "TensorFlow", "PyTorch", "Scikit-learn", "Pandas", "NumPy",
+    "SQL", "Data Analysis", "Data Visualization", "Tableau", "Power BI",
+    "Spark", "Airflow", "dbt", "Snowflake",
+  ],
+  "Product & Design": [
+    "Product Management", "Product Strategy", "Roadmapping", "A/B Testing",
+    "User Research", "UX Design", "UI Design", "Wireframing", "Prototyping",
+    "Agile", "Scrum", "Jira", "Confluence", "Notion",
+  ],
+  "Business & Leadership": [
+    "Strategic Planning", "P&L Management", "Executive Communication",
+    "Stakeholder Management", "Team Leadership", "Hiring & Recruiting",
+    "Change Management", "OKRs", "Business Development", "Negotiation",
+    "Public Speaking", "Cross-functional Collaboration",
+  ],
+  "Marketing & Growth": [
+    "Growth Marketing", "SEO", "SEM", "Content Marketing", "Email Marketing",
+    "Social Media Marketing", "Performance Marketing", "Google Analytics",
+    "HubSpot", "Salesforce", "CRM", "Brand Strategy", "Copywriting",
+  ],
+  "Finance & Operations": [
+    "Financial Modeling", "Forecasting", "Budgeting", "Excel / Google Sheets",
+    "Accounting", "Venture Capital", "M&A", "Supply Chain", "Operations",
+    "Process Improvement", "Six Sigma", "ERP Systems",
+  ],
+  "Sales": [
+    "Enterprise Sales", "SaaS Sales", "Account Management", "Cold Outreach",
+    "Pipeline Management", "Salesforce", "Demo & Discovery", "Closing",
+  ],
+};
+
+export const ALL_SKILLS = Object.values(SKILLS_BY_CATEGORY).flat();
+
+export const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function yearRange(start = 1970): string[] {
+  const current = new Date().getFullYear();
+  return Array.from({ length: current - start + 2 }, (_, i) => String(current + 1 - i));
+}

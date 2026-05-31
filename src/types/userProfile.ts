@@ -12,11 +12,12 @@ export interface Education {
   id: string;
   university: string;
   degree: string;
-  year: string;
+  graduationYear: string;
 }
 
 export interface UserProfile {
-  name: string;
+  fullName: string;
+  preferredName: string;
   email: string;
   phone?: string;
   linkedin?: string;
@@ -39,7 +40,8 @@ export interface UserProfile {
 export function createEmptyProfile(): UserProfile {
   const now = new Date().toISOString();
   return {
-    name: "",
+    fullName: "",
+    preferredName: "",
     email: "",
     workHistory: [],
     education: [],

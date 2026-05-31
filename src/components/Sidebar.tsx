@@ -14,6 +14,7 @@ import {
   Grid,
   Plus,
   UserCog,
+  Lock,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 
@@ -31,9 +32,10 @@ export type ViewId =
   | "mock_behavioral"
   | "mock_case_study"
   | "mock_tech"
-  | "profile_settings";
+  | "profile_settings"
+  | "security_settings";
 
-export type WorkflowId = Exclude<ViewId, "unified" | "dashboard" | "profile_settings">;
+export type WorkflowId = Exclude<ViewId, "unified" | "dashboard" | "profile_settings" | "security_settings">;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -90,7 +92,7 @@ const navGroups: NavGroup[] = [
 export function Sidebar({ activeView, onSelectView }: SidebarProps) {
   const { profile } = useUserProfile();
 
-  const displayName = profile.name || "Your Profile";
+  const displayName = profile.preferredName || profile.fullName || "Your Profile";
   const initials = displayName
     .split(" ")
     .slice(0, 2)
@@ -172,7 +174,8 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
       </nav>
 
       {/* User footer */}
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border flex flex-col gap-1">
+        {/* Profile */}
         <button
           onClick={() => onSelectView("profile_settings")}
           className={cn(
@@ -190,6 +193,20 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
             <div className="text-[10px] text-muted-foreground truncate">{trackLabel}</div>
           </div>
           <UserCog className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+        </button>
+
+        {/* Security settings */}
+        <button
+          onClick={() => onSelectView("security_settings")}
+          className={cn(
+            "flex items-center gap-2.5 px-2 py-1.5 w-full rounded-[10px] text-left transition-all duration-200",
+            activeView === "security_settings"
+              ? "bg-card text-foreground font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+              : "text-muted-foreground hover:bg-card/60 hover:text-foreground"
+          )}
+        >
+          <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="text-xs font-medium">Security & Account</span>
         </button>
       </div>
     </aside>
