@@ -19,7 +19,7 @@ export function OnboardingWizard() {
   const [importInput, setImportInput] = useState<ImportInput | null>(null);
   const [extracted, setExtracted] = useState<Partial<UserProfile>>({});
   const [extractionError, setExtractionError] = useState<string | undefined>();
-  const [savedName, setSavedName] = useState("");
+  const [savedPreferredName, setSavedPreferredName] = useState("");
 
   function handleSkip() {
     updateProfile({ onboardingComplete: true });
@@ -43,7 +43,7 @@ export function OnboardingWizard() {
   }
 
   function handleConfirm(profile: Partial<UserProfile>) {
-    setSavedName(profile.name ?? "");
+    setSavedPreferredName(profile.preferredName ?? profile.fullName.split(" ")[0] ?? "");
     updateProfile({ ...profile, onboardingComplete: true });
     setStep("done");
   }
@@ -119,7 +119,7 @@ export function OnboardingWizard() {
             />
           )}
           {step === "done" && (
-            <DoneStep name={savedName} onStart={handleDone} />
+            <DoneStep name={savedPreferredName} onStart={handleDone} />
           )}
         </div>
       </div>

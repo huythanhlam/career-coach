@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import type { UserProfile, WorkExperience, Education } from "@/types/userProfile";
 import { generateId } from "@/types/userProfile";
+import { ComboInput } from "@/components/ui/ComboInput";
+import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
+import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES } from "@/lib/profileOptions";
 
 interface Props {
   extracted: Partial<UserProfile>;
@@ -45,7 +48,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
-  const [name, setName] = useState(extracted.name ?? "");
+  const [fullName, setFullName] = useState(extracted.fullName ?? "");
+  const [preferredName, setPreferredName] = useState(extracted.preferredName ?? "");
   const [email, setEmail] = useState(extracted.email ?? "");
   const [phone, setPhone] = useState(extracted.phone ?? "");
   const [linkedin, setLinkedin] = useState(extracted.linkedin ?? "");
@@ -61,7 +65,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
   const [education, setEducation] = useState<Education[]>(
     extracted.education?.length
       ? extracted.education
-      : [{ id: generateId(), university: "", degree: "", year: "" }]
+      : [{ id: generateId(), university: "", degree: "", graduationYear: "" }]
   );
   const [skills, setSkills] = useState((extracted.skills ?? []).join(", "));
 
@@ -79,7 +83,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
     setEducation((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
   }
   function addEdu() {
-    setEducation((prev) => [...prev, { id: generateId(), university: "", degree: "", year: "" }]);
+    setEducation((prev) => [...prev, { id: generateId(), university: "", degree: "", graduationYear: "" }]);
   }
   function removeEdu(id: string) {
     setEducation((prev) => prev.filter((e) => e.id !== id));
@@ -87,7 +91,8 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
 
   function handleSave() {
     onConfirm({
-      name: name.trim(),
+      fullName: fullName.trim(),
+      preferredName: preferredName.trim(),
       email: email.trim(),
       phone: phone.trim() || undefined,
       linkedin: linkedin.trim() || undefined,
@@ -103,7 +108,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
     });
   }
 
-  const displayName = name || "your profile";
+  const displayName = preferredName || fullName.split(" ")[0] || "your profile";
 
   return (
     <div className="flex flex-col w-full max-w-2xl mx-auto">
@@ -121,7 +126,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
             className="text-xl font-bold"
             style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
           >
-            Here's what we found{name ? `, ${name.split(" ")[0]}` : ""}
+            Here's what we found{displayName !== "your profile" ? `, ${displayName}` : ""}
           </h2>
           <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
             Review and edit before saving to {displayName}'s profile.
@@ -136,7 +141,8 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
           <SectionTitle>Personal Info</SectionTitle>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Full Name", value: name, setter: setName, placeholder: "Jane Smith", colSpan: 2 },
+              { label: "Full Name", value: fullName, setter: setFullName, placeholder: "Jane Smith", colSpan: 1 },
+              { label: "Preferred Name", value: preferredName, setter: setPreferredName, placeholder: "Jane", colSpan: 1 },
               { label: "Email", value: email, setter: setEmail, placeholder: "jane@example.com", colSpan: 1 },
               { label: "Phone", value: phone, setter: setPhone, placeholder: "+1 (555) 000-0000", colSpan: 1 },
               { label: "LinkedIn URL", value: linkedin, setter: setLinkedin, placeholder: "https://linkedin.com/in/…", colSpan: 2 },
@@ -208,19 +214,19 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label style={labelStyle}>Job Title</label>
-                    <input type="text" value={w.role} onChange={(e) => updateWork(w.id, "role", e.target.value)} placeholder="Software Engineer" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput value={w.role} onChange={(v) => updateWork(w.id, "role", v)} options={JOB_TITLES} placeholder="Software Engineer" style={{ ...inputStyle, height: 38 }} />
                   </div>
                   <div>
                     <label style={labelStyle}>Company</label>
-                    <input type="text" value={w.company} onChange={(e) => updateWork(w.id, "company", e.target.value)} placeholder="Acme Corp" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput value={w.company} onChange={(v) => updateWork(w.id, "company", v)} options={SP500_COMPANIES} placeholder="Acme Corp" style={{ ...inputStyle, height: 38 }} />
                   </div>
                   <div>
                     <label style={labelStyle}>Start Date</label>
-                    <input type="text" value={w.startDate} onChange={(e) => updateWork(w.id, "startDate", e.target.value)} placeholder="Jan 2020" style={{ ...inputStyle, height: 38 }} />
+                    <MonthYearPicker value={w.startDate} onChange={(v) => updateWork(w.id, "startDate", v)} placeholder="Start date" style={{ ...inputStyle, height: 38 }} />
                   </div>
                   <div>
                     <label style={labelStyle}>End Date</label>
-                    <input type="text" value={w.endDate} onChange={(e) => updateWork(w.id, "endDate", e.target.value)} placeholder="Present" style={{ ...inputStyle, height: 38 }} />
+                    <MonthYearPicker value={w.endDate} onChange={(v) => updateWork(w.id, "endDate", v)} placeholder="End date" allowPresent style={{ ...inputStyle, height: 38 }} />
                   </div>
                 </div>
                 <div className="mt-2">
@@ -271,15 +277,15 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2">
                     <label style={labelStyle}>Institution</label>
-                    <input type="text" value={e.university} onChange={(ev) => updateEdu(e.id, "university", ev.target.value)} placeholder="MIT" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput value={e.university} onChange={(v) => updateEdu(e.id, "university", v)} options={UNIVERSITIES} placeholder="MIT" style={{ ...inputStyle, height: 38 }} />
                   </div>
                   <div>
                     <label style={labelStyle}>Degree / Field</label>
-                    <input type="text" value={e.degree} onChange={(ev) => updateEdu(e.id, "degree", ev.target.value)} placeholder="B.S. Computer Science" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput value={e.degree} onChange={(v) => updateEdu(e.id, "degree", v)} options={DEGREE_TYPES} placeholder="B.S. Computer Science" style={{ ...inputStyle, height: 38 }} />
                   </div>
                   <div>
                     <label style={labelStyle}>Graduation Year</label>
-                    <input type="text" value={e.year} onChange={(ev) => updateEdu(e.id, "year", ev.target.value)} placeholder="2022" style={{ ...inputStyle, height: 38 }} />
+                    <MonthYearPicker value={e.graduationYear} onChange={(v) => updateEdu(e.id, "graduationYear", v)} placeholder="Graduation" style={{ ...inputStyle, height: 38 }} />
                   </div>
                 </div>
               </div>

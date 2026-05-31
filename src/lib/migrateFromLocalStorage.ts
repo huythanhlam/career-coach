@@ -13,22 +13,22 @@ export async function migrateFromLocalStorage(userId: string): Promise<void> {
       const profile = JSON.parse(rawProfile);
       const { data: existing } = await supabase
         .from("profiles")
-        .select("name")
+        .select("full_name")
         .eq("id", userId)
         .single();
 
-      if (existing && !existing.name) {
+      if (existing && !existing.full_name) {
         await supabase.from("profiles").upsert({
           id: userId,
-          name: profile.name ?? "",
+          full_name: profile.name ?? "",
+          preferred_name: profile.name?.split(" ")[0] ?? "",
           email: profile.email ?? "",
           phone: profile.phone ?? null,
           linkedin: profile.linkedin ?? null,
           github: profile.github ?? null,
           portfolio: profile.portfolio ?? null,
           target_role: profile.targetRole ?? null,
-          current_job_role: profile.currentRole ?? null,
-          years_of_experience: profile.yearsOfExperience ?? null,
+          current_role: profile.currentRole ?? null,
           summary: profile.summary ?? null,
           work_history: profile.workHistory ?? [],
           education: profile.education ?? [],

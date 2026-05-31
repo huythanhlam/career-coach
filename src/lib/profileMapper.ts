@@ -2,14 +2,15 @@ import type { UserProfile } from "@/types/userProfile";
 
 export function rowToProfile(row: Record<string, unknown>): UserProfile {
   return {
-    name: (row.name as string) ?? "",
+    fullName: (row.full_name as string) ?? "",
+    preferredName: (row.preferred_name as string) ?? "",
     email: (row.email as string) ?? "",
     phone: (row.phone as string) ?? undefined,
     linkedin: (row.linkedin as string) ?? undefined,
     github: (row.github as string) ?? undefined,
     portfolio: (row.portfolio as string) ?? undefined,
     targetRole: (row.target_role as string) ?? undefined,
-    currentRole: (row.current_job_role as string) ?? undefined,
+    currentRole: (row.current_role as string) ?? undefined,
     yearsOfExperience: (row.years_of_experience as number) ?? undefined,
     summary: (row.summary as string) ?? undefined,
     workHistory: (row.work_history as UserProfile["workHistory"]) ?? [],
@@ -29,15 +30,15 @@ export function profileToRow(
 ): Record<string, unknown> {
   return {
     id: userId,
-    name: profile.name,
+    full_name: profile.fullName,
+    preferred_name: profile.preferredName,
     email: profile.email,
     phone: profile.phone ?? null,
     linkedin: profile.linkedin ?? null,
     github: profile.github ?? null,
     portfolio: profile.portfolio ?? null,
     target_role: profile.targetRole ?? null,
-    current_job_role: profile.currentRole ?? null,
-    years_of_experience: profile.yearsOfExperience ?? null,
+    current_role: profile.currentRole ?? null,
     summary: profile.summary ?? null,
     work_history: profile.workHistory,
     education: profile.education,

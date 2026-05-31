@@ -11,7 +11,9 @@ import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContex
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { ProfileSettings } from "@/components/ProfileSettings";
+import { SecuritySettings } from "@/components/SecuritySettings";
 import { AuthPage } from "@/components/AuthPage";
+import { MFAChallengePage } from "@/components/MFAChallengePage";
 
 function AppInner() {
   const { profile } = useUserProfile();
@@ -29,6 +31,7 @@ function AppInner() {
             {activeView === "dashboard" && <Dashboard />}
             {activeView === "unified" && <UnifiedWorkspace />}
             {activeView === "profile_settings" && <ProfileSettings />}
+            {activeView === "security_settings" && <SecuritySettings />}
 
             {Object.keys(workflowsConfig).map((id) => (
               <div
@@ -76,7 +79,7 @@ function AppInner() {
 }
 
 function AuthGate() {
-  const { session, loading } = useAuth();
+  const { session, loading, authStep, mfaFactorId, completeMfaChallenge } = useAuth();
 
   if (loading) {
     return (
@@ -105,6 +108,15 @@ function AuthGate() {
   }
 
   if (!session) return <AuthPage />;
+
+  if (authStep === "mfa_challenge" && mfaFactorId) {
+    return (
+      <MFAChallengePage
+        factorId={mfaFactorId}
+        onSuccess={() => completeMfaChallenge(mfaFactorId)}
+      />
+    );
+  }
 
   return (
     <UserProfileProvider>
