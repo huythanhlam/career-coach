@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar, type ViewId } from "@/components/Sidebar";
 import { Dashboard } from "@/components/Dashboard";
 import { WorkflowView } from "@/components/WorkflowView";
@@ -12,13 +12,23 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { SecuritySettings } from "@/components/SecuritySettings";
-import { AuthPage } from "@/components/AuthPage";
+import { LandingPage } from "@/components/LandingPage";
 import { MFAChallengePage } from "@/components/MFAChallengePage";
 
 function AppInner() {
   const { profile } = useUserProfile();
-  const [activeView, setActiveView] = useState<ViewId>("dashboard");
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const pendingTab = localStorage.getItem("pendingTab") as ViewId | null;
+  const [activeView, setActiveView] = useState<ViewId>(
+    pendingTab && (pendingTab in workflowsConfig || ["dashboard", "unified"].includes(pendingTab))
+      ? pendingTab
+      : "dashboard"
+  );
+
+  useEffect(() => {
+    localStorage.removeItem("pendingTab");
+  }, []);
 
   return (
     <TooltipProvider>
@@ -107,7 +117,7 @@ function AuthGate() {
     );
   }
 
-  if (!session) return <AuthPage />;
+  if (!session) return <LandingPage />;
 
   if (authStep === "mfa_challenge" && mfaFactorId) {
     return (
