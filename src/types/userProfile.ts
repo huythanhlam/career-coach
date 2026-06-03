@@ -17,6 +17,16 @@ export interface Education {
   minor?: string;
 }
 
+export interface SavedCoverLetter {
+  id: string;
+  name: string;
+  storagePath: string;
+  text?: string; // transient: populated after downloading from Storage, not persisted to DB
+  jobTitle: string;
+  company: string;
+  createdAt: string;
+}
+
 export interface UserProfile {
   fullName: string;
   preferredName: string;
@@ -35,6 +45,7 @@ export interface UserProfile {
   resumeText?: string;
   linkedinText?: string;
   savedResumes?: { id: string; name: string; text: string; createdAt: string }[];
+  savedCoverLetters?: SavedCoverLetter[];
   onboardingComplete: boolean;
   createdAt: string;
   updatedAt: string;

@@ -70,6 +70,47 @@ app.post('/api/ai/generate', async (req, res) => {
   }
 });
 
+// --- URL fetch proxy (for job description links) ---
+
+app.post('/api/fetch-url', async (req, res) => {
+  const { url } = req.body as { url?: string };
+  if (!url || !/^https?:\/\//i.test(url)) {
+    res.status(400).json({ error: 'Invalid URL' });
+    return;
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TechCoachBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      res.status(response.status).json({ error: `Fetch failed: ${response.statusText}` });
+      return;
+    }
+
+    const html = await response.text();
+    // Strip HTML tags and condense whitespace to get readable plain text
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, '')
+      .replace(/\s{2,}/g, '\n')
+      .trim()
+      .slice(0, 8000);
+
+    res.json({ text });
+  } catch (error: any) {
+    console.error('[fetch-url] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = 4000;
 app.listen(PORT, () => {
   console.log(`TechCoach AI — Claude Gateway running at http://localhost:${PORT}`);

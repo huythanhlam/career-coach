@@ -15,6 +15,7 @@ import {
   Plus,
   UserCog,
   Lock,
+  Mail,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 
@@ -24,6 +25,7 @@ export type ViewId =
   | "linkedin"
   | "resume"
   | "resume_generation"
+  | "cover_letter"
   | "salary"
   | "interview"
   | "market"
@@ -67,6 +69,7 @@ const navGroups: NavGroup[] = [
     name: "Apply",
     items: [
       { id: "resume_generation", label: "Resume Builder", icon: FileText },
+      { id: "cover_letter",      label: "Cover Letter",   icon: Mail },
       { id: "resume",            label: "Resume Analyzer",   icon: ShieldCheck },
       { id: "linkedin",          label: "Profile Lab",    icon: Briefcase },
     ],
