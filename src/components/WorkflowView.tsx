@@ -20,6 +20,9 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { ResumeGeneratorWorkspace } from "@/components/ResumeGeneratorWorkspace";
 import { ResumeGenerationForm } from "@/components/ResumeGenerationForm";
 import { ResumeAnalysisWorkspace } from "@/components/ResumeAnalysisWorkspace";
+import { TailorResumeWorkspace } from "@/components/TailorResumeWorkspace";
+import { downloadResume, deleteResume } from "@/services/resumeStorageService";
+import { useEffect } from "react";
 import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompensationViz";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
 import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
@@ -58,12 +61,23 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const config = workflowsConfig[workflowId];
   const { profile, updateProfile } = useUserProfile();
   const [formData, setFormData] = useState<Record<string, any>>(() => {
-    if (workflowId === "resume" && profile.resumeText)
-      return { resumeText: profile.resumeText };
-    if (workflowId === "linkedin")
-      return { url: profile.linkedin ?? "", profile: profile.linkedinText ?? "" };
+    if (workflowId === "linkedin") return { url: profile.linkedin ?? "" };
     return {};
   });
+
+  useEffect(() => {
+    if (workflowId === "resume" && profile.resumeStoragePath) {
+      downloadResume(profile.resumeStoragePath)
+        .then(text => setFormData(prev => ({ ...prev, resumeText: text })))
+        .catch(() => {});
+    }
+    if (workflowId === "linkedin" && profile.linkedinStoragePath) {
+      downloadResume(profile.linkedinStoragePath)
+        .then(text => setFormData(prev => ({ ...prev, profile: text })))
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowId]);
   const [fileData, setFileData] = useState<Record<string, FileData>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [resumeWorkspaceData, setResumeWorkspaceData] = useState<ResumeAnalysisResult | null>(null);
@@ -77,6 +91,9 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const [builderAnalysisResult, setBuilderAnalysisResult] = useState<ResumeAnalysisResult | null>(null);
   const [isBuilderAnalyzing, setIsBuilderAnalyzing] = useState(false);
   const [builderAnalysisFile, setBuilderAnalysisFile] = useState<{ file: File; objectUrl: string } | null>(null);
+  const [loadingResumeId, setLoadingResumeId] = useState<string | null>(null);
+  const [showTailor, setShowTailor] = useState(false);
+  const [tailorInitialResume, setTailorInitialResume] = useState<{ text: string; name: string } | null>(null);
   const [marketData, setMarketData] = useState<MarketCompData | null>(null);
   const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
   const [numPages, setNumPages] = useState<number>();
@@ -282,6 +299,18 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
     );
   }
 
+  if (workflowId === "resume_generation" && showTailor) {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <TailorResumeWorkspace
+          onBack={() => { setShowTailor(false); setTailorInitialResume(null); }}
+          initialResumeText={tailorInitialResume?.text}
+          initialResumeName={tailorInitialResume?.name}
+        />
+      </div>
+    );
+  }
+
   if (workflowId === "cover_letter" && savedCoverLetterPayload !== null) {
     return (
       <div className="flex-1 flex flex-col h-full relative">
@@ -360,7 +389,22 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
 
   if (workflowId === "resume_generation") {
     const savedResumes = profile.savedResumes ?? [];
+    const handleOpenSaved = async (r: { id: string; storagePath: string }) => {
+      setLoadingResumeId(r.id);
+      try {
+        const text = await downloadResume(r.storagePath);
+        setSavedResumeText(text);
+      } catch (err) {
+        console.error("Failed to load resume:", err);
+      } finally {
+        setLoadingResumeId(null);
+      }
+    };
     const handleDeleteSaved = async (id: string) => {
+      const resume = savedResumes.find(r => r.id === id);
+      if (resume) {
+        try { await deleteResume(resume.storagePath); } catch (err) { console.error("Storage delete failed:", err); }
+      }
       await updateProfile({ savedResumes: savedResumes.filter((r) => r.id !== id) });
     };
     return (
@@ -382,10 +426,11 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setSavedResumeText(r.text)}
-                      style={{ height: 36, padding: "0 16px", background: "var(--primary)", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#fff", cursor: "pointer" }}
+                      onClick={() => handleOpenSaved(r)}
+                      disabled={loadingResumeId === r.id}
+                      style={{ height: 36, padding: "0 16px", background: "var(--primary)", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#fff", cursor: loadingResumeId === r.id ? "not-allowed" : "pointer", opacity: loadingResumeId === r.id ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6 }}
                     >
-                      Open
+                      {loadingResumeId === r.id ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Opening…</> : "Open"}
                     </button>
                     <button
                       type="button"
@@ -404,7 +449,7 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
               </div>
             </div>
           )}
-          <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} onAnalyze={handleAnalyzeFromBuilder} />
+          <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} onAnalyze={handleAnalyzeFromBuilder} onTailor={(text, name) => { setTailorInitialResume({ text, name }); setShowTailor(true); }} />
         </div>
       </div>
     );

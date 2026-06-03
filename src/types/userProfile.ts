@@ -44,7 +44,9 @@ export interface UserProfile {
   skills: string[];
   resumeText?: string;
   linkedinText?: string;
-  savedResumes?: { id: string; name: string; text: string; createdAt: string }[];
+  resumeStoragePath?: string;
+  linkedinStoragePath?: string;
+  savedResumes?: { id: string; name: string; storagePath: string; text?: string; createdAt: string }[];
   savedCoverLetters?: SavedCoverLetter[];
   onboardingComplete: boolean;
   createdAt: string;

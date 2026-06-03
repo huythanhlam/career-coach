@@ -1,3 +1,10 @@
+export interface DbSavedResume {
+  id: string;
+  name: string;
+  storagePath: string;
+  createdAt: string;
+}
+
 export interface DbProfile {
   id: string;
   full_name: string | null;
@@ -13,8 +20,9 @@ export interface DbProfile {
   skills: string[];
   work_history: DbWorkExperience[];
   education: DbEducation[];
-  resume_text: string | null;
-  linkedin_text: string | null;
+  resume_storage_path: string | null;
+  linkedin_storage_path: string | null;
+  saved_resumes: DbSavedResume[];
   onboarding_complete: boolean;
   mfa_enrolled: boolean;
   created_at: string;

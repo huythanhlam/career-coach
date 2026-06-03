@@ -40,7 +40,7 @@ function AppInner() {
           <div className="flex-1 h-full overflow-hidden flex flex-col relative">
             {activeView === "dashboard" && <Dashboard />}
             {activeView === "unified" && <UnifiedWorkspace />}
-            {activeView === "profile_settings" && <ProfileSettings />}
+{activeView === "profile_settings" && <ProfileSettings />}
             {activeView === "security_settings" && <SecuritySettings />}
 
             {Object.keys(workflowsConfig).map((id) => (

@@ -10,13 +10,15 @@ import { Loader2, Bookmark, Sparkles, CheckCircle2 } from "lucide-react";
 import { createTechCoachChat, sendMessageStream, type ResumeAnalysisResult, type Improvement } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { useAuth } from "@/context/AuthContext";
 import { generateId } from "@/types/userProfile";
+import { uploadResume } from "@/services/resumeStorageService";
 import { DocumentEditor, DocMessage, DocumentEditorHandle } from "./DocumentEditor";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export interface ResumeGeneratorWorkspaceHandle {
   applyFix(original: string, suggested: string): void;
 }
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Chat = any;
@@ -60,6 +62,7 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
   }));
 
   const { profile, updateProfile } = useUserProfile();
+  const { session } = useAuth();
   const [content, setContent] = useState(initialResumeText ?? "");
   const [isGenerating, setIsGenerating] = useState(!initialResumeText && !initialChatMessages && !analysisResult && !initialHtml);
   const [chatInstance, setChatInstance] = useState<Chat | null>(null);
@@ -129,13 +132,17 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
 
   const handleSaveVariant = async () => {
     const name = saveName.trim() || `Resume ${new Date().toLocaleDateString()}`;
+    const userId = session?.user?.id;
+    if (!userId) return;
     setIsSaving(true);
     try {
+      const id = generateId();
+      const storagePath = await uploadResume(userId, id, content);
       const existing = profile.savedResumes ?? [];
       await updateProfile({
         savedResumes: [
           ...existing,
-          { id: generateId(), name, text: content, createdAt: new Date().toISOString() },
+          { id, name, storagePath, createdAt: new Date().toISOString() },
         ],
       });
       setShowSaveDialog(false);
@@ -177,6 +184,7 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
         rightSidebarContent={analysisPanel}
         initialHtml={initialHtml}
         rawHtmlMode={rawHtmlMode}
+        showTailorPrompt
       />
 
       {/* Save-variant dialog */}

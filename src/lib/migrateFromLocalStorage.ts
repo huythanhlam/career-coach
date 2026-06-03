@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { uploadImportedResume, uploadLinkedInText } from "@/services/resumeStorageService";
 
 const PROFILE_KEY = "careerCoach_userProfile";
 const ANALYSES_KEY = "tc_saved_analyses";
@@ -18,6 +19,14 @@ export async function migrateFromLocalStorage(userId: string): Promise<void> {
         .single();
 
       if (existing && !existing.full_name) {
+        let resumeStoragePath: string | null = null;
+        let linkedinStoragePath: string | null = null;
+        if (profile.resumeText) {
+          try { resumeStoragePath = await uploadImportedResume(userId, profile.resumeText); } catch {}
+        }
+        if (profile.linkedinText) {
+          try { linkedinStoragePath = await uploadLinkedInText(userId, profile.linkedinText); } catch {}
+        }
         await supabase.from("profiles").upsert({
           id: userId,
           full_name: profile.name ?? "",
@@ -33,8 +42,8 @@ export async function migrateFromLocalStorage(userId: string): Promise<void> {
           work_history: profile.workHistory ?? [],
           education: profile.education ?? [],
           skills: profile.skills ?? [],
-          resume_text: profile.resumeText ?? null,
-          linkedin_text: profile.linkedinText ?? null,
+          resume_storage_path: resumeStoragePath,
+          linkedin_storage_path: linkedinStoragePath,
           onboarding_complete: profile.onboardingComplete ?? false,
         });
       }

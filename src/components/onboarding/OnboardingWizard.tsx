@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import type { UserProfile } from "@/types/userProfile";
 import { parseProfileFromImport } from "@/services/geminiService";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { useAuth } from "@/context/AuthContext";
+import { uploadImportedResume, uploadLinkedInText } from "@/services/resumeStorageService";
 import { WelcomeStep } from "./steps/WelcomeStep";
 import { ImportStep } from "./steps/ImportStep";
 import { ExtractingStep } from "./steps/ExtractingStep";
@@ -15,6 +17,7 @@ type ImportInput =
 
 export function OnboardingWizard() {
   const { updateProfile } = useUserProfile();
+  const { session } = useAuth();
   const [step, setStep] = useState<Step>("welcome");
   const [importInput, setImportInput] = useState<ImportInput | null>(null);
   const [extracted, setExtracted] = useState<Partial<UserProfile>>({});
@@ -42,9 +45,22 @@ export function OnboardingWizard() {
     }
   }
 
-  function handleConfirm(profile: Partial<UserProfile>) {
-    setSavedPreferredName(profile.preferredName ?? profile.fullName.split(" ")[0] ?? "");
-    updateProfile({ ...profile, onboardingComplete: true });
+  async function handleConfirm(profile: Partial<UserProfile>) {
+    setSavedPreferredName(profile.preferredName ?? profile.fullName?.split(" ")[0] ?? "");
+    const userId = session?.user?.id;
+    const updates: Partial<UserProfile> = { ...profile, onboardingComplete: true };
+    if (userId && importInput) {
+      try {
+        if (importInput.type === "resume") {
+          updates.resumeStoragePath = await uploadImportedResume(userId, importInput.text);
+        } else if (importInput.type === "linkedin") {
+          updates.linkedinStoragePath = await uploadLinkedInText(userId, importInput.text);
+        }
+      } catch (err) {
+        console.error("Failed to upload import to storage:", err);
+      }
+    }
+    updateProfile(updates);
     setStep("done");
   }
 

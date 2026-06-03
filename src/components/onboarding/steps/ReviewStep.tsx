@@ -103,8 +103,6 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
       workHistory: workHistory.filter((w) => w.company || w.role),
       education: education.filter((e) => e.university || e.degree),
       skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
-      resumeText: extracted.resumeText,
-      linkedinText: extracted.linkedinText,
     });
   }
 
