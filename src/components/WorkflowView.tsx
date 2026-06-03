@@ -17,9 +17,9 @@ import type { Chat } from "@google/genai";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { ResumeWorkspace } from "@/components/ResumeWorkspace";
 import { ResumeGeneratorWorkspace } from "@/components/ResumeGeneratorWorkspace";
 import { ResumeGenerationForm } from "@/components/ResumeGenerationForm";
+import { ResumeAnalysisWorkspace } from "@/components/ResumeAnalysisWorkspace";
 import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompensationViz";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
 import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
@@ -73,6 +73,10 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const [savedResumeText, setSavedResumeText] = useState<string | null>(null);
   const [coverLetterFormData, setCoverLetterFormData] = useState<CoverLetterFormData | null>(null);
   const [savedCoverLetterPayload, setSavedCoverLetterPayload] = useState<SavedCoverLetterPayload | null>(null);
+  const [builderAnalysisText, setBuilderAnalysisText] = useState<string | null>(null);
+  const [builderAnalysisResult, setBuilderAnalysisResult] = useState<ResumeAnalysisResult | null>(null);
+  const [isBuilderAnalyzing, setIsBuilderAnalyzing] = useState(false);
+  const [builderAnalysisFile, setBuilderAnalysisFile] = useState<{ file: File; objectUrl: string } | null>(null);
   const [marketData, setMarketData] = useState<MarketCompData | null>(null);
   const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
   const [numPages, setNumPages] = useState<number>();
@@ -185,17 +189,61 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
     finally { setIsGenerating(false); }
   };
 
+  const handleAnalyzeFromBuilder = (resumeText: string, file: File) => {
+    const objectUrl = URL.createObjectURL(file);
+    setBuilderAnalysisText(resumeText);
+    setBuilderAnalysisFile({ file, objectUrl });
+    setBuilderAnalysisResult(null);
+    setIsBuilderAnalyzing(true);
+    analyzeResume(resumeText, "", "")
+      .then(result => setBuilderAnalysisResult(result))
+      .catch(() => setBuilderAnalysisResult({ resumeText, overallScore: null, summary: "Analysis failed.", improvements: [] }))
+      .finally(() => setIsBuilderAnalyzing(false));
+  };
+
   /* ── Resume & Generator pass-through ─────────────────────────── */
   if (workflowId === "resume" && resumeWorkspaceData) {
+    const rawFile = rawFileMap.current['resumeFile'];
+    const uploadedFileMeta = Object.values(fileData)[0];
     return (
       <div className="flex-1 flex flex-col h-full relative">
-        <ResumeWorkspace
-          initialResumeText={resumeWorkspaceData.resumeText}
-          improvements={resumeWorkspaceData.improvements}
-          overallScore={resumeWorkspaceData.overallScore}
-          summary={resumeWorkspaceData.summary}
-          isAnalyzing={isAnalyzing}
-          onReset={() => { setResumeWorkspaceData(null); setIsAnalyzing(false); }}
+        {rawFile && uploadedFileMeta ? (
+          <ResumeAnalysisWorkspace
+            file={rawFile}
+            fileObjectUrl={uploadedFileMeta.objectUrl}
+            resumeText={resumeWorkspaceData.resumeText}
+            analysisResult={resumeWorkspaceData}
+            isAnalyzing={isAnalyzing}
+            onReset={() => { setResumeWorkspaceData(null); setIsAnalyzing(false); setFileData({}); }}
+          />
+        ) : (
+          <ResumeGeneratorWorkspace
+            initialResumeText={resumeWorkspaceData.resumeText}
+            analysisResult={resumeWorkspaceData}
+            isAnalyzing={isAnalyzing}
+            onReset={() => { setResumeWorkspaceData(null); setIsAnalyzing(false); }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (workflowId === "resume_generation" && builderAnalysisText !== null && builderAnalysisFile) {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <ResumeAnalysisWorkspace
+          file={builderAnalysisFile.file}
+          fileObjectUrl={builderAnalysisFile.objectUrl}
+          resumeText={builderAnalysisText}
+          analysisResult={builderAnalysisResult}
+          isAnalyzing={isBuilderAnalyzing}
+          onReset={() => {
+            URL.revokeObjectURL(builderAnalysisFile.objectUrl);
+            setBuilderAnalysisText(null);
+            setBuilderAnalysisResult(null);
+            setBuilderAnalysisFile(null);
+            setIsBuilderAnalyzing(false);
+          }}
         />
       </div>
     );
@@ -356,7 +404,7 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
               </div>
             </div>
           )}
-          <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} />
+          <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} onAnalyze={handleAnalyzeFromBuilder} />
         </div>
       </div>
     );

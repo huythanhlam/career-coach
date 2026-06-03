@@ -241,9 +241,10 @@ const TEMPLATES = [
   { id: "Academic / Research", name: "Academic / Research", description: "Detailed format for publications and studies." }
 ];
 
-export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (data: any) => void; isGenerating: boolean }) {
+export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze }: { onSubmit: (data: any) => void; isGenerating: boolean; onAnalyze?: (resumeText: string, file: File) => void }) {
   const { profile, loading } = useUserProfile();
   const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [step0ResumeUploaded, setStep0ResumeUploaded] = useState<{ text: string; fileName: string; file: File } | null>(null);
   const formRootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let el = formRootRef.current?.parentElement ?? null;
@@ -573,8 +574,9 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
         return;
       }
       if (type === "resume") {
-        setUploadedResumeText(text);
-        setUploadedFileName(file.name);
+        setStep0ResumeUploaded({ text, fileName: file.name, file });
+        // Stay on step 0 — let user choose Analyze vs Build
+        return;
       }
       setStartMethod(type);
       // Pre-fill the form in the background then advance
@@ -677,6 +679,41 @@ export function ResumeGenerationForm({ onSubmit, isGenerating }: { onSubmit: (da
             <input ref={step0ResumeRef} type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" style={{ display: "none" }} onChange={(e) => handleStep0Upload(e, "resume")} />
           </div>
         </div>
+
+        {step0ResumeUploaded && (
+          <div className="mt-6 animate-in fade-in duration-300" style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: "24px 28px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <CheckCircle2 className="w-5 h-5 shrink-0" style={{ color: "var(--forest)" }} />
+              <span style={{ fontWeight: 600, fontSize: 14, color: "var(--foreground)" }}>{step0ResumeUploaded.fileName}</span>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 18 }}>What would you like to do with this resume?</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              {onAnalyze && (
+                <button
+                  type="button"
+                  onClick={() => { onAnalyze(step0ResumeUploaded.text, step0ResumeUploaded.file); setStep0ResumeUploaded(null); }}
+                  style={{ flex: 1, height: 44, background: "var(--primary)", color: "#fff", border: "none", borderRadius: 12, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  <Info className="w-4 h-4" /> Analyze my resume
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setUploadedResumeText(step0ResumeUploaded.text);
+                  setUploadedFileName(step0ResumeUploaded.fileName);
+                  setStartMethod("resume");
+                  setStep0ResumeUploaded(null);
+                  setStep(1);
+                  runImport(step0ResumeUploaded.text, "resume");
+                }}
+                style={{ flex: 1, height: 44, background: "rgba(47,107,79,0.10)", color: "var(--forest)", border: "1px solid rgba(47,107,79,0.25)", borderRadius: 12, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                <FileText className="w-4 h-4" /> Build from this resume
+              </button>
+            </div>
+          </div>
+        )}
 
         {step0Error && (
           <div className="flex items-center gap-2 mt-5" style={{ padding: "10px 16px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 10 }}>
