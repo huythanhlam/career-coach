@@ -64,6 +64,10 @@ export interface DocumentEditorProps {
   /** When true, skips template CSS injection and uses DOCX-compatible styles instead.
    *  Use together with initialHtml when displaying mammoth-converted DOCX content. */
   rawHtmlMode?: boolean;
+  /** Show a "Tailor to job description" suggested prompt chip in the AI sidebar */
+  showTailorPrompt?: boolean;
+  /** Replace the AI sidebar with custom content (e.g. suggestion cards) */
+  customSidebar?: React.ReactNode;
 }
 
 export interface DocumentEditorHandle {
@@ -629,6 +633,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
   onClose, onSave, exportFileName = "document", stylePanel,
   rawHtml, initialStyle, headerHtml,
   rightSidebarContent, initialHtml, rawHtmlMode = false,
+  showTailorPrompt = false, customSidebar,
 }, ref) {
   const [title, setTitle] = useState(titleProp);
   const [saveStatus, setSaveStatus] = useState<"" | "saving" | "saved">("");
@@ -638,6 +643,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
   const [chatInput, setChatInput] = useState("");
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [selectedContext, setSelectedContext] = useState("");
+  const [showTailorJd, setShowTailorJd] = useState(false);
+  const [tailorJdInput, setTailorJdInput] = useState("");
 
   const [docStyle, setDocStyle] = useState<DocStyle>({
     templateId: "modern-clean",
@@ -1147,16 +1154,16 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
           </div>
         </div>
 
-        {/* Analysis sidebar (overrides AI chat when provided) */}
-        {rightSidebarContent && (
+        {/* Analysis/custom sidebar (overrides AI chat when provided) */}
+        {(rightSidebarContent ?? customSidebar) && (
           <div className="flex flex-col shrink-0 print:hidden overflow-hidden"
-            style={{ width: 360, background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
-            {rightSidebarContent}
+            style={{ width: 380, background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
+            {rightSidebarContent ?? customSidebar}
           </div>
         )}
 
         {/* AI sidebar */}
-        {!rightSidebarContent && aiEnabled && showAI && (
+        {!rightSidebarContent && !customSidebar && aiEnabled && showAI && (
           <div className="flex flex-col shrink-0 print:hidden"
             style={{ width: 340, background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
             <div className="flex items-center gap-2 px-4 shrink-0"
@@ -1197,6 +1204,64 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
               <div ref={scrollRef} />
             </div>
             <div style={{ padding: "10px 12px 12px", borderTop: "1px solid var(--border)", background: "var(--muted)" }}>
+              {showTailorPrompt && !showTailorJd && !selectedContext && (
+                <div style={{ marginBottom: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowTailorJd(true)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 28, padding: "0 10px", borderRadius: 20, border: "1px solid var(--border)", background: "var(--card)", fontSize: 11, fontWeight: 600, color: "var(--primary)", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    ✦ Tailor to job description
+                  </button>
+                </div>
+              )}
+              {showTailorPrompt && showTailorJd && (
+                <div style={{ marginBottom: 8, display: "flex", flexDirection: "column", gap: 6, padding: "10px", background: "rgba(217,119,87,0.06)", border: "1px solid rgba(217,119,87,0.2)", borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", letterSpacing: "0.04em" }}>PASTE JOB DESCRIPTION</div>
+                  <textarea
+                    autoFocus
+                    value={tailorJdInput}
+                    onChange={e => setTailorJdInput(e.target.value)}
+                    placeholder="Paste the full job description here…"
+                    rows={5}
+                    style={{ width: "100%", resize: "vertical", borderRadius: 8, border: "1px solid var(--border)", background: "var(--card)", padding: "8px 10px", fontSize: 12, color: "var(--foreground)", fontFamily: "inherit", outline: "none", boxSizing: "border-box" }}
+                  />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!tailorJdInput.trim()) return;
+                        const prompt = `Tailor this entire resume to the job description below. Follow these rules strictly:
+
+1. KEYWORDS: Naturally weave in keywords and phrases from the JD where my actual experience supports them. Do not force-fit terms I have no background in.
+2. SUMMARY: Rewrite the summary to directly address the top 3–4 requirements of this role.
+3. WORK BULLETS: For each job, reorder and strengthen bullets to front-load the most relevant experience. Use the XYZ formula (Action + metric/result) where the existing context supports quantification.
+4. SKILLS: Reorder the skills section to lead with skills that appear in the JD and are already in my resume.
+5. NO FABRICATION: Never invent new companies, roles, dates, projects, metrics, or skills that do not already exist in this resume. Only strengthen and reframe what is already there.
+6. OUTPUT: Return the full tailored resume in markdown, wrapped in \`\`\`markdown ... \`\`\`.
+
+Job Description:
+---
+${tailorJdInput.trim()}
+---`;
+                        setChatInput(prompt);
+                        setShowTailorJd(false);
+                        setTailorJdInput("");
+                      }}
+                      style={{ flex: 1, height: 30, borderRadius: 8, border: "none", background: "var(--primary)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: tailorJdInput.trim() ? "pointer" : "not-allowed", opacity: tailorJdInput.trim() ? 1 : 0.5, fontFamily: "inherit" }}
+                    >
+                      Build prompt →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowTailorJd(false); setTailorJdInput(""); }}
+                      style={{ height: 30, padding: "0 10px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--muted-foreground)", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               {selectedContext && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, background: "rgba(217,119,87,0.08)", border: "1px solid rgba(217,119,87,0.2)", borderRadius: 8, padding: "7px 10px" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>

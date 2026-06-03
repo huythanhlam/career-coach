@@ -5,7 +5,7 @@ import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
 import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS, COMMON_MINORS, SKILLS_BY_CATEGORY } from "@/lib/profileOptions";
 import { COMMON_ROLES } from "@/config/workflows";
-import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, ChevronRight, LayoutTemplate, User, Wand2, X, Upload, ChevronDown, ChevronUp, CheckCircle2, Info, Bookmark, FileText } from "lucide-react";
+import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, ChevronRight, LayoutTemplate, User, Wand2, X, Upload, ChevronDown, ChevronUp, CheckCircle2, Info, Bookmark, FileText, Scissors } from "lucide-react";
 import { SkillsPicker } from "@/components/ui/SkillsPicker";
 import { suggestWorkExperienceBullets, parseProfileFromImport } from "@/services/geminiService";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -241,7 +241,7 @@ const TEMPLATES = [
   { id: "Academic / Research", name: "Academic / Research", description: "Detailed format for publications and studies." }
 ];
 
-export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze }: { onSubmit: (data: any) => void; isGenerating: boolean; onAnalyze?: (resumeText: string, file: File) => void }) {
+export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTailor }: { onSubmit: (data: any) => void; isGenerating: boolean; onAnalyze?: (resumeText: string, file: File) => void; onTailor?: (resumeText: string, resumeName: string) => void }) {
   const { profile, loading } = useUserProfile();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [step0ResumeUploaded, setStep0ResumeUploaded] = useState<{ text: string; fileName: string; file: File } | null>(null);
@@ -254,6 +254,10 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze }: { on
     }
   }, [step]);
   const [startMethod, setStartMethod] = useState<"scratch" | "linkedin" | "resume" | null>(null);
+  const [showUploadSubMenu, setShowUploadSubMenu] = useState(false);
+  const [tailorUploading, setTailorUploading] = useState(false);
+  const [tailorUploadError, setTailorUploadError] = useState<string | null>(null);
+  const step0TailorRef = useRef<HTMLInputElement>(null);
   const [uploadedResumeText, setUploadedResumeText] = useState("");
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [step0Uploading, setStep0Uploading] = useState<"linkedin" | "resume" | null>(null);
@@ -665,16 +669,16 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze }: { on
 
           {/* Import existing resume */}
           <div style={{ ...cardBase, ...(startMethod === "resume" ? cardActive : {}) }}
-            onClick={() => step0ResumeRef.current?.click()}>
+            onClick={() => setShowUploadSubMenu(true)}>
             <div style={{ padding: "32px 24px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, flex: 1 }}>
               <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(47,107,79,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {step0Uploading === "resume" ? <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--forest)" }} /> : <FileText className="w-6 h-6" style={{ color: "var(--forest)" }} />}
               </div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--foreground)", textAlign: "center" }}>Upload existing resume</div>
-              <div style={{ fontSize: 13, color: "var(--muted-foreground)", textAlign: "center", lineHeight: 1.5 }}>Upload your current resume (PDF, DOCX, or TXT). We'll extract the content and let you match its style.</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--foreground)", textAlign: "center" }}>Upload a resume</div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", textAlign: "center", lineHeight: 1.5 }}>Upload your current resume to analyze, improve, or tailor it to a job description.</div>
             </div>
             <div style={{ padding: "14px 24px", borderTop: "1px solid var(--border)", background: "var(--muted)", textAlign: "center" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--forest)" }}>{step0Uploading === "resume" ? "Extracting…" : "Upload PDF / DOCX / TXT →"}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--forest)" }}>{step0Uploading === "resume" ? "Extracting…" : "Choose what to do →"}</span>
             </div>
             <input ref={step0ResumeRef} type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" style={{ display: "none" }} onChange={(e) => handleStep0Upload(e, "resume")} />
           </div>
@@ -711,6 +715,97 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze }: { on
               >
                 <FileText className="w-4 h-4" /> Build from this resume
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Upload sub-menu: Analyze vs Tailor */}
+        {showUploadSubMenu && (
+          <div className="mt-5 animate-in fade-in duration-200">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <button
+                type="button"
+                onClick={() => setShowUploadSubMenu(false)}
+                style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--muted)", border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", flexShrink: 0 }}
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>What would you like to do with your resume?</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Analyze My Resume */}
+              <button
+                type="button"
+                onClick={() => { setShowUploadSubMenu(false); step0ResumeRef.current?.click(); }}
+                style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--forest)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(47,107,79,0.10)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+              >
+                <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(47,107,79,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <FileText className="w-5 h-5" style={{ color: "var(--forest)" }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>Analyze my resume</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>Upload and improve your resume with AI assistance.</div>
+                </div>
+                <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "var(--muted-foreground)" }} />
+              </button>
+
+              {/* Tailor to Job Description */}
+              {onTailor && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setTailorUploadError(null); step0TailorRef.current?.click(); }}
+                    disabled={tailorUploading}
+                    style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: tailorUploading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 14, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left", opacity: tailorUploading ? 0.7 : 1 }}
+                    onMouseEnter={e => { if (!tailorUploading) { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(217,119,87,0.12)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                  >
+                    <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(217,119,87,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {tailorUploading ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--primary)" }} /> : <Scissors className="w-5 h-5" style={{ color: "var(--primary)" }} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>Tailor to job description</div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>
+                        {tailorUploading ? "Extracting resume text…" : "Upload your resume — we'll suggest edits to match a job posting."}
+                      </div>
+                    </div>
+                    {!tailorUploading && <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "var(--muted-foreground)" }} />}
+                  </button>
+                  {tailorUploadError && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#dc2626" }}>
+                      <X className="w-3.5 h-3.5 shrink-0" /> {tailorUploadError}
+                    </div>
+                  )}
+                  <input
+                    ref={step0TailorRef}
+                    type="file"
+                    accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                    style={{ display: "none" }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setTailorUploadError(null);
+                      setTailorUploading(true);
+                      try {
+                        const text = await extractTextFromFile(file);
+                        if (text.trim().length < 100) {
+                          setTailorUploadError("Could not extract enough text from this file. Please try a different file.");
+                          return;
+                        }
+                        setShowUploadSubMenu(false);
+                        onTailor(text, file.name.replace(/\.[^.]+$/, ""));
+                      } catch {
+                        setTailorUploadError("Failed to read file. Please try again.");
+                      } finally {
+                        setTailorUploading(false);
+                        if (step0TailorRef.current) step0TailorRef.current.value = "";
+                      }
+                    }}
+                  />
+                </>
+              )}
             </div>
           </div>
         )}

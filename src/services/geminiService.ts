@@ -42,8 +42,6 @@ export async function parseProfileFromImport(
     const lastBrace = clean.lastIndexOf("}");
     const jsonStr = firstBrace >= 0 && lastBrace >= 0 ? clean.slice(firstBrace, lastBrace + 1) : clean;
     const parsed = JSON.parse(jsonStr) as Partial<UserProfile>;
-    if (input.type === "linkedin") parsed.linkedinText = input.text;
-    if (input.type === "resume") parsed.resumeText = input.text;
     return parsed;
   } catch (err) {
     console.error("parseProfileFromImport failed:", err);
@@ -175,6 +173,73 @@ export async function analyzeResume(
   } catch (e) {
     console.error('Failed to parse resume analysis JSON. Raw response preview:', response.slice(0, 500));
     return { resumeText, overallScore: null, summary: '', improvements: [] };
+  }
+}
+
+export interface TailorSuggestion {
+  id: string;
+  section: string;
+  type: 'rewrite' | 'add_keyword' | 'strengthen';
+  originalText: string;
+  suggestedText: string;
+  rationale: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+const TAILOR_RESUME_SYSTEM = `You are an expert resume coach. Your job is to help candidates tailor their existing resume to a specific job description by suggesting targeted inline edits.
+
+CRITICAL RULES:
+- Never invent new companies, job titles, dates, projects, or metrics that don't exist in the resume
+- Only rewrite or strengthen content that already exists
+- You may suggest adding job-relevant keywords where the existing context supports them
+- Focus on: keyword alignment, stronger action verbs, quantification of existing achievements, reordering emphasis
+- Return ONLY a valid JSON array — no markdown fences, no explanation`;
+
+function parseTailorResponse(raw: string): TailorSuggestion[] {
+  const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  try { return JSON.parse(clean); } catch {}
+  const match = clean.match(/\[[\s\S]*\]/);
+  if (match) { try { return JSON.parse(match[0]); } catch {} }
+  throw new Error("Could not parse tailor suggestions JSON");
+}
+
+export async function tailorResume(
+  resumeText: string,
+  jobDescription: string
+): Promise<TailorSuggestion[]> {
+  const prompt = `Analyze the resume below against the job description and produce 8–15 inline edit suggestions.
+
+Return a JSON array with this exact shape:
+[
+  {
+    "id": "<unique string>",
+    "section": "<section label, e.g. 'Summary', 'Work Experience – Acme Corp'>",
+    "type": "rewrite" | "add_keyword" | "strengthen",
+    "originalText": "<verbatim substring from the resume — must match exactly>",
+    "suggestedText": "<drop-in replacement — same length/scope as originalText>",
+    "rationale": "<one sentence: why this edit helps for this specific job>",
+    "priority": "high" | "medium" | "low"
+  }
+]
+
+Rules:
+- originalText must be copied character-for-character from the resume — never abbreviate
+- Do NOT invent new roles, companies, dates, or metrics
+- high priority = directly matches a key requirement/keyword in the JD
+- Spread suggestions across Summary, Skills, and Work Experience sections
+
+JOB DESCRIPTION:
+${jobDescription}
+
+RESUME:
+${resumeText}`;
+
+  const response = await generateWorkflowData(TAILOR_RESUME_SYSTEM, prompt, 'claude-sonnet-4-6');
+  try {
+    return parseTailorResponse(response);
+  } catch (e) {
+    console.error('Failed to parse tailor suggestions. Raw preview:', response.slice(0, 500));
+    return [];
   }
 }
 
