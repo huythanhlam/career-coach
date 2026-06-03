@@ -7,7 +7,7 @@ import {
 import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
 import { SkillsPicker } from "@/components/ui/SkillsPicker";
-import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES } from "@/lib/profileOptions";
+import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS, COMMON_MINORS } from "@/lib/profileOptions";
 import type { WorkExperience, Education } from "@/types/userProfile";
 import { generateId } from "@/types/userProfile";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -128,7 +128,7 @@ export function ProfileSettings() {
   const [editingEduId, setEditingEduId] = useState<string | null>(null);
   const [eduDraft, setEduDraft] = useState<Education | null>(null);
   const [addingEdu, setAddingEdu] = useState(false);
-  const [newEdu, setNewEdu] = useState<Education>({ id: "", university: "", degree: "", graduationYear: "" });
+  const [newEdu, setNewEdu] = useState<Education>({ id: "", university: "", degree: "", graduationYear: "", major: "", minor: "" });
 
   /* derived */
   const fullName = profile.fullName || profile.preferredName || "";
@@ -178,7 +178,7 @@ export function ProfileSettings() {
     if (!newEdu.university && !newEdu.degree) return;
     setEducation((p) => [...p, { ...newEdu, id: generateId() }]);
     setAddingEdu(false);
-    setNewEdu({ id: "", university: "", degree: "", graduationYear: "" });
+    setNewEdu({ id: "", university: "", degree: "", graduationYear: "", major: "", minor: "" });
   }
 
   function workFields(data: WorkExperience, onChange: (f: keyof WorkExperience, v: string) => void) {
@@ -209,6 +209,10 @@ export function ProfileSettings() {
           <ComboInput style={iStyle} value={data.degree} onChange={(v) => onChange("degree", v)} options={DEGREE_TYPES} placeholder="B.S. Computer Science" /></div>
         <div><label style={lStyle}>Graduation Year</label>
           <MonthYearPicker value={data.graduationYear} onChange={(v) => onChange("graduationYear", v)} style={iStyle} /></div>
+        <div><label style={lStyle}>Major</label>
+          <ComboInput style={iStyle} value={data.major ?? ""} onChange={(v) => onChange("major", v)} options={COMMON_MAJORS} placeholder="e.g., Computer Science" /></div>
+        <div><label style={lStyle}>Minor</label>
+          <ComboInput style={iStyle} value={data.minor ?? ""} onChange={(v) => onChange("minor", v)} options={COMMON_MINORS} placeholder="e.g., Statistics" /></div>
       </div>
     );
   }
@@ -379,7 +383,7 @@ export function ProfileSettings() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold tracking-widest uppercase" style={{ color: "var(--muted-foreground)" }}>Education</h3>
               <button
-                onClick={() => { setAddingEdu(true); setNewEdu({ id: "", university: "", degree: "", graduationYear: "" }); }}
+                onClick={() => { setAddingEdu(true); setNewEdu({ id: "", university: "", degree: "", graduationYear: "", major: "", minor: "" }); }}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl"
                 style={{ background: "rgba(217,119,87,0.1)", color: "var(--primary)", border: "1px solid rgba(217,119,87,0.2)" }}
               >

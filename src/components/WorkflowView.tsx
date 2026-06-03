@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Loader2, Sparkles, FileText, Link as LinkIcon,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Bookmark, Trash2, Plus,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import type { Chat } from "@google/genai";
@@ -53,7 +53,7 @@ const fieldStyle: React.CSSProperties = {
 
 export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const config = workflowsConfig[workflowId];
-  const { profile } = useUserProfile();
+  const { profile, updateProfile } = useUserProfile();
   const [formData, setFormData] = useState<Record<string, any>>(() => {
     if (workflowId === "resume" && profile.resumeText)
       return { resumeText: profile.resumeText };
@@ -67,6 +67,7 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const rawFileMap = useRef<Record<string, File>>({});
   const [resumeGeneratorData, setResumeGeneratorData] = useState<Record<string, any> | null>(null);
+  const [savedResumeText, setSavedResumeText] = useState<string | null>(null);
   const [marketData, setMarketData] = useState<MarketCompData | null>(null);
   const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
   const [numPages, setNumPages] = useState<number>();
@@ -202,11 +203,63 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
     );
   }
 
+  if (workflowId === "resume_generation" && savedResumeText !== null) {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <ResumeGeneratorWorkspace
+          initialResumeText={savedResumeText}
+          onReset={() => setSavedResumeText(null)}
+        />
+      </div>
+    );
+  }
+
   if (workflowId === "resume_generation") {
+    const savedResumes = profile.savedResumes ?? [];
+    const handleDeleteSaved = async (id: string) => {
+      await updateProfile({ savedResumes: savedResumes.filter((r) => r.id !== id) });
+    };
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
         <PageHeader title={config.title} description={config.description} />
         <div className="flex-1 overflow-auto no-scrollbar p-8">
+          {savedResumes.length > 0 && (
+            <div style={{ maxWidth: 760, margin: "0 auto 40px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                <Bookmark className="w-3.5 h-3.5" /> Saved Resumes
+              </div>
+              <div className="flex flex-col gap-3">
+                {savedResumes.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((r) => (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14 }}>
+                    <FileText className="w-5 h-5 shrink-0" style={{ color: "var(--primary)" }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSavedResumeText(r.text)}
+                      style={{ height: 36, padding: "0 16px", background: "var(--primary)", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#fff", cursor: "pointer" }}
+                    >
+                      Open
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSaved(r.id)}
+                      style={{ height: 36, width: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer", color: "var(--muted-foreground)" }}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ margin: "28px 0 4px", borderTop: "1px solid var(--border)" }} />
+              <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", margin: "20px 0 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                <Plus className="w-3.5 h-3.5" /> Build New Resume
+              </div>
+            </div>
+          )}
           <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} />
         </div>
       </div>

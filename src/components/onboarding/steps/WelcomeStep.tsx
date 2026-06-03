@@ -31,7 +31,7 @@ export function WelcomeStep({ onStart, onSkip }: Props) {
       </h1>
 
       <p className="text-base mb-2" style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-        Let's set up your career profile so every tool — Resume Builder, Impact Audit, Profile Lab — already knows your background.
+        Let's set up your career profile so every tool — Resume Builder, Resume Analyzer, Profile Lab — already knows your background.
       </p>
       <p className="text-sm mb-10" style={{ color: "var(--muted-foreground)" }}>
         Import from LinkedIn or paste your resume. Takes about 30 seconds.

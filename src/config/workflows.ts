@@ -582,13 +582,13 @@ export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
         required: false,
       }
     ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Resume Generator\nAction: You are an expert resume writer. Use the provided information (Template style, Target Role, Personal Info, Work History, Education, Skills) to generate a complete, professional, Markdown-formatted resume. Incorporate best practices for tech resumes, such as quantifying impact (the XYZ formula) where possible. 
+    systemInstruction: `${basePersona}\n\nWorkflow: Resume Generator\nAction: You are an expert resume writer. Scaffold a clean, professional, Markdown-formatted resume from the provided information.
 
-If a work history entry has empty or missing responsibilities, you MUST generate realistic, high-impact achievements and responsibilities appropriate for that specific job title and company.
+CRITICAL RULE — DO NOT generate or invent bullet points for work experience. Copy the user's responsibilities exactly as provided. If responsibilities are empty or missing for a role, output a single placeholder line: "- [Add your achievements here — or ask the AI Coach to suggest bullet points]". Never fabricate achievements, metrics, or responsibilities.
 
-Format the resume according to the requested template style. Wait for the user's instructions to edit or refine the resume. When the user asks you to modify the resume, provide the completely updated markdown.`,
+Format the resume structure and all other sections (contact, education, skills, summary if requested) according to the requested template style. When the user later asks you to improve or generate bullet points, you may then craft high-impact, metric-driven content using the XYZ formula. When updating the resume, always return the complete updated markdown.`,
     generatePrompt: (data) => {
-      const { template, targetRole, personalInfo, workHistory, education, skills } = data;
+      const { template, targetRole, personalInfo, workHistory, education, skills, jobDescription, uploadedResumeText } = data;
 
       const contactSection = `
 NAME: ${personalInfo.name}
@@ -599,13 +599,13 @@ GITHUB: ${personalInfo.github || 'Not provided'}
 PORTFOLIO: ${personalInfo.portfolio || 'Not provided'}
 `.trim();
 
-      const workSection = Array.isArray(workHistory) 
+      const workSection = Array.isArray(workHistory)
         ? workHistory.map((w, i) => `
 JOB #${i + 1}:
 Role: ${w.role}
 Company: ${w.company || 'Not specified'}
 Dates: ${w.startDate || 'N/A'} - ${w.endDate || 'Present'}
-Responsibilities: ${w.responsibilities || '[EMPTY - PLEASE GENERATE HIGH-QUALITY CONTENT FOR THIS ROLE]'}
+Responsibilities: ${w.responsibilities || '[EMPTY]'}
 `.trim()).join("\n\n")
         : workHistory;
 
@@ -618,9 +618,15 @@ Year: ${e.year || 'N/A'}
 `.trim()).join("\n\n")
         : education;
 
+      const templateInstruction = template === "Match uploaded style" && uploadedResumeText
+        ? `Mirror the exact formatting, section order, and visual structure of the uploaded resume below. Preserve its layout style while updating all content with the new information provided.\n\n--- UPLOADED RESUME TO MATCH STYLE ---\n${uploadedResumeText.slice(0, 3000)}\n---`
+        : `Use the **${template}** template style.`;
+
       return `
-Please generate a comprehensive resume using the **${template}** template style.
+Please scaffold a resume. ${templateInstruction}
 Target Role: **${targetRole}**
+
+IMPORTANT: Do NOT invent bullet points. Use only what the user provided for each role's responsibilities. If a role has [EMPTY] responsibilities, output exactly one placeholder line.
 
 --- PERSONAL INFORMATION ---
 ${contactSection}
@@ -633,8 +639,7 @@ ${eduSection}
 
 --- SKILLS & ADDITIONAL INFO ---
 ${skills || 'Not provided'}
-
-Final Note: If any work responsibilities were marked as EMPTY, please use your expertise to fill them with professional, metric-driven bullet points using the XYZ formula.
+${jobDescription ? `\n--- TARGET JOB DESCRIPTION (for keyword alignment in skills/summary only) ---\n${jobDescription}` : ""}
 `.trim();
     },
     suggestedPrompts: [

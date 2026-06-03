@@ -13,6 +13,8 @@ export interface Education {
   university: string;
   degree: string;
   graduationYear: string;
+  major?: string;
+  minor?: string;
 }
 
 export interface UserProfile {
@@ -32,6 +34,7 @@ export interface UserProfile {
   skills: string[];
   resumeText?: string;
   linkedinText?: string;
+  savedResumes?: { id: string; name: string; text: string; createdAt: string }[];
   onboardingComplete: boolean;
   createdAt: string;
   updatedAt: string;

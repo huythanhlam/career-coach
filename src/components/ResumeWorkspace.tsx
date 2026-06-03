@@ -171,7 +171,7 @@ export function ResumeWorkspace({ initialResumeText, improvements, overallScore,
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-display text-sm font-semibold" style={{ color: "var(--foreground)" }}>Impact Audit</div>
+            <div className="font-display text-sm font-semibold" style={{ color: "var(--foreground)" }}>Resume Analyzer</div>
             <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
               {saveStatus === "saving" && <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Syncing…</span>}
               {saveStatus === "saved" && <span className="flex items-center gap-1" style={{ color: "var(--forest)" }}><Save className="w-3 h-3" /> Saved</span>}
