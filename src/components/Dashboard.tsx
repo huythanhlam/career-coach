@@ -3,7 +3,6 @@ import {
   Plus,
   ArrowRight,
   FileText,
-  ShieldCheck,
   Users,
   X,
 } from "lucide-react";
@@ -197,7 +196,6 @@ export function Dashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
             {[
               { icon: FileText,    label: "Resume Builder", note: "v8 · 28 edits since Apr 1" },
-              { icon: ShieldCheck, label: "Resume Analyzer",   note: "Stripe résumé · 3 suggestions left" },
               { icon: Users,       label: "Behavioral Sim", note: "Last topic: leadership" },
             ].map((tool, i) => {
               const Icon = tool.icon;
