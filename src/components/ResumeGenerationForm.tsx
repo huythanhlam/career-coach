@@ -10,7 +10,6 @@ import { SkillsPicker } from "@/components/ui/SkillsPicker";
 import { suggestWorkExperienceBullets, parseProfileFromImport } from "@/services/geminiService";
 import { useUserProfile } from "@/context/UserProfileContext";
 import * as pdfjsLib from "pdfjs-dist";
-import mammoth from "mammoth";
 // Use the CDN worker to avoid Vite bundling issues with pdfjs-dist v5 worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
@@ -31,6 +30,7 @@ async function extractTextFromFile(file: File): Promise<string> {
     file.name.endsWith(".docx")
   ) {
     const arrayBuffer = await file.arrayBuffer();
+    const mammoth = (await import("mammoth")).default;
     const result = await mammoth.extractRawText({ arrayBuffer });
     return result.value;
   } else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
