@@ -18,6 +18,8 @@ export function rowToProfile(row: Record<string, unknown>): UserProfile {
     skills: (row.skills as string[]) ?? [],
     resumeText: (row.resume_text as string) ?? undefined,
     linkedinText: (row.linkedin_text as string) ?? undefined,
+    savedResumes: (row.saved_resumes as UserProfile["savedResumes"]) ?? [],
+    savedCoverLetters: (row.saved_cover_letters as UserProfile["savedCoverLetters"]) ?? [],
     onboardingComplete: (row.onboarding_complete as boolean) ?? false,
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
@@ -45,6 +47,14 @@ export function profileToRow(
     skills: profile.skills,
     resume_text: profile.resumeText ?? null,
     linkedin_text: profile.linkedinText ?? null,
+    // Persist saved resumes inline (text is small enough for JSONB)
+    saved_resumes: profile.savedResumes ?? [],
+    // Persist cover letter metadata only — full text lives in Supabase Storage
+    saved_cover_letters: (profile.savedCoverLetters ?? []).map(
+      ({ id, name, storagePath, jobTitle, company, createdAt }) => ({
+        id, name, storagePath, jobTitle, company, createdAt,
+      })
+    ),
     onboarding_complete: profile.onboardingComplete,
     updated_at: new Date().toISOString(),
   };

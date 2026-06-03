@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { WorkflowId } from "@/components/Sidebar";
 import { workflowsConfig } from "@/config/workflows";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -20,6 +21,8 @@ import { ResumeWorkspace } from "@/components/ResumeWorkspace";
 import { ResumeGeneratorWorkspace } from "@/components/ResumeGeneratorWorkspace";
 import { ResumeGenerationForm } from "@/components/ResumeGenerationForm";
 import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompensationViz";
+import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
+import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -68,6 +71,8 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const rawFileMap = useRef<Record<string, File>>({});
   const [resumeGeneratorData, setResumeGeneratorData] = useState<Record<string, any> | null>(null);
   const [savedResumeText, setSavedResumeText] = useState<string | null>(null);
+  const [coverLetterFormData, setCoverLetterFormData] = useState<CoverLetterFormData | null>(null);
+  const [savedCoverLetterPayload, setSavedCoverLetterPayload] = useState<SavedCoverLetterPayload | null>(null);
   const [marketData, setMarketData] = useState<MarketCompData | null>(null);
   const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
   const [numPages, setNumPages] = useState<number>();
@@ -163,6 +168,10 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
       return;
     }
 
+    if (workflowId === "cover_letter") {
+      return;
+    }
+
     setIsGenerating(true);
     setMainDocumentText(" ");
     const prompt = config.generatePrompt(formData);
@@ -210,6 +219,93 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
           initialResumeText={savedResumeText}
           onReset={() => setSavedResumeText(null)}
         />
+      </div>
+    );
+  }
+
+  if (workflowId === "cover_letter" && coverLetterFormData) {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <CoverLetterWorkspace
+          initialFormData={coverLetterFormData}
+          onReset={() => setCoverLetterFormData(null)}
+        />
+      </div>
+    );
+  }
+
+  if (workflowId === "cover_letter" && savedCoverLetterPayload !== null) {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <CoverLetterWorkspace
+          initialPayload={savedCoverLetterPayload}
+          onReset={() => setSavedCoverLetterPayload(null)}
+        />
+      </div>
+    );
+  }
+
+  if (workflowId === "cover_letter") {
+    const savedLetters = profile.savedCoverLetters ?? [];
+    const handleDeleteSavedLetter = async (id: string, storagePath: string) => {
+      await supabase.storage.from("user-documents").remove([storagePath]);
+      await updateProfile({ savedCoverLetters: savedLetters.filter((l) => l.id !== id) });
+    };
+    const handleOpenLetter = async (storagePath: string) => {
+      const { data, error } = await supabase.storage.from("user-documents").download(storagePath);
+      if (error || !data) { console.error("Failed to load cover letter:", error); return; }
+      try {
+        const payload = JSON.parse(await data.text()) as SavedCoverLetterPayload;
+        setSavedCoverLetterPayload(payload);
+      } catch {
+        console.error("Failed to parse cover letter payload");
+      }
+    };
+    return (
+      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+        <PageHeader title={config.title} description={config.description} />
+        <div className="flex-1 overflow-auto no-scrollbar p-8">
+          {savedLetters.length > 0 && (
+            <div style={{ maxWidth: 760, margin: "0 auto 40px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                <Bookmark className="w-3.5 h-3.5" /> Saved Cover Letters
+              </div>
+              <div className="flex flex-col gap-3">
+                {savedLetters.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((l) => (
+                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14 }}>
+                    <FileText className="w-5 h-5 shrink-0" style={{ color: "var(--primary)" }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
+                        {l.jobTitle && l.company ? `${l.jobTitle} at ${l.company} · ` : ""}{new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenLetter(l.storagePath)}
+                      style={{ height: 36, padding: "0 16px", background: "var(--primary)", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#fff", cursor: "pointer" }}
+                    >
+                      Open
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSavedLetter(l.id, l.storagePath)}
+                      style={{ height: 36, width: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer", color: "var(--muted-foreground)" }}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ margin: "28px 0 4px", borderTop: "1px solid var(--border)" }} />
+              <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", margin: "20px 0 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                <Plus className="w-3.5 h-3.5" /> Write New Cover Letter
+              </div>
+            </div>
+          )}
+          <CoverLetterForm isGenerating={false} onSubmit={(data) => setCoverLetterFormData(data)} />
+        </div>
       </div>
     );
   }

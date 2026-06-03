@@ -21,6 +21,20 @@ import { getScopedStyles, loadGoogleFont } from "@/components/ResumeRenderer";
 
 export interface DocMessage { role: "user" | "model"; text: string; }
 
+export interface DocStyle {
+  templateId: string;
+  accentColor: string;
+  accentStyle: "line" | "filled" | "minimal";
+  paperBg: string;
+}
+
+export interface StoredDocumentPayload {
+  version: 1;
+  html: string;
+  style: DocStyle;
+  title?: string;
+}
+
 export interface DocumentEditorProps {
   content: string;
   onChange: (markdown: string) => void;
@@ -33,16 +47,15 @@ export interface DocumentEditorProps {
   aiEnabled?: boolean;
   aiPlaceholder?: string;
   onClose?: () => void;
-  onSave?: (content: string, title: string) => void;
+  onSave?: (content: string, title: string, html: string, style: DocStyle) => void;
   exportFileName?: string;
   stylePanel?: React.ReactNode;
-}
-
-interface DocStyle {
-  templateId: string;
-  accentColor: string;
-  accentStyle: "line" | "filled" | "minimal";
-  paperBg: string;
+  /** Raw HTML to load directly (bypasses markdown→html conversion). Used when reopening a saved HTML document. */
+  rawHtml?: string;
+  /** Style to restore when reopening a saved document. */
+  initialStyle?: Partial<DocStyle>;
+  /** Optional non-editable header rendered above the document body (e.g. cover letter letterhead). */
+  headerHtml?: string;
 }
 
 // ─── template font map ─────────────────────────────────────────────────────────
@@ -565,6 +578,7 @@ export function DocumentEditor({
   aiChat, aiMessages: aiMessagesProp,
   aiEnabled = true, aiPlaceholder = "Ask AI to edit, rewrite, or improve…",
   onClose, onSave, exportFileName = "document", stylePanel,
+  rawHtml, initialStyle, headerHtml,
 }: DocumentEditorProps) {
   const [title, setTitle] = useState(titleProp);
   const [saveStatus, setSaveStatus] = useState<"" | "saving" | "saved">("");
@@ -580,6 +594,7 @@ export function DocumentEditor({
     accentColor: "#D97757",
     accentStyle: "line",
     paperBg: "#ffffff",
+    ...initialStyle,
   });
 
   const [currentTextColor, setCurrentTextColor] = useState("#1F1B16");
@@ -600,10 +615,12 @@ export function DocumentEditor({
   const titleRef = useRef<HTMLSpanElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync external content
+  // Sync external content — rawHtml takes precedence on first render
   useEffect(() => {
     if (sourceRef.current === "external" && editorRef.current)
-      editorRef.current.innerHTML = markdownToHtml(content);
+      editorRef.current.innerHTML = rawHtml ?? markdownToHtml(content);
+  // rawHtml is intentionally only read on mount; content drives subsequent updates
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content]);
 
   useEffect(() => {
@@ -816,7 +833,7 @@ export function DocumentEditor({
             <Palette style={{ width: 14, height: 14 }} />
           </button>
           {onSave && (
-            <button onClick={() => onSave(content, title)}
+            <button onClick={() => onSave(content, title, editorRef.current?.innerHTML ?? markdownToHtml(content), docStyle)}
               style={{ height: 32, padding: "0 14px", background: "var(--primary)", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", gap: 5 }}>
               <Bookmark style={{ width: 13, height: 13 }} /> Save
             </button>
@@ -1004,6 +1021,12 @@ export function DocumentEditor({
         <div className="flex-1 overflow-y-auto" style={{ background: "var(--muted)" }}>
           <div style={{ padding: "32px 0 80px", display: "flex", justifyContent: "center" }}>
             <div style={{ width: "100%", maxWidth: 816, minHeight: 1056, background: docStyle.paperBg, boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px var(--border)", padding: "72px 96px" }}>
+              {headerHtml && (
+                <div
+                  dangerouslySetInnerHTML={{ __html: headerHtml }}
+                  style={{ marginBottom: 20, userSelect: "text", pointerEvents: "none" }}
+                />
+              )}
               {isLoading && !content ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 400, color: "var(--muted-foreground)", gap: 12 }}>
                   <Loader2 style={{ width: 32, height: 32, color: "var(--primary)" }} className="animate-spin" />

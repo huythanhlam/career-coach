@@ -647,5 +647,67 @@ ${jobDescription ? `\n--- TARGET JOB DESCRIPTION (for keyword alignment in skill
       "Add a professional summary at the top.",
       "Summarize my older experience to keep it to one page.",
     ]
-  }
+  },
+
+  cover_letter: {
+    id: "cover_letter",
+    title: "Cover Letter Creator",
+    description: "Generate a tailored, one-page cover letter from your resume or profile and the job description.",
+    fields: [],
+    systemInstruction: `${basePersona}
+
+Workflow: Cover Letter Generator
+Action: Write a compelling, authentic cover letter using ONLY the candidate's real experience. Never invent achievements, metrics, or job responsibilities.
+
+STRUCTURE — strictly one page, 350–420 words total:
+1. OPENING HOOK (2–3 sentences): Name the specific role and company. Lead with the single most relevant credential or concrete achievement. Never open with "I am writing to apply for…" or any variation.
+2. BODY PARAGRAPH 1: Connect 2–3 of the candidate's strongest, directly relevant experiences to requirements stated in the job description. Mirror JD keywords verbatim.
+3. BODY PARAGRAPH 2: Highlight one specific measurable achievement from the candidate's background (use the provided achievement if given, otherwise pick the strongest from their experience). Tie it to the company's mission or product area.
+4. CLOSING (2–3 sentences): Restate alignment, express specific and genuine enthusiasm, include a clear call to action.
+
+TONE MAP:
+- professional → formal, measured, minimal contractions
+- conversational → warm, direct, light contractions, approachable voice
+- enthusiastic → forward-looking, energetic, one exclamation mark maximum
+
+RULES:
+- Mirror JD keywords verbatim (e.g. if JD says "distributed systems", use "distributed systems").
+- Hard cap: 450 words.
+- Return the COMPLETE letter wrapped in exactly one \`\`\`markdown fence. Nothing outside that fence.
+- No date line, no postal address block unless the user requests it.
+- If experience data is insufficient to fill a section honestly, insert a bracketed placeholder: [Add your strongest relevant achievement here].
+- When generating follow-up revisions, always return the full updated letter in a new \`\`\`markdown fence.`,
+    generatePrompt: (data) => {
+      let text = `Please write a cover letter.\n\n`;
+      text += `TONE: ${data.tone || "professional"}\n`;
+      text += `TARGET ROLE: ${data.jobTitle || "Not specified"}\n`;
+      text += `COMPANY: ${data.companyName || "Not specified"}\n\n`;
+      text += `JOB DESCRIPTION:\n${data.jobDescription}\n\n`;
+
+      if (data.achievements?.trim()) {
+        text += `SPECIFIC ACHIEVEMENTS TO HIGHLIGHT:\n${data.achievements}\n\n`;
+      }
+
+      if (data.resumeText?.trim()) {
+        text += `CANDIDATE EXPERIENCE (resume text — use only facts from this):\n${data.resumeText}\n\n`;
+      } else if (data.profileSummary?.trim()) {
+        text += `CANDIDATE EXPERIENCE (profile data — use only facts from this):\n${data.profileSummary}\n\n`;
+      }
+
+      if (data.resumeFile?.data) {
+        return [
+          { text },
+          { inlineData: { data: data.resumeFile.data, mimeType: data.resumeFile.mimeType } },
+        ];
+      }
+
+      return text;
+    },
+    suggestedPrompts: [
+      "Make the opening hook more compelling.",
+      "Shorten this to under 400 words.",
+      "Adjust the tone to be more enthusiastic.",
+      "Strengthen the connection to the job description.",
+    ],
+  },
 };
