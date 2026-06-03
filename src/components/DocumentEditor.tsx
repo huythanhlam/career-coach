@@ -2,7 +2,7 @@
  * DocumentEditor — reusable rich-text editor with AI sidebar.
  * Matches the app's Mentor Mode design tokens (terracotta / cream / forest).
  */
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import Markdown from "react-markdown";
 import {
@@ -56,6 +56,19 @@ export interface DocumentEditorProps {
   initialStyle?: Partial<DocStyle>;
   /** Optional non-editable header rendered above the document body (e.g. cover letter letterhead). */
   headerHtml?: string;
+  rightSidebarContent?: React.ReactNode;
+  /** When provided, the editor is seeded with raw HTML on mount, bypassing the
+   *  markdown → HTML conversion. Use this when you have pre-formatted HTML (e.g.
+   *  from mammoth DOCX conversion) that should not be round-tripped through markdown. */
+  initialHtml?: string;
+  /** When true, skips template CSS injection and uses DOCX-compatible styles instead.
+   *  Use together with initialHtml when displaying mammoth-converted DOCX content. */
+  rawHtmlMode?: boolean;
+}
+
+export interface DocumentEditorHandle {
+  /** Finds `original` text in the editor and replaces it with `suggested`. */
+  applyFix(original: string, suggested: string): void;
 }
 
 // ─── template font map ─────────────────────────────────────────────────────────
@@ -570,16 +583,53 @@ const selectStyle: React.CSSProperties = {
 
 let _cnt = 0;
 
+// ─── replaceInHtml (shared with ResumeAnalysisWorkspace) ───────────────────────
+
+function replaceInHtml(html: string, original: string, suggested: string): string {
+  if (!original || !suggested || original === suggested) return html;
+  if (html.includes(original)) return html.replace(original, suggested);
+  const encoded = original.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  if (encoded !== original && html.includes(encoded)) return html.replace(encoded, suggested);
+  try {
+    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+    const root = doc.body.firstElementChild as HTMLElement;
+    const nodes: Text[] = [];
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let n: Text | null;
+    while ((n = walker.nextNode() as Text)) nodes.push(n);
+    const combined = nodes.map(t => t.textContent ?? "").join("");
+    const idx = combined.indexOf(original);
+    if (idx === -1) return html;
+    let pos = 0, sN = -1, sO = 0, eN = -1, eO = 0;
+    for (let i = 0; i < nodes.length; i++) {
+      const len = nodes[i].textContent?.length ?? 0;
+      if (sN === -1 && pos + len > idx) { sN = i; sO = idx - pos; }
+      if (sN !== -1 && pos + len >= idx + original.length) { eN = i; eO = idx + original.length - pos; break; }
+      pos += len;
+    }
+    if (sN === -1 || eN === -1) return html;
+    if (sN === eN) {
+      nodes[sN].textContent = nodes[sN].textContent!.slice(0, sO) + suggested + nodes[sN].textContent!.slice(eO);
+    } else {
+      nodes[sN].textContent = nodes[sN].textContent!.slice(0, sO) + suggested;
+      for (let i = sN + 1; i <= eN; i++)
+        nodes[i].textContent = i === eN ? nodes[i].textContent!.slice(eO) : "";
+    }
+    return root.innerHTML;
+  } catch { return html; }
+}
+
 // ─── component ─────────────────────────────────────────────────────────────────
 
-export function DocumentEditor({
+export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorProps>(function DocumentEditor({
   content, onChange, isLoading = false,
   title: titleProp = "Untitled document", onTitleChange,
   aiChat, aiMessages: aiMessagesProp,
   aiEnabled = true, aiPlaceholder = "Ask AI to edit, rewrite, or improve…",
   onClose, onSave, exportFileName = "document", stylePanel,
   rawHtml, initialStyle, headerHtml,
-}: DocumentEditorProps) {
+  rightSidebarContent, initialHtml, rawHtmlMode = false,
+}, ref) {
   const [title, setTitle] = useState(titleProp);
   const [saveStatus, setSaveStatus] = useState<"" | "saving" | "saved">("");
   const [showAI, setShowAI] = useState(true);
@@ -610,18 +660,42 @@ export function DocumentEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const scopeId = useRef(`de-${++_cnt}`);
   const sourceRef = useRef<"external" | "user">("external");
+
+  useImperativeHandle(ref, () => ({
+    applyFix: (original, suggested) => {
+      if (!editorRef.current) return;
+      const newHtml = replaceInHtml(editorRef.current.innerHTML, original, suggested);
+      editorRef.current.innerHTML = newHtml;
+      sourceRef.current = "user";
+      onChange(htmlToMarkdown(newHtml));
+    },
+  }));
   const savedSelRef = useRef<Range | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync external content — rawHtml takes precedence on first render
+  // Seed editor on mount — runs synchronously before paint so editorRef is guaranteed set
+  const seededRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!editorRef.current || seededRef.current) return;
+    seededRef.current = true;
+    if (rawHtml) {
+      editorRef.current.innerHTML = rawHtml;
+    } else if (initialHtml) {
+      editorRef.current.innerHTML = initialHtml;
+    } else if (content) {
+      editorRef.current.innerHTML = markdownToHtml(content);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync external content changes after mount — skip if content is empty
+  // (empty content on mount would overwrite the rawHtml/initialHtml seed)
   useEffect(() => {
-    if (sourceRef.current === "external" && editorRef.current)
-      editorRef.current.innerHTML = rawHtml ?? markdownToHtml(content);
-  // rawHtml is intentionally only read on mount; content drives subsequent updates
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content]);
+    if (!editorRef.current || !seededRef.current) return;
+    if (sourceRef.current === "external" && content)
+      editorRef.current.innerHTML = markdownToHtml(content);
+  }, [content]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!content) return;
@@ -632,12 +706,8 @@ export function DocumentEditor({
 
   useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages]);
 
-  // Inject scoped CSS from getScopedStyles
+  // Inject scoped CSS — use DOCX-compatible styles in rawHtmlMode, template styles otherwise
   useEffect(() => {
-    const fonts = TEMPLATE_FONTS[docStyle.templateId] ?? { heading: "Inter", body: "Inter" };
-    loadGoogleFont(fonts.heading);
-    if (fonts.body !== fonts.heading) loadGoogleFont(fonts.body);
-
     const id = `${scopeId.current}-theme`;
     let el = document.getElementById(id) as HTMLStyleElement | null;
     if (!el) {
@@ -645,13 +715,35 @@ export function DocumentEditor({
       el.id = id;
       document.head.appendChild(el);
     }
-    el.textContent = getScopedStyles(
-      scopeId.current, docStyle.templateId,
-      docStyle.accentColor, docStyle.accentStyle,
-      fonts.heading, fonts.body, DENSITY,
-    );
+    if (rawHtmlMode) {
+      const scope = `#${scopeId.current}`;
+      el.textContent = `
+        ${scope} { font-family: Calibri, Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: #1a1a1a; }
+        ${scope} h1 { font-size: 18pt; font-weight: 700; margin: 0 0 6px; }
+        ${scope} h2 { font-size: 12pt; font-weight: 700; margin: 16px 0 4px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+        ${scope} h3 { font-size: 11pt; font-weight: 700; margin: 10px 0 2px; }
+        ${scope} h4 { font-size: 10.5pt; font-weight: 600; margin: 8px 0 2px; }
+        ${scope} p  { margin: 2px 0 4px; }
+        ${scope} ul { margin: 2px 0 6px; padding-left: 18px; }
+        ${scope} li { margin: 1px 0; }
+        ${scope} strong, ${scope} b { font-weight: 700; }
+        ${scope} em, ${scope} i { font-style: italic; }
+        ${scope} a  { color: inherit; text-decoration: underline; }
+        ${scope} table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+        ${scope} td, ${scope} th { padding: 3px 6px; border: 1px solid #e5e7eb; }
+      `;
+    } else {
+      const fonts = TEMPLATE_FONTS[docStyle.templateId] ?? { heading: "Inter", body: "Inter" };
+      loadGoogleFont(fonts.heading);
+      if (fonts.body !== fonts.heading) loadGoogleFont(fonts.body);
+      el.textContent = getScopedStyles(
+        scopeId.current, docStyle.templateId,
+        docStyle.accentColor, docStyle.accentStyle,
+        fonts.heading, fonts.body, DENSITY,
+      );
+    }
     return () => { document.getElementById(id)?.remove(); };
-  }, [docStyle.templateId, docStyle.accentColor, docStyle.accentStyle]);
+  }, [rawHtmlMode, docStyle.templateId, docStyle.accentColor, docStyle.accentStyle]);
 
   // Capture selection
   useEffect(() => {
@@ -1040,8 +1132,14 @@ export function DocumentEditor({
                   suppressContentEditableWarning
                   onInput={handleInput}
                   onBlur={saveSel}
-                  className="outline-none prose max-w-none prose-headings:font-semibold prose-h1:text-4xl prose-h1:mb-3 prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-3 prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-2 prose-p:my-2 prose-p:leading-relaxed prose-ul:my-3 prose-li:my-1"
-                  style={{ minHeight: 900, color: "var(--foreground)", fontSize: 11, lineHeight: 1.65, caretColor: "var(--primary)" }}
+                  className={rawHtmlMode
+                    ? "outline-none"
+                    : "outline-none prose max-w-none prose-headings:font-semibold prose-h1:text-4xl prose-h1:mb-3 prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-3 prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-2 prose-p:my-2 prose-p:leading-relaxed prose-ul:my-3 prose-li:my-1"
+                  }
+                  style={rawHtmlMode
+                    ? { minHeight: 900, caretColor: "var(--primary)" }
+                    : { minHeight: 900, color: "var(--foreground)", fontSize: 11, lineHeight: 1.65, caretColor: "var(--primary)" }
+                  }
                   data-placeholder="Start typing or ask the AI assistant to generate content…"
                 />
               )}
@@ -1049,8 +1147,16 @@ export function DocumentEditor({
           </div>
         </div>
 
+        {/* Analysis sidebar (overrides AI chat when provided) */}
+        {rightSidebarContent && (
+          <div className="flex flex-col shrink-0 print:hidden overflow-hidden"
+            style={{ width: 360, background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
+            {rightSidebarContent}
+          </div>
+        )}
+
         {/* AI sidebar */}
-        {aiEnabled && showAI && (
+        {!rightSidebarContent && aiEnabled && showAI && (
           <div className="flex flex-col shrink-0 print:hidden"
             style={{ width: 340, background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
             <div className="flex items-center gap-2 px-4 shrink-0"
@@ -1139,4 +1245,4 @@ export function DocumentEditor({
       `}</style>
     </div>
   );
-}
+});

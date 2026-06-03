@@ -9,7 +9,6 @@ import {
   Users,
   PenTool,
   Code,
-  ShieldCheck,
   Compass,
   Grid,
   Plus,
