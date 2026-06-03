@@ -67,7 +67,7 @@ const navGroups: NavGroup[] = [
     name: "Apply",
     items: [
       { id: "resume_generation", label: "Resume Builder", icon: FileText },
-      { id: "resume",            label: "Impact Audit",   icon: ShieldCheck },
+      { id: "resume",            label: "Resume Analyzer",   icon: ShieldCheck },
       { id: "linkedin",          label: "Profile Lab",    icon: Briefcase },
     ],
   },

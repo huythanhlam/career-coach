@@ -139,6 +139,37 @@ export const SKILLS_BY_CATEGORY: Record<string, string[]> = {
 
 export const ALL_SKILLS = Object.values(SKILLS_BY_CATEGORY).flat();
 
+export const COMMON_MAJORS = [
+  "Accounting", "Aerospace Engineering", "Anthropology", "Architecture",
+  "Artificial Intelligence", "Biochemistry", "Biology", "Biomedical Engineering",
+  "Business Administration", "Chemical Engineering", "Chemistry",
+  "Civil Engineering", "Communications", "Computer Engineering",
+  "Computer Science", "Cybersecurity", "Data Science", "Economics",
+  "Electrical Engineering", "English", "Entrepreneurship",
+  "Environmental Engineering", "Environmental Science", "Finance",
+  "Film Studies", "Fine Arts", "Graphic Design", "History",
+  "Human Resources Management", "Industrial Engineering",
+  "Information Systems", "Information Technology", "International Business",
+  "International Relations", "Journalism", "Kinesiology", "Law",
+  "Linguistics", "Machine Learning", "Management", "Marketing",
+  "Mathematics", "Mechanical Engineering", "Music", "Neuroscience",
+  "Nursing", "Nutrition", "Pharmacy", "Philosophy", "Physics",
+  "Political Science", "Pre-Medicine", "Psychology", "Public Health",
+  "Public Policy", "Sociology", "Software Engineering", "Statistics",
+  "Supply Chain Management", "Theater", "UX Design",
+];
+
+export const COMMON_MINORS = [
+  "Accounting", "Art History", "Biology", "Business", "Chemistry",
+  "Communications", "Computer Science", "Creative Writing", "Cybersecurity",
+  "Data Science", "Economics", "English", "Entrepreneurship",
+  "Environmental Studies", "Film Studies", "Finance", "French",
+  "Graphic Design", "History", "Information Systems", "Leadership",
+  "Mandarin", "Marketing", "Mathematics", "Music", "Neuroscience",
+  "Philosophy", "Physics", "Political Science", "Psychology",
+  "Public Policy", "Sociology", "Spanish", "Statistics",
+];
+
 export const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",

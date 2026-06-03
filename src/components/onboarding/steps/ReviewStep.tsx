@@ -4,7 +4,7 @@ import type { UserProfile, WorkExperience, Education } from "@/types/userProfile
 import { generateId } from "@/types/userProfile";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
-import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES } from "@/lib/profileOptions";
+import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS, COMMON_MINORS } from "@/lib/profileOptions";
 
 interface Props {
   extracted: Partial<UserProfile>;
@@ -65,7 +65,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
   const [education, setEducation] = useState<Education[]>(
     extracted.education?.length
       ? extracted.education
-      : [{ id: generateId(), university: "", degree: "", graduationYear: "" }]
+      : [{ id: generateId(), university: "", degree: "", graduationYear: "", major: "", minor: "" }]
   );
   const [skills, setSkills] = useState((extracted.skills ?? []).join(", "));
 
@@ -83,7 +83,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
     setEducation((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
   }
   function addEdu() {
-    setEducation((prev) => [...prev, { id: generateId(), university: "", degree: "", graduationYear: "" }]);
+    setEducation((prev) => [...prev, { id: generateId(), university: "", degree: "", graduationYear: "", major: "", minor: "" }]);
   }
   function removeEdu(id: string) {
     setEducation((prev) => prev.filter((e) => e.id !== id));
@@ -286,6 +286,14 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                   <div>
                     <label style={labelStyle}>Graduation Year</label>
                     <MonthYearPicker value={e.graduationYear} onChange={(v) => updateEdu(e.id, "graduationYear", v)} placeholder="Graduation" style={{ ...inputStyle, height: 38 }} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Major</label>
+                    <ComboInput value={e.major ?? ""} onChange={(v) => updateEdu(e.id, "major", v)} options={COMMON_MAJORS} placeholder="e.g., Computer Science" style={{ ...inputStyle, height: 38 }} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Minor</label>
+                    <ComboInput value={e.minor ?? ""} onChange={(v) => updateEdu(e.id, "minor", v)} options={COMMON_MINORS} placeholder="e.g., Statistics" style={{ ...inputStyle, height: 38 }} />
                   </div>
                 </div>
               </div>

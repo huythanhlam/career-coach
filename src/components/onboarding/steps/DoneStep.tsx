@@ -29,7 +29,7 @@ export function DoneStep({ name, onStart }: Props) {
       <ul className="flex flex-col gap-2.5 w-full mb-8 text-left">
         {[
           { icon: "📄", label: "Resume Builder", desc: "Pre-filled with your work history, education & skills" },
-          { icon: "🔍", label: "Impact Audit", desc: "Uses your resume text as the starting point" },
+          { icon: "🔍", label: "Resume Analyzer", desc: "Uses your resume text as the starting point" },
           { icon: "💼", label: "Profile Lab", desc: "Pre-loaded with your LinkedIn content" },
         ].map(({ icon, label, desc }) => (
           <li

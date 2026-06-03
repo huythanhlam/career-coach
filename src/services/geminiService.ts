@@ -5,7 +5,7 @@ const GATEWAY_URL =
 
 const PROFILE_EXTRACTION_SYSTEM = `You are a structured data extractor. Given career content (LinkedIn profile text or resume text), return ONLY a valid JSON object — no markdown fences, no explanation — matching this exact schema:
 {
-  "name": "string",
+  "fullName": "string",
   "email": "string",
   "phone": "string",
   "linkedin": "string (URL if present)",
@@ -15,8 +15,8 @@ const PROFILE_EXTRACTION_SYSTEM = `You are a structured data extractor. Given ca
   "currentRole": "string (most recent job title)",
   "yearsOfExperience": number,
   "summary": "string (2-3 sentences)",
-  "workHistory": [{ "id": "string (8-char random alphanumeric)", "company": "string", "role": "string", "startDate": "string", "endDate": "string", "responsibilities": "string (all bullets as newline-separated text)", "current": boolean }],
-  "education": [{ "id": "string (8-char random alphanumeric)", "university": "string", "degree": "string", "year": "string" }],
+  "workHistory": [{ "id": "string (8-char random alphanumeric)", "company": "string", "role": "string", "startDate": "string (e.g. January 2020)", "endDate": "string (e.g. March 2023, or Present if current)", "responsibilities": "string (all bullets as newline-separated text)", "current": boolean }],
+  "education": [{ "id": "string (8-char random alphanumeric)", "university": "string", "degree": "string", "graduationYear": "string (e.g. May 2021)", "major": "string", "minor": "string" }],
   "skills": ["array of individual skill strings"]
 }
 Omit fields not present in the source material (do not include null or empty strings). Generate random 8-character alphanumeric IDs for id fields.`;
@@ -36,7 +36,7 @@ export async function parseProfileFromImport(
   }
 
   try {
-    const raw = await generateWorkflowData(PROFILE_EXTRACTION_SYSTEM, prompt, "gemini-1.5-pro");
+    const raw = await generateWorkflowData(PROFILE_EXTRACTION_SYSTEM, prompt, "gemini-3.1-flash-lite");
     const clean = raw.replace(/^```json\s*/m, "").replace(/\s*```$/m, "").trim();
     const firstBrace = clean.indexOf("{");
     const lastBrace = clean.lastIndexOf("}");
@@ -68,15 +68,24 @@ export interface ResumeAnalysisResult {
   improvements: Improvement[];
 }
 
+const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? "";
+
 async function postToGateway(body: object): Promise<string> {
   console.log("🚀 Sending to gateway:", GATEWAY_URL);
   try {
     const response = await fetch(GATEWAY_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error("Gateway unreachable");
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "(no body)");
+      throw new Error(`Gateway ${response.status}: ${errBody}`);
+    }
     const data = await response.json();
     return data.text;
   } catch (error) {
