@@ -15,6 +15,7 @@ import {
   UserCog,
   Lock,
   Mail,
+  ShieldCheck,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 
