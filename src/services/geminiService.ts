@@ -205,9 +205,12 @@ function parseTailorResponse(raw: string): TailorSuggestion[] {
 
 export async function tailorResume(
   resumeText: string,
-  jobDescription: string
+  jobDescription: string,
+  jobMeta?: { jobTitle?: string; companyName?: string }
 ): Promise<TailorSuggestion[]> {
+  const targetLine = [jobMeta?.jobTitle, jobMeta?.companyName].filter(Boolean).join(" at ");
   const prompt = `Analyze the resume below against the job description and produce 8–15 inline edit suggestions.
+${targetLine ? `\nTARGET ROLE: ${targetLine}\n` : ""}
 
 Return a JSON array with this exact shape:
 [
