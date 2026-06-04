@@ -15,11 +15,16 @@ const PROFILE_EXTRACTION_SYSTEM = `You are a structured data extractor. Given ca
   "currentRole": "string (most recent job title)",
   "yearsOfExperience": number,
   "summary": "string (2-3 sentences)",
-  "workHistory": [{ "id": "string (8-char random alphanumeric)", "company": "string", "role": "string", "startDate": "string (e.g. January 2020)", "endDate": "string (e.g. March 2023, or Present if current)", "responsibilities": "string (all bullets as newline-separated text)", "current": boolean }],
+  "workHistory": [{ "id": "string (8-char random alphanumeric)", "company": "string", "role": "string", "startDate": "string (e.g. January 2020)", "endDate": "string (e.g. March 2023, or Present if current)", "responsibilities": "string (every bullet/sentence copied VERBATIM from the source, one per line, separated by \\n — do not summarise, reword, merge, or drop any)", "current": boolean }],
   "education": [{ "id": "string (8-char random alphanumeric)", "university": "string", "degree": "string", "graduationYear": "string (e.g. May 2021)", "major": "string", "minor": "string" }],
   "skills": ["array of individual skill strings"]
 }
-Omit fields not present in the source material (do not include null or empty strings). Generate random 8-character alphanumeric IDs for id fields.`;
+CRITICAL ACCURACY RULES:
+- Transcribe content exactly as written. Never invent, embellish, or infer responsibilities, metrics, titles, dates, or skills that are not in the source.
+- Preserve every work-experience bullet verbatim — do not summarise or combine bullets.
+- Keep dates exactly as the source presents them.
+- Omit fields not present in the source material (do not include null or empty strings).
+- Generate random 8-character alphanumeric IDs for id fields.`;
 
 export async function parseProfileFromImport(
   input:

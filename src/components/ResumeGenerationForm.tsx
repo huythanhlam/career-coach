@@ -10,6 +10,7 @@ import { SkillsPicker } from "@/components/ui/SkillsPicker";
 import { suggestWorkExperienceBullets, parseProfileFromImport } from "@/services/geminiService";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { parseDocumentToText } from "@/services/documentParserService";
+import { buildResumeDocumentFromText, ResumeImportError } from "@/services/resumeImportService";
 
 const DRAFT_KEY = "resume_builder_draft";
 
@@ -213,10 +214,12 @@ const TEMPLATES = [
   { id: "Academic / Research", name: "Academic / Research", description: "Detailed format for publications and studies." }
 ];
 
-export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTailor }: { onSubmit: (data: any) => void; isGenerating: boolean; onAnalyze?: (resumeText: string, file: File) => void; onTailor?: (resumeText: string, resumeName: string) => void }) {
+export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTailor, onImportToEditor }: { onSubmit: (data: any) => void; isGenerating: boolean; onAnalyze?: (resumeText: string, file: File) => void; onTailor?: (resumeText: string, resumeName: string) => void; onImportToEditor?: (markdown: string) => void }) {
   const { profile, loading } = useUserProfile();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [step0ResumeUploaded, setStep0ResumeUploaded] = useState<{ text: string; fileName: string; file: File } | null>(null);
+  // Which post-upload action is currently running its clean import (drives per-card spinner).
+  const [processingChoice, setProcessingChoice] = useState<"analyze" | "tailor" | "editor" | null>(null);
   const formRootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let el = formRootRef.current?.parentElement ?? null;
@@ -547,15 +550,18 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
       }
       if (type === "resume") {
         setStep0ResumeUploaded({ text, fileName: file.name, file });
-        // Stay on step 0 — let user choose Analyze vs Build
+        // Stay on step 0 — let user choose Analyze / Tailor / Open in editor
         return;
       }
-      setStartMethod(type);
-      // Pre-fill the form in the background then advance
-      setStep(1);
-      runImport(text, type);
-    } catch {
-      setStep0Error("Failed to read file. Please try again.");
+      // LinkedIn: run the same clean import and open the result in the editor.
+      const { markdown } = await buildResumeDocumentFromText(text, undefined, "linkedin");
+      onImportToEditor?.(markdown);
+    } catch (err) {
+      setStep0Error(
+        err instanceof ResumeImportError
+          ? err.message
+          : "Failed to read file. Please try again."
+      );
     } finally {
       setStep0Uploading(null);
       if (ref.current) ref.current.value = "";
@@ -566,6 +572,30 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
   const handleImport = async () => {
     if (!importText.trim()) return;
     await runImport(importText.trim(), importType);
+  };
+
+  // Shared "clean import": extract → AI parse → clean templated markdown, then route
+  // the result to the chosen destination. Used by every post-upload action so analyze,
+  // tailor, and open-in-editor all operate on the same clean template (not raw text).
+  const handleResumeChoice = async (choice: "analyze" | "tailor" | "editor") => {
+    if (!step0ResumeUploaded || processingChoice) return;
+    setStep0Error(null);
+    setProcessingChoice(choice);
+    try {
+      const { markdown } = await buildResumeDocumentFromText(step0ResumeUploaded.text);
+      if (choice === "analyze") onAnalyze?.(markdown, step0ResumeUploaded.file);
+      else if (choice === "tailor") onTailor?.(markdown, step0ResumeUploaded.fileName.replace(/\.[^.]+$/, ""));
+      else onImportToEditor?.(markdown);
+      setStep0ResumeUploaded(null);
+    } catch (err) {
+      setStep0Error(
+        err instanceof ResumeImportError
+          ? err.message
+          : "Couldn't import this resume. Please try again."
+      );
+    } finally {
+      setProcessingChoice(null);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -630,7 +660,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
               <div style={{ fontSize: 13, color: "var(--muted-foreground)", textAlign: "center", lineHeight: 1.5 }}>Go to LinkedIn → profile → <strong>More → Save to PDF</strong>, then upload here.</div>
             </div>
             <div style={{ padding: "14px 24px", borderTop: "1px solid var(--border)", background: "var(--muted)", textAlign: "center" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#0a66c2" }}>{step0Uploading === "linkedin" ? "Extracting…" : "Upload PDF / DOCX →"}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#0a66c2" }}>{step0Uploading === "linkedin" ? "Importing…" : "Upload PDF / DOCX →"}</span>
             </div>
             <input ref={step0LinkedinRef} type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: "none" }} onChange={(e) => handleStep0Upload(e, "linkedin")} />
           </div>
@@ -664,16 +694,17 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
               {onAnalyze && (
                 <button
                   type="button"
-                  onClick={() => { onAnalyze(step0ResumeUploaded.text, step0ResumeUploaded.file); setStep0ResumeUploaded(null); }}
-                  style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left" }}
+                  disabled={!!processingChoice}
+                  onClick={() => handleResumeChoice("analyze")}
+                  style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: processingChoice ? "wait" : "pointer", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left", opacity: processingChoice && processingChoice !== "analyze" ? 0.5 : 1 }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(217,119,87,0.12)"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
                 >
                   <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(217,119,87,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Info className="w-5 h-5" style={{ color: "var(--primary)" }} />
+                    {processingChoice === "analyze" ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--primary)" }} /> : <Info className="w-5 h-5" style={{ color: "var(--primary)" }} />}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>Analyze my resume</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>{processingChoice === "analyze" ? "Importing…" : "Analyze my resume"}</div>
                     <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>Get an AI score and improvement tips.</div>
                   </div>
                 </button>
@@ -683,44 +714,41 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
               {onTailor && (
                 <button
                   type="button"
-                  onClick={() => { onTailor(step0ResumeUploaded.text, step0ResumeUploaded.fileName.replace(/\.[^.]+$/, "")); setStep0ResumeUploaded(null); }}
-                  style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left" }}
+                  disabled={!!processingChoice}
+                  onClick={() => handleResumeChoice("tailor")}
+                  style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: processingChoice ? "wait" : "pointer", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left", opacity: processingChoice && processingChoice !== "tailor" ? 0.5 : 1 }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--highlight)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(232,185,72,0.18)"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
                 >
                   <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(232,185,72,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Scissors className="w-5 h-5" style={{ color: "var(--highlight)" }} />
+                    {processingChoice === "tailor" ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--highlight)" }} /> : <Scissors className="w-5 h-5" style={{ color: "var(--highlight)" }} />}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>Tailor to a job</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>{processingChoice === "tailor" ? "Importing…" : "Tailor to a job"}</div>
                     <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>Match it to a specific job description.</div>
                   </div>
                 </button>
               )}
 
-              {/* Build from this resume */}
-              <button
-                type="button"
-                onClick={() => {
-                  setUploadedResumeText(step0ResumeUploaded.text);
-                  setUploadedFileName(step0ResumeUploaded.fileName);
-                  setStartMethod("resume");
-                  setStep0ResumeUploaded(null);
-                  setStep(1);
-                  runImport(step0ResumeUploaded.text, "resume");
-                }}
-                style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--forest)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(47,107,79,0.10)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
-              >
-                <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(47,107,79,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <FileText className="w-5 h-5" style={{ color: "var(--forest)" }} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>Build from this resume</div>
-                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>Use it as a starting point to edit.</div>
-                </div>
-              </button>
+              {/* Open directly in the editor (deterministic — preserves your content) */}
+              {onImportToEditor && (
+                <button
+                  type="button"
+                  disabled={!!processingChoice}
+                  onClick={() => handleResumeChoice("editor")}
+                  style={{ borderRadius: 16, border: "2px solid var(--border)", background: "var(--card)", cursor: processingChoice ? "wait" : "pointer", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, padding: "18px 20px", transition: "border-color 0.15s, box-shadow 0.15s", textAlign: "left", opacity: processingChoice && processingChoice !== "editor" ? 0.5 : 1 }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--primary)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(217,119,87,0.12)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(217,119,87,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {processingChoice === "editor" ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--primary)" }} /> : <LayoutTemplate className="w-5 h-5" style={{ color: "var(--primary)" }} />}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>{processingChoice === "editor" ? "Importing…" : "Open in editor"}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>Drop it into a clean template, ready to edit.</div>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         )}
