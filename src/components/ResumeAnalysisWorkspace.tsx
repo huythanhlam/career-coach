@@ -14,12 +14,11 @@
  *   which uses a 3-pass text search: verbatim → HTML-entity → DOMParser text-nodes.
  *   Score updates instantly based on priority of applied fixes.
  */
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { AnalysisPanel } from "@/components/ResumeGeneratorWorkspace";
 import { ResumeGeneratorWorkspace, ResumeGeneratorWorkspaceHandle } from "@/components/ResumeGeneratorWorkspace";
 import type { ResumeAnalysisResult, Improvement } from "@/services/geminiService";
-import { parseDocumentToHtml, detectFileType } from "@/services/documentParserService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,33 +40,13 @@ export function ResumeAnalysisWorkspace({
   isAnalyzing,
   onReset,
 }: ResumeAnalysisWorkspaceProps) {
-  const fileType = detectFileType(file);
-  const needsConversion = fileType === "pdf" || fileType === "docx";
-
   const workspaceRef = useRef<ResumeGeneratorWorkspaceHandle>(null);
 
-  const [html, setHtml] = useState<string | null>(null);
-  const [loading, setLoading] = useState(needsConversion);
+  const [html] = useState<string | null>(null);
+  const [loading] = useState(false);
 
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [selectedImpId, setSelectedImpId] = useState<string | null>(null);
-
-  // Convert file to editable HTML on mount
-  useEffect(() => {
-    if (!needsConversion) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const h = await parseDocumentToHtml(file);
-        if (!cancelled) setHtml(h);
-      } catch {
-        // fall back to plain text
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleApply = useCallback((imp: Improvement) => {
     if (appliedIds.has(imp.id)) return;
