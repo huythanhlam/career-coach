@@ -4,7 +4,7 @@ import { useUserProfile } from "@/context/UserProfileContext";
 import { UserProfile } from "@/types/userProfile";
 import { TEMPLATES } from "@/components/TemplateGallery";
 import { JobDetailsSection, type JobDetailsValue } from "@/components/JobDetailsSection";
-import { extractTextFromFile } from "@/lib/documentUtils";
+import { parseDocumentToText } from "@/services/documentParserService";
 
 export interface CoverLetterFormData {
   jobDescription: string;
@@ -131,7 +131,7 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
           formData.resumeText = saved.text;
         }
       } else if (resumeSource === "upload" && uploadedFile) {
-        const text = await extractTextFromFile(uploadedFile);
+        const text = await parseDocumentToText(uploadedFile);
         formData.resumeText = text;
       }
 
