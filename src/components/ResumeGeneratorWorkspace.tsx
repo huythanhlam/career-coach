@@ -5,8 +5,8 @@
  * When analysisResult is provided, shows the score + improvements panel
  * in the right sidebar instead of the chat.
  */
-import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle, useRef } from "react";
-import { Loader2, Bookmark, Sparkles, CheckCircle2 } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from "react";
+import { Loader2, Bookmark, Sparkles, CheckCircle2, XCircle, Undo2, EyeOff, Eye } from "lucide-react";
 import { createTechCoachChat, sendMessageStream, type ResumeAnalysisResult, type Improvement } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -18,10 +18,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export interface ResumeGeneratorWorkspaceHandle {
   applyFix(original: string, suggested: string): void;
+  setHighlight(text: string | null): void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Chat = any;
+
+export type SuggestionStatus = 'pending' | 'applied' | 'dismissed';
 
 const PRIORITY_ORDER: Record<'high' | 'medium' | 'low', number> = { high: 0, medium: 1, low: 2 };
 
@@ -59,6 +62,7 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
   const docEditorRef = useRef<DocumentEditorHandle>(null);
   useImperativeHandle(ref, () => ({
     applyFix: (original, suggested) => docEditorRef.current?.applyFix(original, suggested),
+    setHighlight: (text) => docEditorRef.current?.setHighlight(text),
   }));
 
   const { profile, updateProfile } = useUserProfile();
@@ -156,11 +160,15 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
 
   // rightSidebarContentProp takes priority (e.g. from ResumeAnalysisWorkspace);
   // fall back to the internal AnalysisPanel when analysisResult is passed directly.
+  const internalStatuses = useMemo<Record<string, SuggestionStatus>>(
+    () => Object.fromEntries([...appliedIds].map(id => [id, 'applied' as const])),
+    [appliedIds],
+  );
   const internalPanel = analysisResult !== undefined ? (
     <AnalysisPanel
       result={analysisResult}
       isAnalyzing={isAnalyzing}
-      appliedIds={appliedIds}
+      statuses={internalStatuses}
       onApply={handleApplyFix}
     />
   ) : undefined;
@@ -244,27 +252,49 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
 export function AnalysisPanel({
   result,
   isAnalyzing,
-  appliedIds,
+  statuses,
+  hiddenIds,
   selectedImpId,
   onSelect,
   onApply,
+  onDismiss,
+  onUndo,
+  onToggleHide,
 }: {
   result: ResumeAnalysisResult | null;
   isAnalyzing: boolean;
-  appliedIds: Set<string>;
+  statuses: Record<string, SuggestionStatus>;
+  hiddenIds?: Set<string>;
   selectedImpId?: string | null;
   onSelect?: (id: string) => void;
   onApply: (imp: Improvement) => void;
+  onDismiss?: (imp: Improvement) => void;
+  onUndo?: (imp: Improvement) => void;
+  onToggleHide?: (id: string) => void;
 }) {
   const improvements = result?.improvements ?? [];
-  const sorted = [...improvements].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-  const pendingCount = improvements.filter(i => !appliedIds.has(i.id)).length;
+  const statusOf = (id: string): SuggestionStatus => statuses[id] ?? 'pending';
+  const isHidden = (id: string) => hiddenIds?.has(id) ?? false;
+
+  // Non-actioned (pending) first, then applied/dismissed; hidden cards sink to the
+  // bottom. Ties broken by priority (high → low).
+  const sorted = [...improvements].sort((a, b) => {
+    const rank = (imp: Improvement) =>
+      (isHidden(imp.id) ? 100 : 0) +
+      (statusOf(imp.id) === 'pending' ? 0 : 10) +
+      PRIORITY_ORDER[imp.priority];
+    return rank(a) - rank(b);
+  });
+
+  const pendingCount = improvements.filter(i => statusOf(i.id) === 'pending').length;
 
   // Boost score as fixes are applied: high +5, medium +3, low +1
-  const scoreBoost = [...appliedIds].reduce((acc, id) => {
-    const imp = improvements.find(i => i.id === id);
-    return acc + (imp ? (imp.priority === "high" ? 5 : imp.priority === "medium" ? 3 : 1) : 0);
-  }, 0);
+  const scoreBoost = improvements.reduce(
+    (acc, imp) => statusOf(imp.id) === 'applied'
+      ? acc + (imp.priority === "high" ? 5 : imp.priority === "medium" ? 3 : 1)
+      : acc,
+    0,
+  );
   const displayScore = result?.overallScore != null ? Math.min(100, result.overallScore + scoreBoost) : null;
 
   return (
@@ -337,21 +367,56 @@ export function AnalysisPanel({
                   Improvements ({pendingCount} of {improvements.length} remaining)
                 </div>
                 {sorted.map(imp => {
-                  const applied = appliedIds.has(imp.id);
+                  const status = statusOf(imp.id);
+                  const hidden = isHidden(imp.id);
                   const selected = selectedImpId === imp.id;
+                  const selectable = status !== 'applied'; // applied text no longer exists in the doc
+
+                  // Hidden → compact, restorable one-line row.
+                  if (hidden) {
+                    return (
+                      <div
+                        key={imp.id}
+                        id={`imp-card-${imp.id}`}
+                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--muted)", opacity: 0.75 }}
+                      >
+                        {status === 'applied'
+                          ? <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "var(--forest)", flexShrink: 0 }} />
+                          : status === 'dismissed'
+                            ? <XCircle className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+                            : <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--primary)", flexShrink: 0 }} />}
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--muted-foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {imp.checklistLabel}
+                        </span>
+                        <button
+                          onClick={e => { e.stopPropagation(); onToggleHide?.(imp.id); }}
+                          title="Show suggestion"
+                          style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4, height: 24, padding: "0 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--card)", color: "var(--muted-foreground)", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          <Eye className="w-3 h-3" /> Show
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  const accent =
+                    status === 'applied' ? "var(--forest)" :
+                    status === 'dismissed' ? "var(--muted-foreground)" :
+                    selected ? "var(--primary)" : "var(--border)";
+
                   return (
                     <div
                       key={imp.id}
                       id={`imp-card-${imp.id}`}
-                      onClick={() => !applied && onSelect?.(imp.id)}
+                      onClick={() => selectable && onSelect?.(imp.id)}
                       style={{
                         background: "var(--card)",
-                        border: `1px solid ${selected ? "var(--primary)" : "var(--border)"}`,
+                        border: `1px solid ${accent}`,
                         borderRadius: 16,
                         padding: 16,
-                        opacity: applied ? 0.5 : 1,
+                        opacity: status === 'dismissed' ? 0.6 : 1,
                         transition: "opacity 0.2s, border-color 0.15s, box-shadow 0.15s",
-                        cursor: applied ? "default" : "pointer",
+                        cursor: selectable ? "pointer" : "default",
                         boxShadow: selected ? "0 0 0 2px rgba(217,119,87,0.25)" : "none",
                       }}
                     >
@@ -362,20 +427,56 @@ export function AnalysisPanel({
                         <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-foreground)", opacity: 0.7 }}>
                           {imp.category}
                         </span>
+                        {status === 'applied' && (
+                          <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--forest)", background: "rgba(47,107,79,0.10)", border: "1px solid rgba(47,107,79,0.25)", padding: "2px 7px", borderRadius: 9999 }}>
+                            <CheckCircle2 className="w-3 h-3" /> Applied
+                          </span>
+                        )}
+                        {status === 'dismissed' && (
+                          <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-foreground)", background: "var(--muted)", border: "1px solid var(--border)", padding: "2px 7px", borderRadius: 9999 }}>
+                            <XCircle className="w-3 h-3" /> Dismissed
+                          </span>
+                        )}
+                        {onToggleHide && (
+                          <button
+                            onClick={e => { e.stopPropagation(); onToggleHide(imp.id); }}
+                            title="Hide suggestion"
+                            style={{ marginLeft: status === 'pending' ? "auto" : 8, flexShrink: 0, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, border: "none", background: "transparent", color: "var(--muted-foreground)", cursor: "pointer" }}
+                          >
+                            <EyeOff className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: "0 0 4px" }}>{imp.checklistLabel}</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: "0 0 4px", textDecoration: status === 'dismissed' ? "line-through" : "none" }}>{imp.checklistLabel}</p>
                       <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.55, margin: "0 0 10px" }}>{imp.description}</p>
-                      {!applied ? (
-                        <button
-                          onClick={e => { e.stopPropagation(); onApply(imp); }}
-                          style={{ width: "100%", height: 32, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "var(--card)", color: "var(--primary)", fontSize: 11, fontWeight: 700, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "background 0.15s" }}
-                        >
-                          <Sparkles className="w-3 h-3" /> Apply Fix
-                        </button>
-                      ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--forest)", fontWeight: 600 }}>
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Applied
+
+                      {status === 'pending' ? (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={e => { e.stopPropagation(); onApply(imp); }}
+                            style={{ flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "var(--card)", color: "var(--primary)", fontSize: 11, fontWeight: 700, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "background 0.15s" }}
+                          >
+                            <Sparkles className="w-3 h-3" /> Apply Fix
+                          </button>
+                          {onDismiss && (
+                            <button
+                              onClick={e => { e.stopPropagation(); onDismiss(imp); }}
+                              title="Dismiss suggestion"
+                              style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "transparent", color: "var(--muted-foreground)", fontSize: 11, fontWeight: 700, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                            >
+                              <XCircle className="w-3 h-3" /> Dismiss
+                            </button>
+                          )}
                         </div>
+                      ) : (
+                        onUndo && (
+                          <button
+                            onClick={e => { e.stopPropagation(); onUndo(imp); }}
+                            style={{ width: "100%", height: 32, borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer", background: "var(--card)", color: "var(--foreground)", fontSize: 11, fontWeight: 700, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "background 0.15s" }}
+                          >
+                            <Undo2 className="w-3 h-3" /> Undo
+                          </button>
+                        )
                       )}
                     </div>
                   );
