@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { extractTextFromFile } from "@/lib/documentUtils";
+import { parseDocumentToText } from "@/services/documentParserService";
 
 export function useDocumentUpload() {
   const [isExtracting, setIsExtracting] = useState(false);
@@ -9,7 +9,7 @@ export function useDocumentUpload() {
     setIsExtracting(true);
     setExtractionError(null);
     try {
-      const text = await extractTextFromFile(file);
+      const text = await parseDocumentToText(file);
       return text;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to extract text from file.";
