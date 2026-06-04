@@ -384,7 +384,7 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
               </div>
             </div>
           )}
-          <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} onAnalyze={handleAnalyzeFromBuilder} onTailor={(text, name) => { setTailorInitialResume({ text, name }); setShowTailor(true); }} />
+          <ResumeGenerationForm isGenerating={isGenerating} onSubmit={data => setResumeGeneratorData(data)} onAnalyze={handleAnalyzeFromBuilder} onTailor={(text, name) => { setTailorInitialResume({ text, name }); setShowTailor(true); }} onImportToEditor={markdown => setSavedResumeText(markdown)} />
         </div>
       </div>
     );
