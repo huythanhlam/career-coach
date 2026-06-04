@@ -9,7 +9,7 @@ import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, ChevronRight, LayoutTemplat
 import { SkillsPicker } from "@/components/ui/SkillsPicker";
 import { suggestWorkExperienceBullets, parseProfileFromImport } from "@/services/geminiService";
 import { useUserProfile } from "@/context/UserProfileContext";
-import { extractTextFromFile } from "@/lib/documentUtils";
+import { parseDocumentToText } from "@/services/documentParserService";
 
 const DRAFT_KEY = "resume_builder_draft";
 
@@ -489,7 +489,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
     setIsImporting(true);
     const ref = type === "linkedin" ? linkedinFileRef : resumeFileRef;
     try {
-      const text = await extractTextFromFile(file);
+      const text = await parseDocumentToText(file);
       if (text.trim().length < 100) {
         setImportError("Could not extract enough text. Try pasting the text manually.");
         setIsImporting(false);
@@ -544,7 +544,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
     setStep0Uploading(type);
     const ref = type === "linkedin" ? step0LinkedinRef : step0ResumeRef;
     try {
-      const text = await extractTextFromFile(file);
+      const text = await parseDocumentToText(file);
       if (text.trim().length < 100) {
         setStep0Error("Could not extract enough text from this file.");
         return;
@@ -761,7 +761,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
                       setTailorUploadError(null);
                       setTailorUploading(true);
                       try {
-                        const text = await extractTextFromFile(file);
+                        const text = await parseDocumentToText(file);
                         if (text.trim().length < 100) {
                           setTailorUploadError("Could not extract enough text from this file. Please try a different file.");
                           return;
