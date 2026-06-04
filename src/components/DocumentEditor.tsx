@@ -73,6 +73,8 @@ export interface DocumentEditorProps {
 export interface DocumentEditorHandle {
   /** Finds `original` text in the editor and replaces it with `suggested`. */
   applyFix(original: string, suggested: string): void;
+  /** Scrolls to `text` and keeps it highlighted until called with `null` to clear. */
+  setHighlight(text: string | null): void;
 }
 
 // ─── template font map ─────────────────────────────────────────────────────────
@@ -587,41 +589,118 @@ const selectStyle: React.CSSProperties = {
 
 let _cnt = 0;
 
-// ─── replaceInHtml (shared with ResumeAnalysisWorkspace) ───────────────────────
+// ─── text matching (shared with ResumeAnalysisWorkspace) ───────────────────────
+//
+// AI suggestions quote `originalText` verbatim from the *plain* resume text, but the
+// editor stores it as HTML (markdown→HTML, with block tags, escaping, and the browser
+// normalising whitespace). A naïve substring search therefore misses any quote that
+// spans a line break, has collapsed whitespace, or uses smart quotes/dashes. These
+// helpers walk the text nodes and match tolerantly: whitespace runs collapse to a
+// single space and common typographic characters are normalised on both sides.
+
+/** Normalise smart quotes / dashes / nbsp to their ASCII equivalents (1 char → 1 char). */
+function normalizeChar(ch: string): string {
+  switch (ch.charCodeAt(0)) {
+    case 0x2018: case 0x2019: case 0x201a: case 0x201b: return "'";
+    case 0x201c: case 0x201d: case 0x201e: case 0x201f: return '"';
+    case 0x2013: case 0x2014: case 0x2212: return "-";
+    case 0x00a0: case 0x2009: case 0x202f: return " ";
+    default: return ch;
+  }
+}
+
+function collectTextNodes(root: Element): Text[] {
+  const out: Text[] = [];
+  const walker = (root.ownerDocument ?? document).createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n: Node | null;
+  while ((n = walker.nextNode())) out.push(n as Text);
+  return out;
+}
+
+const BLOCK_SELECTOR = "p,li,h1,h2,h3,h4,h5,h6,blockquote,td,th,tr,div,pre,figcaption";
+
+/** flags[i] = true when node i sits in a different block element than node i-1.
+ *  Adjacent text nodes across a block boundary (e.g. </p><p>) have no whitespace
+ *  between them in the DOM, yet AI quotes render that boundary as a space — so the
+ *  caller injects a separator there. */
+function blockBoundaryFlags(nodes: Text[]): boolean[] {
+  const flags = new Array(nodes.length).fill(false);
+  let prevBlock: Element | null = null;
+  for (let i = 0; i < nodes.length; i++) {
+    const block = nodes[i].parentElement?.closest(BLOCK_SELECTOR) ?? null;
+    if (i > 0 && block !== prevBlock) flags[i] = true;
+    prevBlock = block;
+  }
+  return flags;
+}
+
+interface TextMatch { startNode: number; startOffset: number; endNode: number; endOffset: number; }
+
+/** Locate `needle` across `nodes`, tolerant of whitespace runs, line breaks, block
+ *  boundaries and smart quotes/dashes. Returns node-relative offsets (end exclusive),
+ *  or null. `boundaries` defaults to DOM-derived block boundaries (injectable for tests). */
+function locateTextNodes(nodes: Text[], needle: string, boundaries?: boolean[]): TextMatch | null {
+  const flags = boundaries ?? blockBoundaryFlags(nodes);
+  let hay = "";
+  const map: { node: number; offset: number }[] = []; // map[i] → source location of hay[i]
+  let prevSpace = false;
+  for (let ni = 0; ni < nodes.length; ni++) {
+    if (ni > 0 && flags[ni] && !prevSpace && hay.length) {
+      hay += " "; map.push({ node: ni, offset: 0 }); prevSpace = true; // synthetic block separator
+    }
+    const t = nodes[ni].textContent ?? "";
+    for (let oi = 0; oi < t.length; oi++) {
+      const c = normalizeChar(t[oi]);
+      if (/\s/.test(c)) {
+        if (prevSpace) continue;           // collapse runs of whitespace
+        hay += " "; map.push({ node: ni, offset: oi }); prevSpace = true;
+      } else {
+        hay += c; map.push({ node: ni, offset: oi }); prevSpace = false;
+      }
+    }
+  }
+  const need = needle.split("").map(normalizeChar).join("").replace(/\s+/g, " ").trim();
+  if (!need) return null;
+  const idx = hay.indexOf(need);
+  if (idx === -1) return null;
+  const start = map[idx];
+  const end = map[idx + need.length - 1]; // last matched (non-space) char
+  return { startNode: start.node, startOffset: start.offset, endNode: end.node, endOffset: end.offset + 1 };
+}
+
+function replaceTextNodes(nodes: Text[], m: TextMatch, suggested: string): void {
+  if (m.startNode === m.endNode) {
+    const t = nodes[m.startNode].textContent ?? "";
+    nodes[m.startNode].textContent = t.slice(0, m.startOffset) + suggested + t.slice(m.endOffset);
+    return;
+  }
+  nodes[m.startNode].textContent = (nodes[m.startNode].textContent ?? "").slice(0, m.startOffset) + suggested;
+  for (let i = m.startNode + 1; i <= m.endNode; i++) {
+    const t = nodes[i].textContent ?? "";
+    nodes[i].textContent = i === m.endNode ? t.slice(m.endOffset) : "";
+  }
+}
 
 function replaceInHtml(html: string, original: string, suggested: string): string {
   if (!original || !suggested || original === suggested) return html;
+  // Fast paths: verbatim or HTML-entity-encoded substring.
   if (html.includes(original)) return html.replace(original, suggested);
   const encoded = original.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   if (encoded !== original && html.includes(encoded)) return html.replace(encoded, suggested);
+  // Robust path: tolerant text-node walk.
   try {
     const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
     const root = doc.body.firstElementChild as HTMLElement;
-    const nodes: Text[] = [];
-    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let n: Text | null;
-    while ((n = walker.nextNode() as Text)) nodes.push(n);
-    const combined = nodes.map(t => t.textContent ?? "").join("");
-    const idx = combined.indexOf(original);
-    if (idx === -1) return html;
-    let pos = 0, sN = -1, sO = 0, eN = -1, eO = 0;
-    for (let i = 0; i < nodes.length; i++) {
-      const len = nodes[i].textContent?.length ?? 0;
-      if (sN === -1 && pos + len > idx) { sN = i; sO = idx - pos; }
-      if (sN !== -1 && pos + len >= idx + original.length) { eN = i; eO = idx + original.length - pos; break; }
-      pos += len;
-    }
-    if (sN === -1 || eN === -1) return html;
-    if (sN === eN) {
-      nodes[sN].textContent = nodes[sN].textContent!.slice(0, sO) + suggested + nodes[sN].textContent!.slice(eO);
-    } else {
-      nodes[sN].textContent = nodes[sN].textContent!.slice(0, sO) + suggested;
-      for (let i = sN + 1; i <= eN; i++)
-        nodes[i].textContent = i === eN ? nodes[i].textContent!.slice(eO) : "";
-    }
+    const nodes = collectTextNodes(root);
+    const m = locateTextNodes(nodes, original);
+    if (!m) return html;
+    replaceTextNodes(nodes, m, suggested);
     return root.innerHTML;
   } catch { return html; }
 }
+
+/** Registered name for the CSS Custom Highlight used to mark the selected suggestion. */
+const SUGGESTION_HIGHLIGHT = "de-suggestion-highlight";
 
 // ─── component ─────────────────────────────────────────────────────────────────
 
@@ -667,6 +746,13 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
   const editorRef = useRef<HTMLDivElement>(null);
   const scopeId = useRef(`de-${++_cnt}`);
   const sourceRef = useRef<"external" | "user">("external");
+  // Tears down the current suggestion highlight (CSS Highlight entry or inline style).
+  const clearHighlightRef = useRef<(() => void) | null>(null);
+
+  const clearHighlight = useCallback(() => {
+    clearHighlightRef.current?.();
+    clearHighlightRef.current = null;
+  }, []);
 
   useImperativeHandle(ref, () => ({
     applyFix: (original, suggested) => {
@@ -675,6 +761,40 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
       editorRef.current.innerHTML = newHtml;
       sourceRef.current = "user";
       onChange(htmlToMarkdown(newHtml));
+    },
+    setHighlight: (text) => {
+      clearHighlight();
+      const root = editorRef.current;
+      if (!root || !text) return;
+      const nodes = collectTextNodes(root);
+      const m = locateTextNodes(nodes, text);
+      if (!m) return;
+      const startNode = nodes[m.startNode];
+      const block = startNode.parentElement?.closest(BLOCK_SELECTOR) as HTMLElement | null;
+      (block ?? startNode.parentElement)?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Preferred: CSS Custom Highlight API — precise, non-destructive (no DOM mutation).
+      const HighlightCtor = (window as unknown as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
+      const registry = (CSS as unknown as { highlights?: Map<string, unknown> }).highlights;
+      if (HighlightCtor && registry) {
+        try {
+          const range = document.createRange();
+          range.setStart(nodes[m.startNode], m.startOffset);
+          range.setEnd(nodes[m.endNode], m.endOffset);
+          registry.set(SUGGESTION_HIGHLIGHT, new HighlightCtor(range));
+          clearHighlightRef.current = () => { try { registry.delete(SUGGESTION_HIGHLIGHT); } catch { /* noop */ } };
+          return;
+        } catch { /* fall through to inline-style fallback */ }
+      }
+
+      // Fallback: persistent terracotta background on the nearest block element.
+      const el = (block ?? startNode.parentElement) as HTMLElement | null;
+      if (!el) return;
+      const prevBg = el.style.backgroundColor;
+      const prevRadius = el.style.borderRadius;
+      el.style.backgroundColor = "rgba(217,119,87,0.18)";
+      el.style.borderRadius = "4px";
+      clearHighlightRef.current = () => { el.style.backgroundColor = prevBg; el.style.borderRadius = prevRadius; };
     },
   }));
   const savedSelRef = useRef<Range | null>(null);
@@ -703,6 +823,9 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
     if (sourceRef.current === "external" && content)
       editorRef.current.innerHTML = markdownToHtml(content);
   }, [content]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Drop any active suggestion highlight when the editor unmounts.
+  useEffect(() => clearHighlight, [clearHighlight]);
 
   useEffect(() => {
     if (!content) return;
@@ -1306,6 +1429,10 @@ ${tailorJdInput.trim()}
           color: var(--muted-foreground);
           opacity: 0.5;
           pointer-events: none;
+        }
+        ::highlight(${SUGGESTION_HIGHLIGHT}) {
+          background-color: rgba(217,119,87,0.28);
+          color: inherit;
         }
       `}</style>
     </div>
