@@ -73,6 +73,8 @@ export interface DocumentEditorProps {
 export interface DocumentEditorHandle {
   /** Finds `original` text in the editor and replaces it with `suggested`. */
   applyFix(original: string, suggested: string): void;
+  /** Scrolls `text` into view within the document and briefly highlights it. */
+  revealText(text: string): void;
   /** Scrolls to `text` and keeps it highlighted until called with `null` to clear. */
   setHighlight(text: string | null): void;
 }
@@ -754,6 +756,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
     clearHighlightRef.current = null;
   }, []);
 
+  const revealTimerRef = useRef<number | null>(null);
+
   useImperativeHandle(ref, () => ({
     applyFix: (original, suggested) => {
       if (!editorRef.current) return;
@@ -761,6 +765,32 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
       editorRef.current.innerHTML = newHtml;
       sourceRef.current = "user";
       onChange(htmlToMarkdown(newHtml));
+    },
+    revealText: (text) => {
+      const root = editorRef.current;
+      if (!root || !text) return;
+      const nodes = collectTextNodes(root);
+      const m = locateTextNodes(nodes, text);
+      if (!m) return;
+      const range = document.createRange();
+      range.setStart(nodes[m.startNode], m.startOffset);
+      range.setEnd(nodes[m.endNode], m.endOffset);
+      (range.startContainer.parentElement ?? root).scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Prefer the CSS Custom Highlight API — it highlights a Range without
+      // mutating the editable HTML (so content/markdown round-tripping is untouched).
+      const highlights = (CSS as unknown as { highlights?: Map<string, unknown> }).highlights;
+      const HighlightCtor = (globalThis as unknown as { Highlight?: new (r: Range) => unknown }).Highlight;
+      if (highlights && HighlightCtor) {
+        highlights.set("tailor-revise", new HighlightCtor(range));
+        if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = window.setTimeout(() => highlights.delete("tailor-revise"), 2400);
+      } else {
+        // Fallback: select the range so it's visibly marked.
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
     },
     setHighlight: (text) => {
       clearHighlight();
@@ -801,6 +831,9 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
   const scrollRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Clear any pending reveal-highlight timer on unmount
+  useEffect(() => () => { if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current); }, []);
 
   // Seed editor on mount — runs synchronously before paint so editorRef is guaranteed set
   const seededRef = useRef(false);
@@ -872,6 +905,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
         fonts.heading, fonts.body, DENSITY,
       );
     }
+    // Highlight style for revealText() — registry name is global, scope the rule to this editor.
+    el.textContent += `\n#${scopeId.current} ::highlight(tailor-revise) { background-color: rgba(232,185,72,0.45); color: var(--foreground); }`;
     return () => { document.getElementById(id)?.remove(); };
   }, [rawHtmlMode, docStyle.templateId, docStyle.accentColor, docStyle.accentStyle]);
 
