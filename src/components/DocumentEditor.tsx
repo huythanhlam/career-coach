@@ -73,6 +73,8 @@ export interface DocumentEditorProps {
 export interface DocumentEditorHandle {
   /** Finds `original` text in the editor and replaces it with `suggested`. */
   applyFix(original: string, suggested: string): void;
+  /** Scrolls `text` into view within the document and briefly highlights it. */
+  revealText(text: string): void;
 }
 
 // ─── template font map ─────────────────────────────────────────────────────────
@@ -623,6 +625,32 @@ function replaceInHtml(html: string, original: string, suggested: string): strin
   } catch { return html; }
 }
 
+/** Locates `text` across the editor's live text nodes and returns a DOM Range
+ *  spanning it (handling cases where the text straddles multiple nodes). Mirrors
+ *  the node-walking strategy in replaceInHtml, but operates on the live DOM. */
+function findTextRange(root: HTMLElement, text: string): Range | null {
+  if (!text) return null;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) nodes.push(n as Text);
+  const combined = nodes.map(t => t.textContent ?? "").join("");
+  const idx = combined.indexOf(text);
+  if (idx === -1) return null;
+  let pos = 0, sN = -1, sO = 0, eN = -1, eO = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    const len = nodes[i].textContent?.length ?? 0;
+    if (sN === -1 && pos + len > idx) { sN = i; sO = idx - pos; }
+    if (sN !== -1 && pos + len >= idx + text.length) { eN = i; eO = idx + text.length - pos; break; }
+    pos += len;
+  }
+  if (sN === -1 || eN === -1) return null;
+  const range = document.createRange();
+  range.setStart(nodes[sN], sO);
+  range.setEnd(nodes[eN], eO);
+  return range;
+}
+
 // ─── component ─────────────────────────────────────────────────────────────────
 
 export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorProps>(function DocumentEditor({
@@ -668,6 +696,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
   const scopeId = useRef(`de-${++_cnt}`);
   const sourceRef = useRef<"external" | "user">("external");
 
+  const revealTimerRef = useRef<number | null>(null);
+
   useImperativeHandle(ref, () => ({
     applyFix: (original, suggested) => {
       if (!editorRef.current) return;
@@ -676,11 +706,36 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
       sourceRef.current = "user";
       onChange(htmlToMarkdown(newHtml));
     },
+    revealText: (text) => {
+      const root = editorRef.current;
+      if (!root) return;
+      const range = findTextRange(root, text);
+      if (!range) return;
+      (range.startContainer.parentElement ?? root).scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Prefer the CSS Custom Highlight API — it highlights a Range without
+      // mutating the editable HTML (so content/markdown round-tripping is untouched).
+      const highlights = (CSS as unknown as { highlights?: Map<string, unknown> }).highlights;
+      const HighlightCtor = (globalThis as unknown as { Highlight?: new (r: Range) => unknown }).Highlight;
+      if (highlights && HighlightCtor) {
+        highlights.set("tailor-revise", new HighlightCtor(range));
+        if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = window.setTimeout(() => highlights.delete("tailor-revise"), 2400);
+      } else {
+        // Fallback: select the range so it's visibly marked.
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    },
   }));
   const savedSelRef = useRef<Range | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Clear any pending reveal-highlight timer on unmount
+  useEffect(() => () => { if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current); }, []);
 
   // Seed editor on mount — runs synchronously before paint so editorRef is guaranteed set
   const seededRef = useRef(false);
@@ -749,6 +804,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
         fonts.heading, fonts.body, DENSITY,
       );
     }
+    // Highlight style for revealText() — registry name is global, scope the rule to this editor.
+    el.textContent += `\n#${scopeId.current} ::highlight(tailor-revise) { background-color: rgba(232,185,72,0.45); color: var(--foreground); }`;
     return () => { document.getElementById(id)?.remove(); };
   }, [rawHtmlMode, docStyle.templateId, docStyle.accentColor, docStyle.accentStyle]);
 
