@@ -61,16 +61,12 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   const config = workflowsConfig[workflowId];
   const { profile, updateProfile } = useUserProfile();
   const [formData, setFormData] = useState<Record<string, any>>(() => {
-    if (workflowId === "linkedin") return { url: profile.linkedin ?? "" };
+    if (workflowId === "linkedin")
+      return { url: profile.linkedin ?? "", profile: profile.linkedinText ?? "" };
     return {};
   });
 
   useEffect(() => {
-    if (workflowId === "resume" && profile.resumeStoragePath) {
-      downloadResume(profile.resumeStoragePath)
-        .then(text => setFormData(prev => ({ ...prev, resumeText: text })))
-        .catch(() => {});
-    }
     if (workflowId === "linkedin" && profile.linkedinStoragePath) {
       downloadResume(profile.linkedinStoragePath)
         .then(text => setFormData(prev => ({ ...prev, profile: text })))
@@ -80,8 +76,6 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   }, [workflowId]);
   const [fileData, setFileData] = useState<Record<string, FileData>>({});
   const [isGenerating, setIsGenerating] = useState(false);
-  const [resumeWorkspaceData, setResumeWorkspaceData] = useState<ResumeAnalysisResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const rawFileMap = useRef<Record<string, File>>({});
   const [resumeGeneratorData, setResumeGeneratorData] = useState<Record<string, any> | null>(null);
   const [savedResumeText, setSavedResumeText] = useState<string | null>(null);
@@ -151,39 +145,6 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
       return;
     }
 
-    if (workflowId === "resume") {
-      const rawFile = rawFileMap.current['resumeFile'];
-      const pastedText = (formData.resumeText as string | undefined)?.trim();
-
-      if (!rawFile && !pastedText) {
-        alert('Please upload a PDF or paste your resume text.');
-        return;
-      }
-
-      let extractedText = pastedText ?? '';
-      if (rawFile) {
-        try {
-          extractedText = await extractPDFText(rawFile);
-        } catch (err) {
-          console.error('PDF extraction failed:', err);
-          alert('Could not read the PDF. Please try a different file or paste the text.');
-          return;
-        }
-      }
-
-      // Show workspace immediately with extracted text
-      setResumeWorkspaceData({ resumeText: extractedText, overallScore: null, summary: '', improvements: [] });
-      setIsAnalyzing(true);
-
-      // Fire analysis in background — do not await
-      analyzeResume(extractedText, formData.jd || '', formData.jdUrl || '')
-        .then(result => setResumeWorkspaceData(result))
-        .catch(() => setResumeWorkspaceData(prev => prev ? { ...prev, improvements: [] } : prev))
-        .finally(() => setIsAnalyzing(false));
-
-      return;
-    }
-
     if (workflowId === "resume_generation") {
       setResumeGeneratorData(formData);
       return;
@@ -219,32 +180,6 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
   };
 
   /* ── Resume & Generator pass-through ─────────────────────────── */
-  if (workflowId === "resume" && resumeWorkspaceData) {
-    const rawFile = rawFileMap.current['resumeFile'];
-    const uploadedFileMeta = Object.values(fileData)[0];
-    return (
-      <div className="flex-1 flex flex-col h-full relative">
-        {rawFile && uploadedFileMeta ? (
-          <ResumeAnalysisWorkspace
-            file={rawFile}
-            fileObjectUrl={uploadedFileMeta.objectUrl}
-            resumeText={resumeWorkspaceData.resumeText}
-            analysisResult={resumeWorkspaceData}
-            isAnalyzing={isAnalyzing}
-            onReset={() => { setResumeWorkspaceData(null); setIsAnalyzing(false); setFileData({}); }}
-          />
-        ) : (
-          <ResumeGeneratorWorkspace
-            initialResumeText={resumeWorkspaceData.resumeText}
-            analysisResult={resumeWorkspaceData}
-            isAnalyzing={isAnalyzing}
-            onReset={() => { setResumeWorkspaceData(null); setIsAnalyzing(false); }}
-          />
-        )}
-      </div>
-    );
-  }
-
   if (workflowId === "resume_generation" && builderAnalysisText !== null && builderAnalysisFile) {
     return (
       <div className="flex-1 flex flex-col h-full relative">

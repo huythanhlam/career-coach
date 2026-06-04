@@ -22,7 +22,6 @@ export type ViewId =
   | "dashboard"
   | "unified"
   | "linkedin"
-  | "resume"
   | "resume_generation"
   | "cover_letter"
   | "salary"
@@ -69,7 +68,6 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "resume_generation", label: "Resume Builder", icon: FileText },
       { id: "cover_letter",      label: "Cover Letter",   icon: Mail },
-      { id: "resume",            label: "Resume Analyzer",   icon: ShieldCheck },
       { id: "linkedin",          label: "Profile Lab",    icon: Briefcase },
     ],
   },
