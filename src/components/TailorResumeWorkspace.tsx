@@ -6,6 +6,7 @@ import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { tailorResume, type TailorSuggestion } from "@/services/geminiService";
 import { uploadResume, downloadResume } from "@/services/resumeStorageService";
+import { JobDetailsSection, type JobDetailsValue } from "@/components/JobDetailsSection";
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -28,7 +29,7 @@ const typeLabels: Record<TailorSuggestion['type'], string> = {
 // ─── Setup screen ──────────────────────────────────────────────────────────────
 
 interface SetupScreenProps {
-  onStart: (resumeText: string, resumeName: string, jd: string) => void;
+  onStart: (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => void;
   onBack?: () => void;
   initialResumeText?: string;
   initialResumeName?: string;
@@ -38,7 +39,7 @@ function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName }: 
   const { profile } = useUserProfile();
   const { session } = useAuth();
   const [selectedId, setSelectedId] = useState<string>("");
-  const [jd, setJd] = useState("");
+  const [jobDetails, setJobDetails] = useState<JobDetailsValue>({ jobTitle: "", companyName: "", jobDescription: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,13 +48,13 @@ function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName }: 
   const saved = profile.savedResumes ?? [];
 
   const handleSubmit = async () => {
-    if (!jd.trim()) { setError("Please paste the job description."); return; }
+    if (!jobDetails.jobDescription.trim()) { setError("Please paste the job description."); return; }
 
     if (hasInitial) {
       setError("");
       setIsLoading(true);
       try {
-        await onStart(initialResumeText!, initialResumeName!, jd.trim());
+        await onStart(initialResumeText!, initialResumeName!, jobDetails);
       } catch (err) {
         setError("Failed to analyze resume. Please try again.");
         console.error(err);
@@ -71,7 +72,7 @@ function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName }: 
     setIsLoading(true);
     try {
       const text = await downloadResume(resume.storagePath);
-      await onStart(text, resume.name, jd.trim());
+      await onStart(text, resume.name, jobDetails);
     } catch (err) {
       setError("Failed to load resume. Please try again.");
       console.error(err);
@@ -154,24 +155,8 @@ function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName }: 
           </div>
         )}
 
-        {/* JD input */}
-        <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-          <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Paste the job description</label>
-          <textarea
-            value={jd}
-            onChange={e => setJd(e.target.value)}
-            placeholder="Paste the full job description here…"
-            rows={8}
-            className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none transition-all"
-            style={{
-              background: "var(--muted)",
-              border: "1px solid var(--border)",
-              color: "var(--foreground)",
-              fontFamily: "var(--font-sans)",
-              lineHeight: "1.6",
-            }}
-          />
-        </div>
+        {/* JD input — shared with the cover-letter flow */}
+        <JobDetailsSection value={jobDetails} onChange={setJobDetails} />
 
         {error && (
           <p className="text-sm px-1" style={{ color: "var(--primary)" }}>{error}</p>
@@ -389,8 +374,11 @@ export function TailorResumeWorkspace({ onBack, initialResumeText, initialResume
     | { phase: 'results'; resumeName: string; resumeText: string; suggestions: TailorSuggestion[] }
   >({ phase: 'setup' });
 
-  const handleStart = useCallback(async (resumeText: string, resumeName: string, jd: string) => {
-    const suggestions = await tailorResume(resumeText, jd);
+  const handleStart = useCallback(async (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => {
+    const suggestions = await tailorResume(resumeText, jobDetails.jobDescription, {
+      jobTitle: jobDetails.jobTitle,
+      companyName: jobDetails.companyName,
+    });
     setState({ phase: 'results', resumeName, resumeText, suggestions });
   }, []);
 
