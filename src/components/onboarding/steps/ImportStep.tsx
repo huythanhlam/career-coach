@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Briefcase, FileText, ArrowLeft, Upload, Loader2 } from "lucide-react";
-import { extractTextFromFile } from "@/lib/documentUtils";
+import { parseDocumentToText } from "@/services/documentParserService";
 
 interface Props {
   onExtract: (input: { type: "linkedin"; text: string; url?: string } | { type: "resume"; text: string }) => void;
@@ -25,7 +25,7 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
   async function handleFileUpload(file: File) {
     setIsPdfLoading(true);
     try {
-      const text = await extractTextFromFile(file);
+      const text = await parseDocumentToText(file);
       setResumeText(text.trim());
     } catch (err) {
       console.error("File extraction failed:", err);
