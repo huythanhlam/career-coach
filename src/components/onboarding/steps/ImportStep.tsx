@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { Briefcase, FileText, ArrowLeft, Upload, Loader2 } from "lucide-react";
+import { extractTextFromFile } from "@/lib/documentUtils";
 
 interface Props {
   onExtract: (input: { type: "linkedin"; text: string; url?: string } | { type: "resume"; text: string }) => void;
@@ -21,23 +22,13 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
     (method === "linkedin" && linkedinText.trim().length > 50) ||
     (method === "resume" && resumeText.trim().length > 50);
 
-  async function handlePdfUpload(file: File) {
+  async function handleFileUpload(file: File) {
     setIsPdfLoading(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const pageText = content.items.map((item: any) => item.str).join(" ");
-        fullText += pageText + "\n";
-      }
-      setResumeText(fullText.trim());
+      const text = await extractTextFromFile(file);
+      setResumeText(text.trim());
     } catch (err) {
-      console.error("PDF extraction failed:", err);
+      console.error("File extraction failed:", err);
     } finally {
       setIsPdfLoading(false);
     }
@@ -155,7 +146,7 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
         <div className="flex flex-col gap-3 mb-6">
           <div>
             <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--foreground)" }}>
-              Upload PDF resume <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>(optional — we'll extract the text)</span>
+              Upload resume <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>(PDF, DOCX, or TXT — we'll extract the text)</span>
             </label>
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -168,19 +159,19 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
               }}
             >
               {isPdfLoading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Extracting text from PDF…</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Extracting text…</>
               ) : (
-                <><Upload className="w-4 h-4" /> Upload PDF</>
+                <><Upload className="w-4 h-4" /> Upload PDF, DOCX, or TXT</>
               )}
             </button>
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/pdf"
+              accept=".pdf,.docx,.txt"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handlePdfUpload(file);
+                if (file) handleFileUpload(file);
               }}
             />
           </div>
