@@ -5,7 +5,7 @@ import { UserProfile } from "@/types/userProfile";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { TEMPLATES } from "@/components/TemplateGallery";
 import { JOB_TITLES, SP500_COMPANIES } from "@/lib/profileOptions";
-import { extractTextFromFile } from "@/lib/documentUtils";
+import { parseDocumentToText } from "@/services/documentParserService";
 
 export interface CoverLetterFormData {
   jobDescription: string;
@@ -175,7 +175,7 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
           formData.resumeText = saved.text;
         }
       } else if (resumeSource === "upload" && uploadedFile) {
-        const text = await extractTextFromFile(uploadedFile);
+        const text = await parseDocumentToText(uploadedFile);
         formData.resumeText = text;
       }
 
