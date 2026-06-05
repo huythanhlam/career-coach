@@ -3,6 +3,7 @@ import { Loader2, Link, AlignLeft } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { JOB_TITLES, SP500_COMPANIES } from "@/lib/profileOptions";
+import { supabase } from "@/lib/supabaseClient";
 
 export interface JobDetailsValue {
   jobTitle: string;
@@ -64,10 +65,12 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false }:
     setIsFetchingUrl(true);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+      const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? "";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token ?? supabaseAnonKey;
       const res = await fetch(`${supabaseUrl}/functions/v1/fetch-url`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "apikey": supabaseAnonKey, "Authorization": `Bearer ${supabaseAnonKey}` },
+        headers: { "Content-Type": "application/json", "apikey": supabaseAnonKey, "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ url: jdUrl.trim() }),
       });
       const data = await res.json();
