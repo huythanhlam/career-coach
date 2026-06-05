@@ -49,6 +49,7 @@ export interface UserProfile {
   savedResumes?: { id: string; name: string; storagePath: string; text?: string; createdAt: string }[];
   savedCoverLetters?: SavedCoverLetter[];
   onboardingComplete: boolean;
+  aiConsentGivenAt?: string;
   createdAt: string;
   updatedAt: string;
 }
