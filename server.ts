@@ -1,10 +1,14 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { spawn } from 'child_process';
 
 const app = express();
+app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use('/api/', rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false }));
 
 // --- Claude CLI gateway ---
 // Pipes prompt via stdin to avoid shell arg-length limits on large prompts
@@ -66,16 +70,30 @@ app.post('/api/ai/generate', async (req, res) => {
     res.json({ text });
   } catch (error: any) {
     console.error('[Claude Gateway] Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'AI generation failed. Please try again.' });
   }
 });
 
 // --- URL fetch proxy (for job description links) ---
 
+// Block requests to private/loopback addresses to prevent SSRF
+function isPrivateUrl(rawUrl: string): boolean {
+  try {
+    const { hostname } = new URL(rawUrl);
+    return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|0\.0\.0\.0|169\.254\.)/.test(hostname);
+  } catch {
+    return true;
+  }
+}
+
 app.post('/api/fetch-url', async (req, res) => {
   const { url } = req.body as { url?: string };
   if (!url || !/^https?:\/\//i.test(url)) {
     res.status(400).json({ error: 'Invalid URL' });
+    return;
+  }
+  if (isPrivateUrl(url)) {
+    res.status(400).json({ error: 'URL not allowed' });
     return;
   }
 
@@ -107,7 +125,7 @@ app.post('/api/fetch-url', async (req, res) => {
     res.json({ text });
   } catch (error: any) {
     console.error('[fetch-url] Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch URL. Please try again.' });
   }
 });
 

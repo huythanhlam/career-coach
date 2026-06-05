@@ -1,4 +1,5 @@
 import type { UserProfile } from "@/types/userProfile";
+import { supabase } from "@/lib/supabaseClient";
 
 const GATEWAY_URL =
   (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
@@ -73,15 +74,21 @@ export interface ResumeAnalysisResult {
 
 const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? "";
 
+async function getAuthHeader(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  return `Bearer ${data.session?.access_token ?? ""}`;
+}
+
 async function postToGateway(body: object): Promise<string> {
   console.log("🚀 Sending to gateway:", GATEWAY_URL);
   try {
+    const authHeader = await getAuthHeader();
     const response = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Authorization": authHeader,
       },
       body: JSON.stringify(body),
     });

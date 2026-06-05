@@ -23,6 +23,7 @@ export function rowToProfile(row: Record<string, unknown>): UserProfile {
     savedResumes: (row.saved_resumes as UserProfile["savedResumes"]) ?? [],
     savedCoverLetters: (row.saved_cover_letters as UserProfile["savedCoverLetters"]) ?? [],
     onboardingComplete: (row.onboarding_complete as boolean) ?? false,
+    aiConsentGivenAt: (row.ai_consent_given_at as string) ?? undefined,
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
   };
@@ -58,6 +59,7 @@ export function profileToRow(
       })
     ),
     onboarding_complete: profile.onboardingComplete,
+    ai_consent_given_at: profile.aiConsentGivenAt ?? null,
     updated_at: new Date().toISOString(),
   };
 }
