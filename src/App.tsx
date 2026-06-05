@@ -50,7 +50,7 @@ function AppInner() {
                 className={`flex-1 h-full overflow-hidden ${activeView === id ? 'flex' : 'hidden'}`}
               >
                 {/* @ts-ignore */}
-                <WorkflowView workflowId={id as any} />
+                <WorkflowView workflowId={id as any} onNavigate={setActiveView} />
               </div>
             ))}
 

@@ -4,6 +4,7 @@ VALUES ('resumes', 'resumes', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Users can upload/update/delete only their own files (path starts with their user id)
+DROP POLICY IF EXISTS "Users can manage their own resume files" ON storage.objects;
 CREATE POLICY "Users can manage their own resume files"
 ON storage.objects
 FOR ALL

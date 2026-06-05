@@ -3,6 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
+import { EndDateField } from "@/components/ui/EndDateField";
+import { endDateLabel } from "@/lib/workExperience";
 import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS, COMMON_MINORS, SKILLS_BY_CATEGORY } from "@/lib/profileOptions";
 import { COMMON_ROLES } from "@/config/workflows";
 import { Plus, Trash2, Loader2, Sparkles, ArrowLeft, LayoutTemplate, User, Wand2, X, Upload, ChevronDown, ChevronUp, CheckCircle2, Info, Bookmark, FileText, Scissors } from "lucide-react";
@@ -250,10 +252,10 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
 
   const [workHistory, setWorkHistory] = useState(() =>
     profile.workHistory?.length
-      ? profile.workHistory.map(({ company, role, startDate, endDate, responsibilities }) => ({
-          company, role, startDate, endDate, responsibilities,
+      ? profile.workHistory.map(({ company, role, startDate, endDate, responsibilities, current }) => ({
+          company, role, startDate, endDate, responsibilities, current: Boolean(current),
         }))
-      : [{ company: "", role: "", startDate: "", endDate: "", responsibilities: "" }]
+      : [{ company: "", role: "", startDate: "", endDate: "", responsibilities: "", current: false }]
   );
 
   const [education, setEducation] = useState(() =>
@@ -326,8 +328,8 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
     }
 
     if (workHistory.length === 1 && !workHistory[0].company && !workHistory[0].role && profile.workHistory?.length) {
-      const mapped = profile.workHistory.map(({ company, role, startDate, endDate, responsibilities }) => ({
-        company, role, startDate, endDate, responsibilities,
+      const mapped = profile.workHistory.map(({ company, role, startDate, endDate, responsibilities, current }) => ({
+        company, role, startDate, endDate, responsibilities, current: Boolean(current),
       }));
       setWorkHistory(mapped);
       // Expand all loaded entries
@@ -419,7 +421,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
     setDraftBannerDismissed(true);
   }, []);
 
-  const handleWorkChange = (index: number, field: string, value: string) => {
+  const handleWorkChange = (index: number, field: string, value: string | boolean) => {
     const newWork = [...workHistory];
     newWork[index] = { ...newWork[index], [field]: value };
     setWorkHistory(newWork);
@@ -446,7 +448,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
 
   const addWork = () => {
     const newIdx = workHistory.length;
-    setWorkHistory([...workHistory, { company: "", role: "", startDate: "", endDate: "", responsibilities: "" }]);
+    setWorkHistory([...workHistory, { company: "", role: "", startDate: "", endDate: "", responsibilities: "", current: false }]);
     setExpandedWorkIndices((prev) => new Set([...prev, newIdx]));
   };
 
@@ -514,7 +516,7 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
       const str = (v: unknown) => (v == null ? "" : String(v));
       if (parsed.fullName) setPersonalInfo((p) => ({ ...p, name: str(parsed.fullName) || p.name, email: str(parsed.email) || p.email, phone: str(parsed.phone) || p.phone, linkedin: str(parsed.linkedin) || p.linkedin, github: str(parsed.github) || p.github, portfolio: str(parsed.portfolio) || p.portfolio }));
       if (parsed.workHistory?.length) {
-        const mapped = parsed.workHistory.map((w) => ({ company: str(w.company), role: str(w.role), startDate: str(w.startDate), endDate: str(w.endDate), responsibilities: str(w.responsibilities) }));
+        const mapped = parsed.workHistory.map((w) => ({ company: str(w.company), role: str(w.role), startDate: str(w.startDate), endDate: str(w.endDate), responsibilities: str(w.responsibilities), current: Boolean((w as { current?: boolean }).current) }));
         setWorkHistory(mapped);
         setExpandedWorkIndices(new Set(mapped.map((_, i) => i)));
       }
@@ -1110,8 +1112,8 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
                     <div className="flex items-center justify-between">
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>{work.role} {work.company ? `@ ${work.company}` : ""}</div>
-                        {(work.startDate || work.endDate) && (
-                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{work.startDate || "?"} – {work.endDate || "Present"}</div>
+                        {(work.startDate || work.endDate || work.current) && (
+                          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{work.startDate || "?"} – {endDateLabel(work) || "Present"}</div>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
@@ -1159,7 +1161,17 @@ export function ResumeGenerationForm({ onSubmit, isGenerating, onAnalyze, onTail
                         </div>
                         <div>
                           <label style={labelStyle}>End Date</label>
-                          <MonthYearPicker value={work.endDate} onChange={v => handleWorkChange(idx, "endDate", v)} placeholder="End date" allowPresent style={{ ...fieldStyle, background: "var(--card)", height: 48, padding: "0 14px" }} />
+                          <EndDateField
+                            id={`resume-work-${idx}`}
+                            endDate={work.endDate}
+                            current={Boolean(work.current)}
+                            onChange={({ endDate, current }) => setWorkHistory((prev) => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], endDate, current };
+                              return next;
+                            })}
+                            style={{ ...fieldStyle, background: "var(--card)", height: 48, padding: "0 14px" }}
+                          />
                         </div>
                         <div style={{ gridColumn: "1 / -1" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
