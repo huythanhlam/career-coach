@@ -1,8 +1,18 @@
+const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": allowedOrigin,
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+function isPrivateUrl(rawUrl: string): boolean {
+  try {
+    const { hostname } = new URL(rawUrl);
+    return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|0\.0\.0\.0|169\.254\.)/.test(hostname);
+  } catch {
+    return true;
+  }
+}
 
 function decodeEntities(s: string): string {
   return s
@@ -111,6 +121,12 @@ Deno.serve(async (req) => {
 
     if (!url || !/^https?:\/\//i.test(url)) {
       return new Response(JSON.stringify({ error: "Invalid URL" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (isPrivateUrl(url)) {
+      return new Response(JSON.stringify({ error: "URL not allowed" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
