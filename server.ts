@@ -70,7 +70,7 @@ app.post('/api/ai/generate', async (req, res) => {
     res.json({ text });
   } catch (error: any) {
     console.error('[Claude Gateway] Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'AI generation failed. Please try again.' });
   }
 });
 
@@ -125,7 +125,7 @@ app.post('/api/fetch-url', async (req, res) => {
     res.json({ text });
   } catch (error: any) {
     console.error('[fetch-url] Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch URL. Please try again.' });
   }
 });
 

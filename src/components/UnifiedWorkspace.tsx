@@ -16,7 +16,6 @@ import { generateWorkflowData, analyzeResume } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
 import { MarketCompensationViz } from "./MarketCompensationViz";
 import Markdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
 
 export function UnifiedWorkspace() {
   const [step, setStep] = useState<"intake" | "processing" | "results">("intake");
@@ -189,7 +188,7 @@ export function UnifiedWorkspace() {
               height={480}
             >
               {companyIntel
-                ? <div className="prose prose-sm max-w-none" style={{ color: "var(--muted-foreground)" }}><Markdown rehypePlugins={[rehypeRaw]}>{companyIntel}</Markdown></div>
+                ? <div className="prose prose-sm max-w-none" style={{ color: "var(--muted-foreground)" }}><Markdown >{companyIntel}</Markdown></div>
                 : <EmptySlot>Loading intel…</EmptySlot>}
             </ResultCard>
 
@@ -226,7 +225,7 @@ export function UnifiedWorkspace() {
               height={400}
             >
               {interviewStrategy
-                ? <div className="prose prose-sm max-w-none" style={{ color: "var(--muted-foreground)" }}><Markdown rehypePlugins={[rehypeRaw]}>{interviewStrategy}</Markdown></div>
+                ? <div className="prose prose-sm max-w-none" style={{ color: "var(--muted-foreground)" }}><Markdown >{interviewStrategy}</Markdown></div>
                 : <EmptySlot>Drafting strategy…</EmptySlot>}
             </ResultCard>
           </div>
