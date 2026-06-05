@@ -271,12 +271,97 @@ export async function suggestWorkExperienceBullets(role: string, company: string
   return await generateWorkflowData(systemInstruction, prompt);
 }
 
+export type ImproveMode = "refine" | "suggest";
+
+const REFINE_SYSTEM = `You are an editor polishing a short career self-assessment answer. Improve HOW it is written without changing WHAT it says.
+
+You MAY:
+- Fix grammar, spelling, and punctuation.
+- Improve sentence structure and flow.
+- Improve clarity — rephrase awkward or vague wording into plain, precise language (same meaning).
+- Make it more concise — cut filler, redundancy, and rambling.
+- Strengthen tone — confident and professional, while staying authentic and first person.
+- Prefer active voice and stronger, more precise verbs (e.g. "was responsible for managing" → "managed").
+- Remove hedging and filler words ("kind of", "I guess", "just", "really").
+- Keep tense and point of view consistent.
+
+You MUST NOT:
+- Add new ideas, facts, examples, skills, metrics, or details that aren't already in the draft.
+- Complete or expand unfinished thoughts, or answer parts the user left blank — that is the separate "Suggest" tool's job.
+
+Return ONLY the edited text — no preamble, no quotes, no markdown.`;
+
+const SUGGEST_SYSTEM = `You help a professional complete and round out a short answer to a career self-assessment question.
+Review their draft and produce an improved, fuller version that builds on what they wrote — completing unfinished thoughts and making it clearer and more specific so it's useful for career planning.
+RULES:
+- Build on the user's actual content; keep their voice, stay first person, keep it concise (1–5 sentences).
+- Do NOT invent concrete facts the user didn't provide (specific companies, metrics, named skills). Where a specific detail would strengthen the answer but you don't know it, insert a short bracketed placeholder for the user to fill in, e.g. "[name the specific skill — e.g. mobile dev, UX, or back-end]".
+- Return ONLY the suggested text — no preamble, no quotes, no markdown.`;
+
+function cleanAnswerText(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^```[a-z]*\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
+/**
+ * Improve a free-text survey answer.
+ * - "refine": copy-edit only (grammar, spelling, sentence structure) — no new content.
+ * - "suggest": review and complete/expand the thought, with bracketed placeholders
+ *   instead of invented specifics.
+ * Returns plain text the user can accept into the field.
+ */
+export async function improveSurveyAnswer(
+  question: string,
+  answer: string,
+  mode: ImproveMode
+): Promise<string> {
+  const system = mode === "refine" ? REFINE_SYSTEM : SUGGEST_SYSTEM;
+  const verb = mode === "refine" ? "Correct" : "Improve and complete";
+  const prompt = `Question: ${question}\n\nMy draft answer:\n${answer}\n\n${verb} my answer per the rules.`;
+  const raw = await generateWorkflowData(system, prompt, "claude-haiku-4-5-20251001");
+  return cleanAnswerText(raw) || answer;
+}
+
 export function createTechCoachChat(systemInstruction: string, _enableSearch?: boolean) {
   return {
     sendMessageStream: async ({ message }: any) => {
       const response = await generateWorkflowData(systemInstruction, message);
       return [{ text: response }];
     }
+  };
+}
+
+/**
+ * Stateful chat for interactive coaching. The AI gateway is stateless (it only
+ * accepts `systemInstruction` + a single `prompt`), so this helper keeps the
+ * running conversation in memory and replays it on every turn — giving the
+ * coach genuine multi-turn memory of the profile baseline and generated plan.
+ *
+ * Seed `history` with prior turns (e.g. a previously generated plan) to resume
+ * a saved coaching session.
+ */
+export function createCoachingChat(
+  systemInstruction: string,
+  history: { role: "user" | "model"; text: string }[] = []
+) {
+  const turns = [...history];
+  return {
+    sendMessageStream: async ({ message }: { message: string }) => {
+      const transcript = turns
+        .map((t) => `${t.role === "user" ? "User" : "Coach"}: ${t.text}`)
+        .join("\n\n");
+      const prompt = transcript
+        ? `Conversation so far:\n${transcript}\n\nUser: ${message}\n\nCoach:`
+        : message;
+      const response = await generateWorkflowData(systemInstruction, prompt, "claude-sonnet-4-6");
+      turns.push({ role: "user", text: message });
+      turns.push({ role: "model", text: response });
+      return [{ text: response }];
+    },
   };
 }
 

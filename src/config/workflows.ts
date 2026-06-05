@@ -228,34 +228,50 @@ export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
       "How much equity should I expect at a Series B startup?",
     ],
   },
-  career: {
-    id: "career",
-    title: "Career Path Cartographer",
-    description: "Outline a step-by-step roadmap to reach your ultimate career goal.",
-    fields: [
-      {
-        id: "current",
-        label: "Current Role",
-        type: "select",
-        options: COMMON_ROLES,
-        allowCustom: true,
-        required: true,
-      },
-      {
-        id: "goal",
-        label: "Ultimate Career Goal",
-        type: "select",
-        options: COMMON_ROLES,
-        allowCustom: true,
-        required: true,
-      },
-    ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Career Path Cartographer\nAction: Outline a step-by-step 3, 5, and 10-year roadmap. Include necessary title progressions, skills to acquire, and the types of companies to target at each stage.`,
-    generatePrompt: (data) => `My current role is: ${data.current}\nMy ultimate career goal is: ${data.goal}\n\nPlease map out my career path.`,
+  goal_planning: {
+    id: "goal_planning",
+    title: "Career Goal Planning",
+    description: "Set a career goal and get a personalized development plan grounded in your profile — then coach through it interactively.",
+    fields: [],
+    systemInstruction: `${basePersona}
+
+Workflow: Career Goal Planning
+You are coaching a specific candidate. Their profile (work history, achievements, skills, education) is the BASELINE — always ground your advice in their real background. Never invent experience they don't have.
+
+You may also receive a CURRENT-STATE SURVEY describing how the candidate feels about their job right now (satisfaction, what energizes/frustrates them, recent wins, mobility/intent, and their biggest blocker). When present, treat it as essential context: open with their current situation, lean into their stated energizers and wins, directly address their frustrations and biggest blocker, and respect their intent (staying & growing vs. open to a move vs. actively looking).
+
+The candidate may pursue MULTIPLE goals for the year at once (e.g. learn a skill AND get a promotion). When several goals are given, produce ONE integrated plan that addresses all of them together — call out where goals reinforce one another, flag any tension between them, and sequence the work so the goals don't compete for the candidate's time.
+
+When asked to create a plan, produce a clear, motivating, Markdown-formatted **Career Goal Planning Sheet** with these sections:
+1. **Current Situation Snapshot** — 2–4 sentences summarizing where they are today, drawing on the survey (how they feel, what's working, what's not) and their baseline. If no survey was provided, infer from the profile.
+2. **Baseline Assessment** — their current standing and the 2–4 most important gaps between where they are and their stated goal(s).
+3. **Quick Wins (next 30–60 days)** — concrete, immediately actionable steps, prioritizing anything that relieves their biggest blocker.
+4. **Milestones** — time-boxed checkpoints toward the goal(s) (skills to acquire, certifications, projects, scope/visibility moves, relationships to build). Tailor the horizon to their timeframe.
+5. **How to Measure Progress** — signals that show they're on track.
+6. **Risks & Mitigation** — what could derail the plan and how to handle it.
+
+Be specific and realistic. Reference their actual roles, companies, and skills by name where relevant. After the sheet, invite them to ask follow-up questions, and when they do, give focused, practical coaching that builds on the plan, their baseline, and their current-state survey.`,
+    generatePrompt: (data) => {
+      // The Goal Planning workspace builds its own multi-goal request; this
+      // remains for any generic caller and accepts an array of goals.
+      const goals: { goalType?: string; detail?: string }[] = Array.isArray(data.goals)
+        ? data.goals
+        : [{ goalType: data.goalType, detail: data.goalDetail }];
+      const goalsBlock = goals
+        .map((g, i) => `${i + 1}. ${g.goalType || "Career goal"}${g.detail ? ` — ${g.detail}` : ""}`)
+        .join("\n");
+      let prompt = `Please create my career development plan.\n\n`;
+      prompt += `MY GOALS FOR THE YEAR:\n${goalsBlock}\n`;
+      if (data.timeframe) prompt += `\nTARGET TIMEFRAME: ${data.timeframe}\n`;
+      if (data.notes?.trim()) prompt += `ADDITIONAL CONTEXT: ${data.notes}\n`;
+      prompt += `\n--- MY PROFILE (use this as the baseline) ---\n${data.profileBaseline || "No profile data available."}\n`;
+      prompt += `\nIf multiple goals are listed, build ONE integrated plan that addresses them all.`;
+      return prompt;
+    },
     suggestedPrompts: [
-      "What certifications would accelerate this path?",
-      "Should I transition to management or stay an IC?",
-      "What are the biggest risks to this career plan?",
+      "Which goal should I prioritize first, and how do I start?",
+      "What does a realistic 90-day plan look like across these goals?",
+      "Where do my goals reinforce each other or compete for time?",
     ],
   },
   company_research: {
@@ -537,7 +553,7 @@ PORTFOLIO: ${personalInfo.portfolio || 'Not provided'}
 JOB #${i + 1}:
 Role: ${w.role}
 Company: ${w.company || 'Not specified'}
-Dates: ${w.startDate || 'N/A'} - ${w.endDate || 'Present'}
+Dates: ${w.startDate || 'N/A'} - ${w.current ? 'Present' : (w.endDate || 'Present')}
 Responsibilities: ${w.responsibilities || '[EMPTY]'}
 `.trim()).join("\n\n")
         : workHistory;

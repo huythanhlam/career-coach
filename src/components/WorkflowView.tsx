@@ -26,6 +26,8 @@ import { useEffect } from "react";
 import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompensationViz";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
 import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
+import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
+import type { ViewId } from "@/components/Sidebar";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -48,7 +50,7 @@ async function extractPDFText(file: File): Promise<string> {
 
 interface FileData { data: string; mimeType: string; objectUrl: string; name: string; }
 
-interface WorkflowViewProps { workflowId: WorkflowId; }
+interface WorkflowViewProps { workflowId: WorkflowId; onNavigate?: (view: ViewId) => void; }
 
 /* shared inline styles */
 const fieldStyle: React.CSSProperties = {
@@ -57,7 +59,7 @@ const fieldStyle: React.CSSProperties = {
   color: "var(--foreground)", outline: "none",
 };
 
-export function WorkflowView({ workflowId }: WorkflowViewProps) {
+export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const config = workflowsConfig[workflowId];
   const { profile, updateProfile } = useUserProfile();
   const [formData, setFormData] = useState<Record<string, any>>(() => {
@@ -178,6 +180,15 @@ export function WorkflowView({ workflowId }: WorkflowViewProps) {
       .catch(() => setBuilderAnalysisResult({ resumeText, overallScore: null, summary: "Analysis failed.", improvements: [] }))
       .finally(() => setIsBuilderAnalyzing(false));
   };
+
+  /* ── Career Goal Planning ────────────────────────────────────── */
+  if (workflowId === "goal_planning") {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <GoalPlanningWorkspace onNavigate={onNavigate} />
+      </div>
+    );
+  }
 
   /* ── Resume & Generator pass-through ─────────────────────────── */
   if (workflowId === "resume_generation" && builderAnalysisText !== null && builderAnalysisFile) {
