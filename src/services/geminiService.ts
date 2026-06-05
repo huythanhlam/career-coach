@@ -76,8 +76,7 @@ const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? 
 
 async function getAuthHeader(): Promise<string> {
   const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  return token ? `Bearer ${token}` : `Bearer ${SUPABASE_ANON_KEY}`;
+  return `Bearer ${data.session?.access_token ?? ""}`;
 }
 
 async function postToGateway(body: object): Promise<string> {
