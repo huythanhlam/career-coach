@@ -16,6 +16,7 @@ import {
 import { sendMessageStream } from "@/services/geminiService";
 import { TEMPLATES } from "@/components/TemplateGallery";
 import { getScopedStyles, loadGoogleFont } from "@/components/ResumeRenderer";
+import { exportHtmlToDocx } from "@/lib/htmlToDocx";
 
 // ─── types ─────────────────────────────────────────────────────────────────────
 
@@ -1037,22 +1038,17 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
     win.document.close(); win.focus(); setTimeout(() => win.print(), 500);
   };
 
-  const exportDocx = () => {
+  const exportDocx = async () => {
     const fonts = TEMPLATE_FONTS[docStyle.templateId] ?? { heading: "Inter", body: "Inter" };
-    const src = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta charset='utf-8'><title>${title}</title><style>
-  body{font-family:"${fonts.body}",Calibri,sans-serif;font-size:11pt;color:#1a1a1a;margin:1in;}
-  h1,h2,h3{font-family:"${fonts.heading}",sans-serif;color:${docStyle.accentColor};}
-  h1{font-size:20pt;font-weight:bold;margin-bottom:4pt;}
-  h2{font-size:14pt;font-weight:bold;margin-top:14pt;margin-bottom:5pt;}
-  h3{font-size:12pt;font-weight:bold;margin-bottom:3pt;}
-  p{margin-bottom:5pt;line-height:1.4;}ul{margin-left:18pt;margin-bottom:6pt;}li{margin-bottom:2pt;}
-  hr{border-top:1pt solid #ccc;margin:10pt 0;}img{max-width:100%;}
-</style></head><body>${editorRef.current?.innerHTML ?? markdownToHtml(content)}</body></html>`;
-    const blob = new Blob(["﻿", src], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${exportFileName}.doc`; a.click();
-    URL.revokeObjectURL(url);
+    await exportHtmlToDocx({
+      html: editorRef.current?.innerHTML ?? markdownToHtml(content),
+      fileName: exportFileName,
+      title,
+      headingFont: fonts.heading,
+      bodyFont: fonts.body,
+      accentColor: docStyle.accentColor,
+      headerHtml,
+    });
   };
 
   // ── render ──────────────────────────────────────────────────────────────────
