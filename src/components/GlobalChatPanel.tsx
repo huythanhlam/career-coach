@@ -6,7 +6,7 @@ import { Bot, User, Send, X, MessageSquare, Loader2, Sparkles } from "lucide-rea
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { createTechCoachChat, sendMessageStream } from "@/services/geminiService";
-import { workflowsConfig } from "@/config/workflows";
+import { workflowsConfig, basePersona } from "@/config/workflows";
 import { ViewId } from "@/components/Sidebar";
 
 interface Message {
@@ -28,7 +28,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const workflowConfig = workflowsConfig[activeView as any];
-  const systemInstruction = workflowConfig?.systemInstruction || "You are TechCoach AI, a professional career coach.";
+  const systemInstruction = workflowConfig?.systemInstruction || basePersona;
 
   useEffect(() => {
     if (scrollRef.current) {

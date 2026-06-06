@@ -257,8 +257,8 @@ const features: Feature[] = [
   {
     id: "career",
     icon: Map,
-    title: "Career Path Cartographer",
-    description: "Map out a 3-, 5-, and 10-year roadmap from your current role to your dream title.",
+    title: "Goal Planner",
+    description: "Map out a stage-by-stage roadmap from your current role to your goal, on your own timeline.",
     color: "#3B82F6",
     tab: "career",
   },
@@ -266,7 +266,7 @@ const features: Feature[] = [
     id: "linkedin",
     icon: ShieldCheck,
     title: "LinkedIn Optimizer",
-    description: "Rewrite your headline, About section, and experience with keyword-rich language that attracts tech recruiters.",
+    description: "Rewrite your headline, About section, and experience with keyword-rich language that attracts recruiters.",
     color: "#0A66C2",
     tab: "linkedin",
   },
@@ -275,7 +275,7 @@ const features: Feature[] = [
 const testimonials = [
   {
     name: "Sarah K.",
-    role: "Senior SWE → Staff Engineer at Stripe",
+    role: "Marketing Coordinator → Marketing Manager",
     quote: "TechCoach AI helped me negotiate $40k more in TC. The salary strategy was incredibly specific and gave me the confidence to push back.",
     stars: 5,
   },

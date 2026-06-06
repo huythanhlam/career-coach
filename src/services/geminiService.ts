@@ -24,7 +24,9 @@ CRITICAL ACCURACY RULES:
 - Preserve every work-experience bullet verbatim — do not summarise or combine bullets.
 - Keep dates exactly as the source presents them.
 - Omit fields not present in the source material (do not include null or empty strings).
-- Generate random 8-character alphanumeric IDs for id fields.`;
+- The source is machine-extracted text and may be messy (multi-column layouts, broken line wraps, stray characters). Reassemble it into the correct fields using your best reading, but if a field is garbled, truncated, or you cannot confidently determine it, omit that field rather than guessing.
+- Generate random 8-character alphanumeric IDs for id fields.
+- Output the raw JSON object only: begin with "{" and end with "}", with no prose, comments, or code fences before or after.`;
 
 export async function parseProfileFromImport(
   input:
@@ -122,6 +124,8 @@ function parseResumeAnalysisResponse(raw: string) {
   throw new Error("Could not parse JSON from response");
 }
 
+const RESUME_ANALYSIS_SYSTEM = `You are an expert resume reviewer and applicant-tracking-system (ATS) specialist who has screened thousands of resumes across many industries. You give honest, specific, prioritized feedback, tailored to the candidate's field and — when provided — the target job. Output only the requested JSON: no prose, no explanations, no code fences; begin with "{" and end with "}".`;
+
 const buildResumeAnalysisPrompt = (resumeText: string, jd: string): string => `
 Analyze the resume below and return ONLY a raw JSON object — no markdown fences, no explanation.
 
@@ -137,21 +141,22 @@ Required JSON shape:
       "category": "impact" | "clarity" | "grammar" | "keywords" | "formatting",
       "checklistLabel": "<short imperative label, max 8 words, e.g. Quantify impact in Work Experience>",
       "description": "<1-2 sentences explaining what to fix and why>",
-      "originalText": "<verbatim substring from resumeText — must match exactly, character-for-character>",
+      "originalText": "<a SHORT exact substring (one sentence or phrase, not a whole section) copied character-for-character from resumeText>",
       "suggestedText": "<improved replacement text>"
     }
   ]
 }
 
 Rules:
-- Produce 8-15 improvements
-- originalText must be copied verbatim from resumeText — never paraphrase or abbreviate
-- Do not include the candidate's name or contact info in originalText
-- impact: flag vague duties (Responsible for, Helped with) and missing metrics; use XYZ formula (Action + Metric + Result)
-- clarity: flag passive voice, sentences over 25 words, jargon
-- grammar: flag tense inconsistency, punctuation errors
-- keywords: flag JD keywords missing from resume (high priority)
-- formatting: flag inconsistent dates, missing section headers
+- Produce 6-15 of the highest-impact improvements, prioritized — do not pad the list or repeat the same issue.
+- overallScore guide: 85-100 = strong, interview-ready; 70-84 = solid with clear gaps; 50-69 = needs significant work; below 50 = major issues. Score against the target job if one is provided, otherwise against general best practice for the candidate's field.
+- originalText must be a SHORT exact substring copied character-for-character from resumeText (a single sentence or phrase, not a whole paragraph or section) so the app can locate and replace it — never paraphrase, abbreviate, or add line breaks that aren't in the source.
+- Do not include the candidate's name or contact info in originalText.
+- impact: flag vague duties (Responsible for, Helped with) and missing metrics; suggest the XYZ pattern (Action + Metric + Result).
+- clarity: flag passive voice, sentences over 25 words, jargon.
+- grammar: flag tense inconsistency, punctuation errors.
+- keywords: flag keywords from the target job that are missing from the resume (high priority); skip this category entirely if no job description was provided.
+- formatting: flag inconsistent dates, missing section headers.
 ${jd ? `\nTarget Job Description:\n${jd}` : ''}
 
 Resume:
@@ -165,7 +170,7 @@ export async function analyzeResume(
 ): Promise<ResumeAnalysisResult> {
   const jd = jdText || jdUrl;
   const prompt = buildResumeAnalysisPrompt(resumeText, jd);
-  const response = await generateWorkflowData('', prompt, 'claude-sonnet-4-6');
+  const response = await generateWorkflowData(RESUME_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
 
   try {
     const parsed = parseResumeAnalysisResponse(response);
@@ -198,7 +203,7 @@ CRITICAL RULES:
 - Only rewrite or strengthen content that already exists
 - You may suggest adding job-relevant keywords where the existing context supports them
 - Focus on: keyword alignment, stronger action verbs, quantification of existing achievements, reordering emphasis
-- Return ONLY a valid JSON array — no markdown fences, no explanation`;
+- Return ONLY a valid JSON array — no markdown fences, no explanation; begin with "[" and end with "]"`;
 
 function parseTailorResponse(raw: string): TailorSuggestion[] {
   const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
@@ -214,7 +219,7 @@ export async function tailorResume(
   jobMeta?: { jobTitle?: string; companyName?: string }
 ): Promise<TailorSuggestion[]> {
   const targetLine = [jobMeta?.jobTitle, jobMeta?.companyName].filter(Boolean).join(" at ");
-  const prompt = `Analyze the resume below against the job description and produce 8–15 inline edit suggestions.
+  const prompt = `Analyze the resume below against the job description and produce 6–15 high-impact inline edit suggestions, prioritized.
 ${targetLine ? `\nTARGET ROLE: ${targetLine}\n` : ""}
 
 Return a JSON array with this exact shape:
@@ -223,18 +228,19 @@ Return a JSON array with this exact shape:
     "id": "<unique string>",
     "section": "<section label, e.g. 'Summary', 'Work Experience – Acme Corp'>",
     "type": "rewrite" | "add_keyword" | "strengthen",
-    "originalText": "<verbatim substring from the resume — must match exactly>",
+    "originalText": "<a SHORT exact substring (one sentence or phrase) copied character-for-character from the resume>",
     "suggestedText": "<drop-in replacement — same length/scope as originalText>",
-    "rationale": "<one sentence: why this edit helps for this specific job>",
+    "rationale": "<one sentence naming the specific job-description requirement or keyword this edit targets>",
     "priority": "high" | "medium" | "low"
   }
 ]
 
 Rules:
-- originalText must be copied character-for-character from the resume — never abbreviate
-- Do NOT invent new roles, companies, dates, or metrics
-- high priority = directly matches a key requirement/keyword in the JD
-- Spread suggestions across Summary, Skills, and Work Experience sections
+- originalText must be a SHORT exact substring (a single sentence or phrase, not a whole section) copied character-for-character from the resume so the app can locate it — never abbreviate or add line breaks that aren't in the source.
+- Do NOT invent new roles, companies, dates, or metrics; only strengthen or reframe what already exists.
+- Every suggestion's rationale must name the specific job-description requirement or keyword it targets.
+- high priority = directly matches a key requirement/keyword in the job description.
+- Spread suggestions across the relevant sections (e.g. Summary, Skills, Work Experience) and don't pile more than a few edits into any single section.
 
 JOB DESCRIPTION:
 ${jobDescription}
@@ -253,14 +259,14 @@ ${resumeText}`;
 
 export async function rewriteResumeSelection(selectedText: string, instruction: string, fullResumeText: string) {
   const systemInstruction = `You are an elite resume writer. The user has selected a specific passage from their resume and wants it improved.
-Return ONLY the rewritten text — no explanation, no preamble, no quotes. Preserve markdown formatting (bold, bullets, etc.) from the original. The rewrite must be a drop-in replacement for the selected text.`;
+Return ONLY the rewritten text — no explanation, no preamble, no quotes. Preserve the original's markdown structure (any leading bullet marker like "- ", heading level, bold, etc.) so it drops in cleanly, and keep it close to the original length (within roughly ±15%). Improve wording, impact, and clarity, but never invent achievements, metrics, employers, titles, or dates that aren't in the original or clearly supported by the resume context — if a metric would help, leave a placeholder like "[X%]" for the user to fill in.`;
   const prompt = `Full resume context:\n${fullResumeText}\n\n---\nSelected text to rewrite:\n${selectedText}\n\nInstruction: ${instruction}`;
   return await generateWorkflowData(systemInstruction, prompt, "claude-haiku-4-5-20251001");
 }
 
 export async function suggestWorkExperienceBullets(role: string, company: string, currentBullets: string = "") {
-  const systemInstruction = "You are an expert resume writer. Generate 3-5 high-impact, metric-driven bullet points for the given role and company.";
-  const prompt = `Role: ${role}\nCompany: ${company}\nCurrent content: ${currentBullets}\n\nGenerate improved bullet points using the XYZ formula (Action + Metric + Result).`;
+  const systemInstruction = `You are an expert resume writer. Generate 3-5 high-impact bullet points for the given role, tailored to its field, using strong action verbs and the XYZ pattern (accomplished X, measured by Y, by doing Z). Do NOT invent specific numbers, metrics, employers, or facts the user hasn't provided — where a metric would strengthen a bullet, insert a clear placeholder like "[X%]" or "[$ amount]" for the user to fill in. Return only the bullet points.`;
+  const prompt = `Role: ${role}\nCompany: ${company}\nCurrent content: ${currentBullets}\n\nGenerate improved bullet points using the XYZ pattern. Use placeholders like [X%] for any metric you don't have.`;
   return await generateWorkflowData(systemInstruction, prompt);
 }
 
