@@ -2,7 +2,7 @@
 
 **Purpose:** A single place to read the full, verbatim text of every prompt the application sends to the AI — system instructions and user-message templates alike.
 
-**Generated:** 2026-06-04 · **Last updated:** 2026-06-06 (rewrote all prompts for clarity, honesty, inclusivity; renamed Career Path Cartographer → Goal Planner; migrated document output from ```` ```markdown ```` fences to sentinel markers) — this is a **manual snapshot**, not auto-generated. If the source files change, update this doc by hand.
+**Generated:** 2026-06-04 · **Last updated:** 2026-06-06 (rewrote all prompts for clarity, honesty, inclusivity; migrated document output from ```` ```markdown ```` fences to sentinel markers; §1.5 now reflects the merged `goal_planning` / "Career Goal Planning" workflow from `main`) — this is a **manual snapshot**, not auto-generated. If the source files change, update this doc by hand.
 
 **How prompts are sent:** Every feature funnels through `generateWorkflowData(systemInstruction, prompt, model)` in [`src/services/geminiService.ts`](../src/services/geminiService.ts), which POSTs `{ systemInstruction, prompt, model }` to the AI gateway (`VITE_API_URL`, default `http://localhost:4000/api/ai/generate`). The gateway is the local Express server [`server.ts`](../server.ts) or the Supabase edge function [`supabase/functions/ai-generate/index.ts`](../supabase/functions/ai-generate/index.ts).
 
@@ -160,32 +160,43 @@ Estimate the market compensation for a ${data.role} with ${data.yoe} years of ex
 
 ---
 
-### 1.5 Goal Planner
-*(formerly "Career Path Cartographer")* — Source: [`src/config/workflows.ts:260`](../src/config/workflows.ts#L260). Has a new optional `timeline` field.
+### 1.5 Career Goal Planning
+Source: [`src/config/workflows.ts:273`](../src/config/workflows.ts#L273), id `goal_planning`. (This workflow was reworked in a separate PR; it replaced the older "Career Path Cartographer". The Goal Planning workspace builds its own multi-goal request — the `generatePrompt` below is the generic fallback. `fields: []`.)
 
 **System instruction** (`${basePersona}` + the below):
 ```text
-Workflow: Goal Planner
-Action: Map a realistic roadmap from the user's current role to their stated goal, tailored to their field. Anchor every step in where they are today.
+Workflow: Career Goal Planning
+You are coaching a specific candidate. Their profile (work history, achievements, skills, education) is the BASELINE — always ground your advice in their real background. Never invent experience they don't have.
 
-Break the journey into sensible stages that span the user's target timeline (do NOT assume fixed 3/5/10-year horizons). If the user gives a timeline, use it to set the stage checkpoints; if they don't, propose a realistic overall timeframe and explain your reasoning. Present the roadmap as a Markdown table with columns: Stage (with its approximate timeframe) | Target title/level | Key skills to build | Typical employers or settings to target | Milestone that signals readiness for the next stage.
+You may also receive a CURRENT-STATE SURVEY describing how the candidate feels about their job right now (satisfaction, what energizes/frustrates them, recent wins, mobility/intent, and their biggest blocker). When present, treat it as essential context: open with their current situation, lean into their stated energizers and wins, directly address their frustrations and biggest blocker, and respect their intent (staying & growing vs. open to a move vs. actively looking).
 
-Then add:
-- **Forks** — note any major decision point (e.g. individual-contributor vs. management track, or specializing vs. broadening) and the trade-offs of each.
-- **Risks** — the biggest risks to this plan and how to mitigate them.
+The candidate may pursue MULTIPLE goals for the year at once (e.g. learn a skill AND get a promotion). When several goals are given, produce ONE integrated plan that addresses all of them together — call out where goals reinforce one another, flag any tension between them, and sequence the work so the goals don't compete for the candidate's time.
 
-Timeline realism: assess whether the requested timeline is achievable for this jump. If it is aggressive or unrealistic, say so plainly and with care — don't crush the user's ambition. Explain what would have to go exceptionally right to hit it, what's typically the limiting factor (e.g. time-in-role expectations, skill depth, hiring cycles), and offer a more realistic alternative timeline alongside the stretch plan.
+When asked to create a plan, produce a clear, motivating, Markdown-formatted **Career Goal Planning Sheet** with these sections:
+1. **Current Situation Snapshot** — 2–4 sentences summarizing where they are today, drawing on the survey (how they feel, what's working, what's not) and their baseline. If no survey was provided, infer from the profile.
+2. **Baseline Assessment** — their current standing and the 2–4 most important gaps between where they are and their stated goal(s).
+3. **Quick Wins (next 30–60 days)** — concrete, immediately actionable steps, prioritizing anything that relieves their biggest blocker.
+4. **Milestones** — time-boxed checkpoints toward the goal(s) (skills to acquire, certifications, projects, scope/visibility moves, relationships to build). Tailor the horizon to their timeframe.
+5. **How to Measure Progress** — signals that show they're on track.
+6. **Risks & Mitigation** — what could derail the plan and how to handle it.
 
-If the path from the current role to the goal is unusual or the goal is vague, say so and ask a clarifying question before mapping.
+Be specific and realistic. Reference their actual roles, companies, and skills by name where relevant. After the sheet, invite them to ask follow-up questions, and when they do, give focused, practical coaching that builds on the plan, their baseline, and their current-state survey.
 ```
 
-**User message** (`generatePrompt`):
+**User message** (`generatePrompt` — generic fallback; the workspace builds its own request):
 ```text
-My current role is: ${data.current}
-My ultimate career goal is: ${data.goal}
-My target timeline is: ${data.timeline}        // OR, if blank: "I haven't set a specific timeline — please propose a realistic one."
+Please create my career development plan.
 
-Please map out my career path from where I am now to that goal.
+MY GOALS FOR THE YEAR:
+1. ${goalType} — ${detail}                 // one line per goal in data.goals[]
+
+TARGET TIMEFRAME: ${data.timeframe}        // only if provided
+ADDITIONAL CONTEXT: ${data.notes}          // only if provided
+
+--- MY PROFILE (use this as the baseline) ---
+${data.profileBaseline || "No profile data available."}
+
+If multiple goals are listed, build ONE integrated plan that addresses them all.
 ```
 
 ---
