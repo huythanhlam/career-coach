@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
-import { Scissors, Sparkles, CheckCircle2, X, Loader2, Save, FileText, ArrowLeft } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Scissors, Sparkles, CheckCircle2, X, Loader2, Save, FileText, ArrowLeft, Undo2, EyeOff, Eye } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DocumentEditor } from "@/components/DocumentEditor";
+import { DocumentEditor, type DocumentEditorHandle } from "@/components/DocumentEditor";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { tailorResume, type TailorSuggestion } from "@/services/geminiService";
@@ -11,6 +11,8 @@ import { JobDetailsSection, type JobDetailsValue } from "@/components/JobDetails
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
 }
+
+type SuggestionStatus = 'pending' | 'applied' | 'dismissed';
 
 const PRIORITY_ORDER: Record<'high' | 'medium' | 'low', number> = { high: 0, medium: 1, low: 2 };
 
@@ -198,20 +200,50 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
   const { profile, updateProfile } = useUserProfile();
   const { session } = useAuth();
   const [workingText, setWorkingText] = useState(resumeText);
-  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [statuses, setStatuses] = useState<Record<string, SuggestionStatus>>({});
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [savedVariant, setSavedVariant] = useState(false);
+  const editorHandle = useRef<DocumentEditorHandle>(null);
 
+  const statusOf = useCallback((id: string): SuggestionStatus => statuses[id] ?? 'pending', [statuses]);
+
+  // Apply Fix: rewrite the editor DOM imperatively via DocumentEditor.applyFix()
+  // (3-pass text search: verbatim → HTML-entity → DOMParser text-nodes), which keeps
+  // the cursor and avoids a re-mount. The handle's onChange syncs workingText.
   const handleApply = useCallback((s: TailorSuggestion) => {
-    if (appliedIds.has(s.id)) return;
-    setWorkingText(prev => prev.replace(s.originalText, s.suggestedText));
-    setAppliedIds(prev => new Set(prev).add(s.id));
-  }, [appliedIds]);
+    if (statusOf(s.id) === 'applied') return;
+    editorHandle.current?.applyFix(s.originalText, s.suggestedText);
+    setStatuses(prev => ({ ...prev, [s.id]: 'applied' }));
+  }, [statusOf]);
 
-  const handleDismiss = useCallback((id: string) => {
-    setDismissedIds(prev => new Set(prev).add(id));
+  const handleDismiss = useCallback((s: TailorSuggestion) => {
+    setStatuses(prev => ({ ...prev, [s.id]: 'dismissed' }));
   }, []);
+
+  // Undo returns a suggestion to pending. If it was applied, revert the edit by
+  // swapping the suggested text back to the original through the same reliable applyFix.
+  const handleUndo = useCallback((s: TailorSuggestion) => {
+    if (statusOf(s.id) === 'applied') {
+      editorHandle.current?.applyFix(s.suggestedText, s.originalText);
+    }
+    setStatuses(prev => { const next = { ...prev }; delete next[s.id]; return next; });
+  }, [statusOf]);
+
+  // Single hide/unhide toggle — flips membership in hiddenIds.
+  const handleToggleHide = useCallback((id: string) => {
+    setHiddenIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Scroll the document to the relevant passage and highlight it. Once applied,
+  // the original text is gone, so reveal the suggested replacement instead.
+  const handleReveal = useCallback((s: TailorSuggestion) => {
+    editorHandle.current?.revealText(statusOf(s.id) === 'applied' ? s.suggestedText : s.originalText);
+  }, [statusOf]);
 
   const handleSaveVariant = async () => {
     const userId = session?.user?.id;
@@ -235,12 +267,19 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
     }
   };
 
-  const sorted = [...suggestions]
-    .filter(s => !dismissedIds.has(s.id))
-    .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+  const isActioned = (s: TailorSuggestion) => statusOf(s.id) !== 'pending';
+  // Sort tier: non-actioned (0) floats to top, actioned (1) below, hidden (2) sinks to the bottom.
+  const tier = (s: TailorSuggestion) => hiddenIds.has(s.id) ? 2 : isActioned(s) ? 1 : 0;
 
-  const pendingCount = sorted.filter(s => !appliedIds.has(s.id)).length;
-  const appliedCount = appliedIds.size;
+  const sorted = [...suggestions]
+    .sort((a, b) => {
+      const tierDelta = tier(a) - tier(b);
+      if (tierDelta !== 0) return tierDelta;
+      return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    });
+
+  const pendingCount = suggestions.filter(s => !isActioned(s) && !hiddenIds.has(s.id)).length;
+  const appliedCount = suggestions.filter(s => statusOf(s.id) === 'applied').length;
 
   const suggestionsSidebar = (
     <div className="flex flex-col h-full">
@@ -257,7 +296,7 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
       </div>
 
       {/* Cards */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-3 flex flex-col gap-3">
           {sorted.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
@@ -267,15 +306,49 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
             </div>
           )}
           {sorted.map(s => {
-            const applied = appliedIds.has(s.id);
+            const applied = statusOf(s.id) === 'applied';
+            const dismissed = statusOf(s.id) === 'dismissed';
+            const hidden = hiddenIds.has(s.id);
+
+            // Hidden → compact, restorable one-line row pinned at the bottom of the panel.
+            if (hidden) {
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2"
+                  style={{ border: "1px solid var(--border)", background: "var(--muted)", opacity: 0.75 }}
+                >
+                  {applied
+                    ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--forest)" }} />
+                    : dismissed
+                      ? <X className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
+                      : <span className="flex-shrink-0" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--primary)" }} />}
+                  <span className="flex-1 min-w-0 truncate text-xs" style={{ color: "var(--muted-foreground)" }}>{s.originalText}</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleToggleHide(s.id); }}
+                    title="Show suggestion"
+                    className="flex-shrink-0 flex items-center gap-1 h-6 px-2 rounded-md text-[10px] font-bold"
+                    style={{ border: "1px solid var(--border)", background: "var(--card)", color: "var(--muted-foreground)", cursor: "pointer" }}
+                  >
+                    <Eye className="w-3 h-3" /> Show
+                  </button>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={s.id}
-                className="rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200"
+                role="button"
+                tabIndex={0}
+                title="Click to locate this passage in the document"
+                onClick={() => handleReveal(s)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleReveal(s); } }}
+                className="rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 cursor-pointer hover:shadow-sm"
                 style={{
                   background: applied ? "rgba(47,107,79,0.06)" : "var(--card)",
                   border: applied ? "1px solid rgba(47,107,79,0.25)" : "1px solid var(--border)",
-                  opacity: applied ? 0.7 : 1,
+                  opacity: applied ? 0.7 : dismissed ? 0.55 : 1,
                 }}
               >
                 <div className="flex items-center gap-2 flex-wrap">
@@ -286,7 +359,16 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
                     style={{ background: "rgba(110,101,87,0.08)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
                     {typeLabels[s.type]}
                   </span>
-                  <span className="text-[10px] ml-auto truncate max-w-[140px]" style={{ color: "var(--muted-foreground)" }}>{s.section}</span>
+                  <span className="text-[10px] ml-auto truncate max-w-[120px]" style={{ color: "var(--muted-foreground)" }}>{s.section}</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleToggleHide(s.id); }}
+                    title="Hide suggestion"
+                    aria-label="Hide suggestion"
+                    className="p-0.5 rounded transition-opacity opacity-50 hover:opacity-100"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}
+                  >
+                    <EyeOff className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -305,16 +387,32 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
                 <p className="text-[11px] leading-relaxed" style={{ color: "var(--muted-foreground)" }}>{s.rationale}</p>
 
                 {applied ? (
-                  <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--forest)" }}>
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Applied
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--forest)" }}>
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Applied
+                    </div>
+                    <button onClick={e => { e.stopPropagation(); handleUndo(s); }} className="ml-auto h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5"
+                      style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)", cursor: "pointer" }}>
+                      <Undo2 className="w-3.5 h-3.5" /> Undo
+                    </button>
+                  </div>
+                ) : dismissed ? (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>
+                      <X className="w-3.5 h-3.5" /> Dismissed
+                    </div>
+                    <button onClick={e => { e.stopPropagation(); handleUndo(s); }} className="ml-auto h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5"
+                      style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)", cursor: "pointer" }}>
+                      <Undo2 className="w-3.5 h-3.5" /> Restore
+                    </button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <button onClick={() => handleApply(s)} className="flex-1 h-8 rounded-lg text-xs font-semibold"
+                    <button onClick={e => { e.stopPropagation(); handleApply(s); }} className="flex-1 h-8 rounded-lg text-xs font-semibold"
                       style={{ background: "var(--primary)", color: "#fff", border: "none", cursor: "pointer" }}>
                       Apply
                     </button>
-                    <button onClick={() => handleDismiss(s.id)} className="h-8 px-3 rounded-lg text-xs font-medium"
+                    <button onClick={e => { e.stopPropagation(); handleDismiss(s); }} className="h-8 px-3 rounded-lg text-xs font-medium"
                       style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)", cursor: "pointer" }}>
                       Dismiss
                     </button>
@@ -349,6 +447,7 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
 
   return (
     <DocumentEditor
+      ref={editorHandle}
       content={workingText}
       onChange={setWorkingText}
       title={`${resumeName} — Tailored`}

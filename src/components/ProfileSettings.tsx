@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
+import { EndDateField } from "@/components/ui/EndDateField";
+import { endDateLabel } from "@/lib/workExperience";
 import { SkillsPicker } from "@/components/ui/SkillsPicker";
 import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS, COMMON_MINORS } from "@/lib/profileOptions";
 import type { WorkExperience, Education } from "@/types/userProfile";
@@ -181,7 +183,7 @@ export function ProfileSettings() {
     setNewEdu({ id: "", university: "", degree: "", graduationYear: "", major: "", minor: "" });
   }
 
-  function workFields(data: WorkExperience, onChange: (f: keyof WorkExperience, v: string) => void) {
+  function workFields(data: WorkExperience, onChange: (f: keyof WorkExperience, v: string | boolean) => void) {
     return (
       <div className="grid grid-cols-2 gap-2">
         <div><label style={lStyle}>Job Title</label>
@@ -191,7 +193,13 @@ export function ProfileSettings() {
         <div><label style={lStyle}>Start Date</label>
           <MonthYearPicker value={data.startDate} onChange={(v) => onChange("startDate", v)} style={iStyle} /></div>
         <div><label style={lStyle}>End Date</label>
-          <MonthYearPicker value={data.endDate} onChange={(v) => onChange("endDate", v)} allowPresent style={iStyle} /></div>
+          <EndDateField
+            id={`work-${data.id || "new"}`}
+            endDate={data.endDate}
+            current={Boolean(data.current)}
+            onChange={({ endDate, current }) => { onChange("current", current); onChange("endDate", endDate); }}
+            style={iStyle}
+          /></div>
         <div className="col-span-2"><label style={lStyle}>Highlights</label>
           <textarea value={data.responsibilities} placeholder="Key achievements and responsibilities…" rows={3}
             onChange={(e) => onChange("responsibilities", e.target.value)}
@@ -366,7 +374,7 @@ export function ProfileSettings() {
                 <TimelineCard key={w.id}
                   icon={<Briefcase className="w-4 h-4" style={{ color: "var(--primary)" }} />}
                   title={[w.role, w.company].filter(Boolean).join(" · ")}
-                  subtitle={w.company} meta={[w.startDate, w.endDate].filter(Boolean).join(" – ")}
+                  subtitle={w.company} meta={[w.startDate, endDateLabel(w)].filter(Boolean).join(" – ")}
                   description={w.responsibilities}
                   onEdit={() => { setEditingWorkId(w.id); setWorkDraft({ ...w }); }}
                   onDelete={() => setWorkHistory((p) => p.filter((x) => x.id !== w.id))}

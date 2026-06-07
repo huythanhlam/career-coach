@@ -14,9 +14,9 @@
  *   which uses a 3-pass text search: verbatim → HTML-entity → DOMParser text-nodes.
  *   Score updates instantly based on priority of applied fixes.
  */
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
-import { AnalysisPanel } from "@/components/ResumeGeneratorWorkspace";
+import { AnalysisPanel, type SuggestionStatus } from "@/components/ResumeGeneratorWorkspace";
 import { ResumeGeneratorWorkspace, ResumeGeneratorWorkspaceHandle } from "@/components/ResumeGeneratorWorkspace";
 import type { ResumeAnalysisResult, Improvement } from "@/services/geminiService";
 
@@ -45,24 +45,75 @@ export function ResumeAnalysisWorkspace({
   const [html] = useState<string | null>(null);
   const [loading] = useState(false);
 
-  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const [statuses, setStatuses] = useState<Record<string, SuggestionStatus>>({});
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [selectedImpId, setSelectedImpId] = useState<string | null>(null);
 
+  const statusOf = useCallback((id: string): SuggestionStatus => statuses[id] ?? 'pending', [statuses]);
+
+  // applyFix rewrites the editor DOM, invalidating any active highlight range — re-apply
+  // the highlight to whichever suggestion is still selected (no-op when none is).
+  const reapplyHighlight = useCallback(() => {
+    const imp = selectedImpId ? analysisResult?.improvements.find(i => i.id === selectedImpId) : null;
+    workspaceRef.current?.setHighlight(imp?.originalText ?? null);
+  }, [selectedImpId, analysisResult]);
+
   const handleApply = useCallback((imp: Improvement) => {
-    if (appliedIds.has(imp.id)) return;
+    if (statusOf(imp.id) === 'applied') return;
     workspaceRef.current?.applyFix(imp.originalText, imp.suggestedText);
-    setAppliedIds(prev => new Set(prev).add(imp.id));
+    setStatuses(prev => ({ ...prev, [imp.id]: 'applied' }));
     if (selectedImpId === imp.id) setSelectedImpId(null);
-  }, [appliedIds, selectedImpId]);
+    else reapplyHighlight();
+  }, [statusOf, selectedImpId, reapplyHighlight]);
+
+  const handleDismiss = useCallback((imp: Improvement) => {
+    setStatuses(prev => ({ ...prev, [imp.id]: 'dismissed' }));
+    if (selectedImpId === imp.id) setSelectedImpId(null);
+  }, [selectedImpId]);
+
+  const handleUndo = useCallback((imp: Improvement) => {
+    if (statusOf(imp.id) === 'applied') {
+      // Revert the edit by swapping the suggested text back to the original.
+      workspaceRef.current?.applyFix(imp.suggestedText, imp.originalText);
+      reapplyHighlight();
+    }
+    setStatuses(prev => { const next = { ...prev }; delete next[imp.id]; return next; });
+  }, [statusOf, reapplyHighlight]);
+
+  const handleToggleHide = useCallback((id: string) => {
+    setHiddenIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    setSelectedImpId(prev => (prev === id ? null : prev));
+  }, []);
+
+  // Clicking a card toggles selection.
+  const handleSelect = useCallback((id: string) => {
+    setSelectedImpId(prev => (prev === id ? null : id));
+  }, []);
+
+  // Keep the document highlight in sync with the selected suggestion: scroll + highlight
+  // the quoted section while selected, and clear it the moment nothing is selected
+  // (deselected, applied, dismissed, hidden, or a different card chosen).
+  useEffect(() => {
+    const imp = selectedImpId ? analysisResult?.improvements.find(i => i.id === selectedImpId) : null;
+    workspaceRef.current?.setHighlight(imp?.originalText ?? null);
+  }, [selectedImpId, analysisResult]);
 
   const analysisPanel = (
     <AnalysisPanel
       result={analysisResult}
       isAnalyzing={isAnalyzing}
-      appliedIds={appliedIds}
+      statuses={statuses}
+      hiddenIds={hiddenIds}
       selectedImpId={selectedImpId}
-      onSelect={id => setSelectedImpId(prev => prev === id ? null : id)}
+      onSelect={handleSelect}
       onApply={handleApply}
+      onDismiss={handleDismiss}
+      onUndo={handleUndo}
+      onToggleHide={handleToggleHide}
     />
   );
 

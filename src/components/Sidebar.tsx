@@ -3,7 +3,7 @@ import {
   Briefcase,
   FileText,
   LineChart,
-  Map,
+  Target,
   DollarSign,
   Building,
   Users,
@@ -28,7 +28,7 @@ export type ViewId =
   | "salary"
   | "interview"
   | "market"
-  | "career"
+  | "goal_planning"
   | "company_research"
   | "mock_behavioral"
   | "mock_case_study"
@@ -61,7 +61,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "dashboard",       label: "Overview",       icon: Grid },
       { id: "unified",         label: "Strategy Engine", icon: Compass, badge: "AI" },
-      { id: "career",          label: "Career Roadmap", icon: Map },
+      { id: "goal_planning",   label: "Goal Planner",   icon: Target },
     ],
   },
   {

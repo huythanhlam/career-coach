@@ -4,6 +4,7 @@ import type { UserProfile, WorkExperience, Education } from "@/types/userProfile
 import { generateId } from "@/types/userProfile";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
+import { EndDateField } from "@/components/ui/EndDateField";
 import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS, COMMON_MINORS } from "@/lib/profileOptions";
 
 interface Props {
@@ -224,7 +225,13 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                   </div>
                   <div>
                     <label style={labelStyle}>End Date</label>
-                    <MonthYearPicker value={w.endDate} onChange={(v) => updateWork(w.id, "endDate", v)} placeholder="End date" allowPresent style={{ ...inputStyle, height: 38 }} />
+                    <EndDateField
+                      id={`review-work-${w.id}`}
+                      endDate={w.endDate}
+                      current={Boolean(w.current)}
+                      onChange={({ endDate, current }) => { updateWork(w.id, "current", current); updateWork(w.id, "endDate", endDate); }}
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                 </div>
                 <div className="mt-2">

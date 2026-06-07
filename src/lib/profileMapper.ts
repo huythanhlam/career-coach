@@ -1,4 +1,5 @@
 import type { UserProfile } from "@/types/userProfile";
+import { normalizeWorkHistory } from "@/lib/workExperience";
 
 export function rowToProfile(row: Record<string, unknown>): UserProfile {
   return {
@@ -13,7 +14,7 @@ export function rowToProfile(row: Record<string, unknown>): UserProfile {
     currentRole: (row.current_role as string) ?? undefined,
     yearsOfExperience: (row.years_of_experience as number) ?? undefined,
     summary: (row.summary as string) ?? undefined,
-    workHistory: (row.work_history as UserProfile["workHistory"]) ?? [],
+    workHistory: normalizeWorkHistory((row.work_history as UserProfile["workHistory"]) ?? []),
     education: (row.education as UserProfile["education"]) ?? [],
     skills: (row.skills as string[]) ?? [],
     resumeText: (row.resume_text as string) ?? undefined,
@@ -22,7 +23,10 @@ export function rowToProfile(row: Record<string, unknown>): UserProfile {
     linkedinStoragePath: (row.linkedin_storage_path as string) ?? undefined,
     savedResumes: (row.saved_resumes as UserProfile["savedResumes"]) ?? [],
     savedCoverLetters: (row.saved_cover_letters as UserProfile["savedCoverLetters"]) ?? [],
+    savedCareerPlans: (row.saved_career_plans as UserProfile["savedCareerPlans"]) ?? [],
+    careerSurvey: (row.career_survey as UserProfile["careerSurvey"]) ?? {},
     onboardingComplete: (row.onboarding_complete as boolean) ?? false,
+    aiConsentGivenAt: (row.ai_consent_given_at as string) ?? undefined,
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
   };
@@ -43,8 +47,9 @@ export function profileToRow(
     portfolio: profile.portfolio ?? null,
     target_role: profile.targetRole ?? null,
     current_role: profile.currentRole ?? null,
+    years_of_experience: profile.yearsOfExperience ?? null,
     summary: profile.summary ?? null,
-    work_history: profile.workHistory,
+    work_history: normalizeWorkHistory(profile.workHistory),
     education: profile.education,
     skills: profile.skills,
     resume_text: profile.resumeText ?? null,
@@ -57,7 +62,14 @@ export function profileToRow(
         id, name, storagePath, jobTitle, company, createdAt,
       })
     ),
+    saved_career_plans: (profile.savedCareerPlans ?? []).map(
+      ({ id, name, storagePath, goalType, goalSummary, createdAt }) => ({
+        id, name, storagePath, goalType, goalSummary, createdAt,
+      })
+    ),
+    career_survey: profile.careerSurvey ?? {},
     onboarding_complete: profile.onboardingComplete,
+    ai_consent_given_at: profile.aiConsentGivenAt ?? null,
     updated_at: new Date().toISOString(),
   };
 }

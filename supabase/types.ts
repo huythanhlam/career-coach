@@ -5,6 +5,34 @@ export interface DbSavedResume {
   createdAt: string;
 }
 
+export interface DbSavedCareerPlan {
+  id: string;
+  name: string;
+  storagePath: string;
+  goalType: string;
+  goalSummary: string;
+  createdAt: string;
+}
+
+export interface DbCareerSurvey {
+  currentRole?: string;
+  company?: string;
+  yearsExperience?: string;
+  jobSatisfaction?: number | string;
+  growthOpportunity?: number | string;
+  compensationSatisfaction?: number | string;
+  workLifeBalance?: number | string;
+  recognition?: number | string;
+  mobility?: string;
+  managerSupport?: string;
+  energizers?: string;
+  frustrations?: string;
+  recentWins?: string;
+  skillsToGrow?: string;
+  biggestBlocker?: string;
+  updatedAt?: string;
+}
+
 export interface DbProfile {
   id: string;
   full_name: string | null;
@@ -23,6 +51,8 @@ export interface DbProfile {
   resume_storage_path: string | null;
   linkedin_storage_path: string | null;
   saved_resumes: DbSavedResume[];
+  saved_career_plans: DbSavedCareerPlan[];
+  career_survey: DbCareerSurvey;
   onboarding_complete: boolean;
   mfa_enrolled: boolean;
   created_at: string;

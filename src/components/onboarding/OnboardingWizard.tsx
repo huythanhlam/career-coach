@@ -4,13 +4,14 @@ import { parseProfileFromImport } from "@/services/geminiService";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { uploadImportedResume, uploadLinkedInText } from "@/services/resumeStorageService";
+import { ConsentStep } from "./steps/ConsentStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
 import { ImportStep } from "./steps/ImportStep";
 import { ExtractingStep } from "./steps/ExtractingStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { DoneStep } from "./steps/DoneStep";
 
-type Step = "welcome" | "import" | "extracting" | "review" | "done";
+type Step = "consent" | "welcome" | "import" | "extracting" | "review" | "done";
 type ImportInput =
   | { type: "linkedin"; text: string; url?: string }
   | { type: "resume"; text: string };
@@ -18,11 +19,16 @@ type ImportInput =
 export function OnboardingWizard() {
   const { updateProfile } = useUserProfile();
   const { session } = useAuth();
-  const [step, setStep] = useState<Step>("welcome");
+  const [step, setStep] = useState<Step>("consent");
   const [importInput, setImportInput] = useState<ImportInput | null>(null);
   const [extracted, setExtracted] = useState<Partial<UserProfile>>({});
   const [extractionError, setExtractionError] = useState<string | undefined>();
   const [savedPreferredName, setSavedPreferredName] = useState("");
+
+  function handleConsent() {
+    updateProfile({ aiConsentGivenAt: new Date().toISOString() });
+    setStep("welcome");
+  }
 
   function handleSkip() {
     updateProfile({ onboardingComplete: true });
@@ -69,7 +75,7 @@ export function OnboardingWizard() {
     // The wizard overlay will unmount automatically since App.tsx checks onboardingComplete
   }
 
-  // Progress indicator dots
+  // Progress indicator dots (consent is a gate, not a numbered step)
   const steps: Step[] = ["welcome", "import", "review", "done"];
   const progressIndex = steps.indexOf(step === "extracting" ? "import" : step);
 
@@ -89,8 +95,8 @@ export function OnboardingWizard() {
           boxShadow: "0 24px 80px rgba(31,27,22,0.22)",
         }}
       >
-        {/* Progress dots */}
-        {step !== "done" && (
+        {/* Progress dots — hidden on consent gate */}
+        {step !== "done" && step !== "consent" && (
           <div className="flex justify-center gap-1.5 pt-5 pb-1">
             {steps.filter(s => s !== "done").map((s, i) => (
               <div
@@ -108,6 +114,9 @@ export function OnboardingWizard() {
 
         {/* Step content */}
         <div className={`flex-1 overflow-y-auto ${step === "review" ? "" : "flex items-center justify-center"}`}>
+          {step === "consent" && (
+            <ConsentStep onAgree={handleConsent} />
+          )}
           {step === "welcome" && (
             <WelcomeStep onStart={() => setStep("import")} onSkip={handleSkip} />
           )}

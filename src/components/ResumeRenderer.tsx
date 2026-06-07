@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import Markdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import { ResumeStyleConfig, DENSITY_MAP, DEFAULT_STYLE_CONFIG } from '@/types/resumeStyle';
 
 interface ResumeRendererProps {
@@ -101,7 +101,7 @@ export function ResumeRenderer({
     >
       <div className={getThemeClasses()}>
         <Markdown
-          rehypePlugins={[rehypeRaw]}
+          rehypePlugins={[rehypeSanitize]}
           components={{
             ul: ({ node, ...props }) => <ul className="list-disc pl-5" {...props} />,
             ol: ({ node, ...props }) => <ol className="list-decimal pl-5" {...props} />,

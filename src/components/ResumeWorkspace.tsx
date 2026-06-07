@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { rewriteResumeSelection } from "@/services/geminiService";
 import type { Improvement } from "@/services/geminiService";
+import { markdownToHtml } from "./DocumentEditor";
+import { exportHtmlToDocx } from "@/lib/htmlToDocx";
 
 interface ResumeWorkspaceProps {
   initialResumeText: string;
@@ -128,16 +130,12 @@ export function ResumeWorkspace({ initialResumeText, improvements, overallScore,
 
   const handleExportPDF = () => window.print();
 
-  const handleExportDocx = () => {
-    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Resume</title></head><body>";
-    const footer = "</body></html>";
-    const src = header + "<pre style='font-family: Arial,sans-serif; white-space:pre-wrap;'>" + resumeText.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</pre>" + footer;
-    const a = document.createElement("a");
-    document.body.appendChild(a);
-    a.href = "data:application/vnd.ms-word;charset=utf-8," + encodeURIComponent(src);
-    a.download = "resume.doc";
-    a.click();
-    document.body.removeChild(a);
+  const handleExportDocx = async () => {
+    await exportHtmlToDocx({
+      html: markdownToHtml(resumeText),
+      fileName: "resume",
+      title: "Resume",
+    });
   };
 
   const getHighlightedMarkdown = () => {

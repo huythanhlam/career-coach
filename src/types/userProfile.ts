@@ -27,6 +27,46 @@ export interface SavedCoverLetter {
   createdAt: string;
 }
 
+export interface SavedCareerPlan {
+  id: string;
+  name: string;
+  storagePath: string;
+  goalType: string;
+  goalSummary: string;
+  createdAt: string;
+}
+
+/** Sentinel value letting the user explicitly answer "Unsure" on any question. */
+export const UNSURE = "Unsure";
+
+/** A 1–5 rating, or "Unsure". */
+export type ScaleAnswer = number | typeof UNSURE;
+
+/** Snapshot of the user's present job situation, used to ground goal planning. */
+export interface CareerSurvey {
+  // Baseline identity — captured here when the user doesn't fill out the full
+  // profile. Mirrors profile.currentRole / current company / yearsOfExperience.
+  currentRole?: string;
+  company?: string;
+  yearsExperience?: string;
+  // 1–5 scales (or "Unsure")
+  jobSatisfaction?: ScaleAnswer;
+  growthOpportunity?: ScaleAnswer;
+  compensationSatisfaction?: ScaleAnswer;
+  workLifeBalance?: ScaleAnswer;
+  recognition?: ScaleAnswer;
+  // single-select (includes "Unsure")
+  mobility?: string;        // "Staying & growing" | "Open to the right move" | "Actively looking" | "Unsure"
+  managerSupport?: string;  // "Very supportive" | "Somewhat" | "Not really" | "No manager" | "Unsure"
+  // free text (or "Unsure")
+  energizers?: string;
+  frustrations?: string;
+  recentWins?: string;
+  skillsToGrow?: string;
+  biggestBlocker?: string;
+  updatedAt?: string;
+}
+
 export interface UserProfile {
   fullName: string;
   preferredName: string;
@@ -48,7 +88,10 @@ export interface UserProfile {
   linkedinStoragePath?: string;
   savedResumes?: { id: string; name: string; storagePath: string; text?: string; createdAt: string }[];
   savedCoverLetters?: SavedCoverLetter[];
+  savedCareerPlans?: SavedCareerPlan[];
+  careerSurvey?: CareerSurvey;
   onboardingComplete: boolean;
+  aiConsentGivenAt?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,8 +1,20 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": allowedOrigin,
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+function isPrivateUrl(rawUrl: string): boolean {
+  try {
+    const { hostname } = new URL(rawUrl);
+    return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|0\.0\.0\.0|169\.254\.)/.test(hostname);
+  } catch {
+    return true;
+  }
+}
 
 function decodeEntities(s: string): string {
   return s
@@ -101,16 +113,43 @@ function extractFromSemanticHtml(html: string): string {
   return best.slice(0, 8000) || innerText(cleaned).slice(0, 8000);
 }
 
+function unauthorized() {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function verifyUser(authHeader: string | null) {
+  if (!authHeader) return null;
+  const client = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+  const { data: { user }, error } = await client.auth.getUser();
+  return error ? null : user;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const user = await verifyUser(req.headers.get("Authorization"));
+  if (!user) return unauthorized();
 
   try {
     const { url } = await req.json();
 
     if (!url || !/^https?:\/\//i.test(url)) {
       return new Response(JSON.stringify({ error: "Invalid URL" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (isPrivateUrl(url)) {
+      return new Response(JSON.stringify({ error: "URL not allowed" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

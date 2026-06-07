@@ -10,6 +10,7 @@ import { MessageCircle } from "lucide-react";
 import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { ConsentModal } from "@/components/ConsentModal";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { SecuritySettings } from "@/components/SecuritySettings";
 import { LandingPage } from "@/components/LandingPage";
@@ -49,7 +50,7 @@ function AppInner() {
                 className={`flex-1 h-full overflow-hidden ${activeView === id ? 'flex' : 'hidden'}`}
               >
                 {/* @ts-ignore */}
-                <WorkflowView workflowId={id as any} />
+                <WorkflowView workflowId={id as any} onNavigate={setActiveView} />
               </div>
             ))}
 
@@ -84,6 +85,9 @@ function AppInner() {
 
       {/* Onboarding overlay — shown on first visit */}
       {!profile.onboardingComplete && <OnboardingWizard />}
+
+      {/* Consent overlay — shown to existing users who predate the consent requirement */}
+      {profile.onboardingComplete && !profile.aiConsentGivenAt && <ConsentModal />}
     </TooltipProvider>
   );
 }
