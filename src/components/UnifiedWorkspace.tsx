@@ -82,7 +82,7 @@ export function UnifiedWorkspace() {
 
     const marketP = generateWorkflowData(
       workflowsConfig.market.systemInstruction,
-      `What is the real, data-driven market compensation for a ${jobInput} at ${level} level with ${yoe} years of experience? Assume US national average / remote if location not specified.`
+      `Estimate the market compensation for a ${jobInput} at ${level} level with ${yoe} years of experience, based on your training knowledge. Assume US national average / remote if no location is specified, and state your confidence.`
     ).then(res => {
       const match = res.match(/```json\s*([\s\S]*?)\s*(?:```|$)/);
       return JSON.parse(match ? match[1] : res);
@@ -90,12 +90,12 @@ export function UnifiedWorkspace() {
 
     const companyP = generateWorkflowData(
       workflowsConfig.company_research.systemInstruction,
-      `Provide company intel for the company mentioned in this job description or title: ${jobInput}. Focus on culture, growth trajectory, and tech stack.`
+      `Based on your training knowledge, give me intel on the company referenced in this job description or title: ${jobInput}. Cover its likely culture, trajectory, and what the role/team probably works on, flagging anything uncertain. If you can't confidently identify the company, say so.`
     );
 
     const interviewP = generateWorkflowData(
       workflowsConfig.interview.systemInstruction,
-      `Create an interview guide for a ${level} level role based on this context: ${jobInput} with ${yoe} YOE.`
+      `Create an interview-prep and job-search guide for a ${level}-level role with ${yoe} years of experience, based on this job description or title: ${jobInput}. Tailor it to the role's field.`
     );
 
     // Run sequentially to grab JSON reliably or use Promise.allSettled

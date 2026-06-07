@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Loader2, Bookmark } from "lucide-react";
 import { createTechCoachChat, sendMessageStream } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
+import { docWrapInstruction, extractDocument, DOC_START } from "@/lib/aiDocFormat";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -81,9 +82,7 @@ export function CoverLetterWorkspace({
 
   useEffect(() => {
     const config = workflowsConfig["cover_letter"];
-    const systemPrompt =
-      config.systemInstruction +
-      "\n\nCRITICAL INSTRUCTION: When you provide the cover letter, wrap it ENTIRELY in ```markdown\n[content]\n``` so the editor can parse it. Only use that block when you want to update the document.";
+    const systemPrompt = config.systemInstruction + docWrapInstruction("cover letter");
 
     const chat = createTechCoachChat(systemPrompt, false);
     setChatInstance(chat);
@@ -107,8 +106,7 @@ export function CoverLetterWorkspace({
             m[m.length - 1] = { role: "model", text: full };
             return m;
           });
-          const match = full.match(/```(?:markdown|md)?\s*([\s\S]*?)(?:```|$)/);
-          const body = match?.[1]?.trim() ?? (full.trim().length > 100 && !full.includes("```") ? full.trim() : "");
+          const body = extractDocument(full) ?? (full.trim().length > 100 && !full.includes(DOC_START) && !full.includes("```") ? full.trim() : "");
           if (body) setContent(body);
         });
       } catch (err) {

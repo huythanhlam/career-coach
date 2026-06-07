@@ -9,6 +9,7 @@ import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImpera
 import { Loader2, Bookmark, Sparkles, CheckCircle2, XCircle, Undo2, EyeOff, Eye } from "lucide-react";
 import { createTechCoachChat, sendMessageStream, type ResumeAnalysisResult, type Improvement } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
+import { docWrapInstruction, extractDocument, DOC_START } from "@/lib/aiDocFormat";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { generateId } from "@/types/userProfile";
@@ -87,9 +88,7 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
   useEffect(() => {
     const config = workflowsConfig["resume_generation"];
     const baseInstruction = systemInstruction ?? config.systemInstruction;
-    const systemPrompt =
-      baseInstruction +
-      "\n\nCRITICAL INSTRUCTION: When you provide the resume, wrap it ENTIRELY in ```markdown\n[content]\n``` so the editor can parse it. Only use that block when you want to update the document.";
+    const systemPrompt = baseInstruction + docWrapInstruction("resume");
 
     const chat = createTechCoachChat(systemPrompt, config.enableSearch);
     setChatInstance(chat);
@@ -113,9 +112,9 @@ export const ResumeGeneratorWorkspace = forwardRef<ResumeGeneratorWorkspaceHandl
             m[m.length - 1] = { role: "model", text: full };
             return m;
           });
-          const match = full.match(/```(?:markdown|md)?\s*([\s\S]*?)(?:```|$)/);
-          if (match?.[1]) setContent(match[1].trim());
-          else if (full.trim().length > 100 && !full.includes("```")) setContent(full.trim());
+          const body = extractDocument(full);
+          if (body) setContent(body);
+          else if (full.trim().length > 100 && !full.includes(DOC_START) && !full.includes("```")) setContent(full.trim());
         });
       } catch (err) {
         console.error("Resume generation failed:", err);

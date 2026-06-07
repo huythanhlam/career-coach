@@ -14,6 +14,7 @@ import {
   Undo2, Redo2, Smile,
 } from "lucide-react";
 import { sendMessageStream } from "@/services/geminiService";
+import { extractDocument, maskDocumentForDisplay, DOC_START, DOC_END } from "@/lib/aiDocFormat";
 import { TEMPLATES } from "@/components/TemplateGallery";
 import { getScopedStyles, loadGoogleFont } from "@/components/ResumeRenderer";
 import { exportHtmlToDocx } from "@/lib/htmlToDocx";
@@ -994,7 +995,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
     const text = chatInput.trim();
     if (!text || !aiChat || isAiGenerating) return;
     const ctx = selectedContext ? `\n\nHighlighted text:\n"""\n${selectedContext}\n"""` : "";
-    const prompt = `User request: ${text}${ctx}\n\nFull document:\n\n${content}\n\nReturn the full updated document inside a \`\`\`markdown\`\`\` block.`;
+    const prompt = `User request: ${text}${ctx}\n\nFull document:\n\n${content}\n\nApply the request and return the COMPLETE updated document (preserve everything you are not explicitly changing), wrapped between ${DOC_START} and ${DOC_END} markers.`;
     setChatInput(""); setSelectedContext(""); setIsAiGenerating(true);
     setAiMessages(prev => [...prev,
       { role: "user", text: selectedContext ? `${text}\n\n*Context: "${selectedContext.slice(0, 80)}…"*` : text },
@@ -1005,8 +1006,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
       await sendMessageStream(aiChat, prompt, chunk => {
         full += chunk;
         setAiMessages(prev => { const m = [...prev]; m[m.length - 1] = { role: "model", text: full }; return m; });
-        const match = full.match(/```(?:markdown|md)?\s*([\s\S]*?)(?:```|$)/);
-        if (match?.[1]) { sourceRef.current = "external"; onChange(match[1].trim()); }
+        const body = extractDocument(full);
+        if (body) { sourceRef.current = "external"; onChange(body); }
       });
     } catch (err) {
       console.error(err);
@@ -1343,7 +1344,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
                 <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
                   <div style={{ maxWidth: "88%", borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "9px 13px", background: msg.role === "user" ? "var(--primary)" : "var(--muted)", color: msg.role === "user" ? "#fff" : "var(--foreground)", fontSize: 13, lineHeight: 1.5 }}>
                     <div className="prose prose-sm max-w-none" style={{ color: "inherit" }}>
-                      <Markdown>{msg.text.includes("```markdown") ? msg.text.replace(/```(?:markdown|md)?\s*([\s\S]*?)```/g, "*(Updated document)*") : msg.text}</Markdown>
+                      <Markdown>{maskDocumentForDisplay(msg.text)}</Markdown>
                     </div>
                   </div>
                 </div>
@@ -1392,7 +1393,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
 3. WORK BULLETS: For each job, reorder and strengthen bullets to front-load the most relevant experience. Use the XYZ formula (Action + metric/result) where the existing context supports quantification.
 4. SKILLS: Reorder the skills section to lead with skills that appear in the JD and are already in my resume.
 5. NO FABRICATION: Never invent new companies, roles, dates, projects, metrics, or skills that do not already exist in this resume. Only strengthen and reframe what is already there.
-6. OUTPUT: Return the full tailored resume in markdown, wrapped in \`\`\`markdown ... \`\`\`.
+6. OUTPUT: Return the full tailored resume in Markdown, wrapped between ${DOC_START} and ${DOC_END} markers.
 
 Job Description:
 ---

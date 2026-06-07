@@ -265,7 +265,7 @@ const features: Feature[] = [
     id: "linkedin",
     icon: ShieldCheck,
     title: "LinkedIn Optimizer",
-    description: "Rewrite your headline, About section, and experience with keyword-rich language that attracts tech recruiters.",
+    description: "Rewrite your headline, About section, and experience with keyword-rich language that attracts recruiters.",
     color: "#0A66C2",
     tab: "linkedin",
   },
@@ -274,7 +274,7 @@ const features: Feature[] = [
 const testimonials = [
   {
     name: "Sarah K.",
-    role: "Senior SWE → Staff Engineer at Stripe",
+    role: "Marketing Coordinator → Marketing Manager",
     quote: "TechCoach AI helped me negotiate $40k more in TC. The salary strategy was incredibly specific and gave me the confidence to push back.",
     stars: 5,
   },
