@@ -5,7 +5,13 @@
  * In production this hits the Vercel Node function at /api/screenshot; in dev it
  * hits the local Express gateway on :4000. Returns null on failure so the UI can
  * show its empty state.
+ *
+ * Sends the Supabase access token so the (public) production endpoint can require
+ * authentication, mirroring the AI gateway in geminiService.ts.
  */
+import { supabase } from "@/lib/supabaseClient";
+
+const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? "";
 
 export interface ProfileRegion {
   key: string;
@@ -29,9 +35,15 @@ const SCREENSHOT_URL =
 
 export async function captureLinkedInScreenshot(url: string): Promise<ScreenshotResult | null> {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token ?? "";
     const response = await fetch(SCREENSHOT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${token}`,
+      },
       body: JSON.stringify({ url }),
     });
     if (!response.ok) return null;
