@@ -4,18 +4,14 @@
 // BLS's lower daily limit). BLS data is public government data, so this only
 // proxies — no per-user verification beyond the platform's apikey gate.
 
-const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
-const corsHeaders = {
-  "Access-Control-Allow-Origin": allowedOrigin,
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const BLS_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/";
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: cors });
   }
 
   try {
@@ -28,7 +24,7 @@ Deno.serve(async (req) => {
     if (ids.length === 0) {
       return new Response(JSON.stringify({ error: "No valid BLS series IDs" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -50,13 +46,13 @@ Deno.serve(async (req) => {
     const data = await blsRes.json();
 
     return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });
