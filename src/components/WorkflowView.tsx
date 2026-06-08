@@ -23,7 +23,10 @@ import { ResumeAnalysisWorkspace } from "@/components/ResumeAnalysisWorkspace";
 import { TailorResumeWorkspace } from "@/components/TailorResumeWorkspace";
 import { downloadResume, deleteResume } from "@/services/resumeStorageService";
 import { useEffect } from "react";
-import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompensationViz";
+import { MarketCompensationViz, MarketCompData, marketToMarkdown } from "@/components/MarketCompensationViz";
+import { marketCacheKey, getCachedMarketData, putCachedMarketData, getStaleRow } from "@/services/marketDataCache";
+import { enrichWithBls } from "@/services/blsService";
+import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
 import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
@@ -91,7 +94,43 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const [showTailor, setShowTailor] = useState(false);
   const [tailorInitialResume, setTailorInitialResume] = useState<{ text: string; name: string } | null>(null);
   const [marketData, setMarketData] = useState<MarketCompData | null>(null);
+  const [marketCachedAt, setMarketCachedAt] = useState<string | null>(null);
   const [isGeneratingMarketData, setIsGeneratingMarketData] = useState(false);
+  const [marketSaveState, setMarketSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [marketCopied, setMarketCopied] = useState(false);
+  const { saveAnalysis: persistMarketAnalysis } = useSavedAnalyses();
+
+  const handleSaveMarket = async () => {
+    if (!marketData || marketSaveState === "saving") return;
+    setMarketSaveState("saving");
+    try {
+      await persistMarketAnalysis({
+        jobInput: [formData.role, formData.location, formData.secondaryLocation].filter(Boolean).join(" · "),
+        yoe: formData.yoe ?? "",
+        level: "",
+        marketData,
+        companyIntel: null,
+        resumeFit: null,
+        interviewStrategy: null,
+        resumeFileName: null,
+      });
+      setMarketSaveState("saved");
+    } catch (err) {
+      console.error(err);
+      setMarketSaveState("idle");
+    }
+  };
+
+  const handleCopyMarket = async () => {
+    if (!marketData) return;
+    try {
+      await navigator.clipboard.writeText(marketToMarkdown(marketData));
+      setMarketCopied(true);
+      setTimeout(() => setMarketCopied(false), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState(1);
   const [mainDocumentText, setMainDocumentText] = useState("");
@@ -105,6 +144,49 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
       }
     } catch { /* ignore */ }
     return null;
+  };
+
+  const runMarketAnalysis = async (forceRefresh = false) => {
+    if (isGeneratingMarketData) return;
+    setIsGeneratingMarketData(true);
+    setMarketSaveState("idle");
+    const parts = {
+      role: formData.role ?? "",
+      location: formData.location ?? "",
+      secondaryLocation: formData.secondaryLocation,
+      yoe: formData.yoe ?? "",
+    };
+    const key = marketCacheKey(parts);
+    try {
+      if (!forceRefresh) {
+        const cached = await getCachedMarketData(key);
+        if (cached) {
+          setMarketData(cached.data);
+          setMarketCachedAt(cached.cachedAt);
+          return;
+        }
+      }
+      const prompt = config.generatePrompt(formData);
+      const chat = createTechCoachChat(config.systemInstruction, config.enableSearch);
+      let full = "";
+      await sendMessageStream(chat, prompt as string, chunk => { full += chunk; });
+      const parsed = tryParseMarketData(full);
+      if (parsed) {
+        const prior = forceRefresh ? undefined : (await getStaleRow(key))?.locations;
+        const enriched = await enrichWithBls(parsed, parts.role, prior);
+        setMarketData(enriched);
+        setMarketCachedAt(new Date().toISOString());
+        void putCachedMarketData(key, parts, enriched);
+      } else {
+        setMarketData(null);
+        setMarketCachedAt(null);
+        setMainDocumentText(full);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingMarketData(false);
+    }
   };
 
   const handleInputChange = (id: string, value: string) =>
@@ -134,16 +216,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     if (isGenerating || isGeneratingMarketData) return;
 
     if (workflowId === "market") {
-      setIsGeneratingMarketData(true);
-      const prompt = config.generatePrompt(formData);
-      const chat = createTechCoachChat(config.systemInstruction, config.enableSearch);
-      try {
-        let full = "";
-        await sendMessageStream(chat, prompt as string, chunk => { full += chunk; });
-        setMarketData(tryParseMarketData(full) ?? null);
-        if (!tryParseMarketData(full)) setMainDocumentText(full);
-      } catch (err) { console.error(err); }
-      finally { setIsGeneratingMarketData(false); }
+      await runMarketAnalysis(false);
       return;
     }
 
@@ -407,23 +480,37 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
       <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
         <PageHeader title={config.title} description={config.description} />
         <div className="flex-1 overflow-auto no-scrollbar p-8">
-          <div style={{ maxWidth: 760, margin: "0 auto" }}>
-            {!isGeneratingMarketData && !marketData && <FormCard config={config} formData={formData} fileData={fileData} isGenerating={isGenerating} handleInputChange={handleInputChange} handleFileChange={handleFileChange} handleInitialSubmit={handleInitialSubmit} />}
+          <div style={{ maxWidth: marketData ? 1180 : 760, margin: "0 auto" }}>
+            {!isGeneratingMarketData && !marketData && (
+              <div style={{ maxWidth: 760, margin: "0 auto" }}>
+                <FormCard config={config} formData={formData} fileData={fileData} isGenerating={isGenerating} handleInputChange={handleInputChange} handleFileChange={handleFileChange} handleInitialSubmit={handleInitialSubmit} />
+              </div>
+            )}
 
-            {isGeneratingMarketData && (
-              <MentorCard style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16 }}>
-                <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--primary)" }} />
-                <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}>Researching compensation</div>
-                <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Analysing market data — just a moment…</div>
-              </MentorCard>
+            {isGeneratingMarketData && !marketData && (
+              <div style={{ maxWidth: 760, margin: "0 auto" }}>
+                <MentorCard style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16 }}>
+                  <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--primary)" }} />
+                  <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}>Researching compensation</div>
+                  <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Analysing market data — just a moment…</div>
+                </MentorCard>
+              </div>
             )}
 
             {marketData && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <MarketCompensationViz data={marketData} />
-                <button onClick={() => { setMarketData(null); setMainDocumentText(""); }} style={{ height: 48, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--foreground)" }}>
-                  Start new analysis
-                </button>
+                <MarketCompensationViz data={marketData} cachedAt={marketCachedAt ?? undefined} onRefresh={() => runMarketAnalysis(true)} isRefreshing={isGeneratingMarketData} onNavigate={onNavigate} />
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <button onClick={handleSaveMarket} disabled={marketSaveState !== "idle"} style={{ flex: "1 1 160px", height: 48, background: marketSaveState === "saved" ? "var(--muted)" : "var(--card)", border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: marketSaveState === "idle" ? "pointer" : "default", color: "var(--foreground)" }}>
+                    {marketSaveState === "saving" ? "Saving…" : marketSaveState === "saved" ? "Saved ✓" : "Save comparison"}
+                  </button>
+                  <button onClick={handleCopyMarket} style={{ flex: "1 1 160px", height: 48, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--foreground)" }}>
+                    {marketCopied ? "Copied ✓" : "Copy summary"}
+                  </button>
+                  <button onClick={() => { setMarketData(null); setMarketCachedAt(null); setMainDocumentText(""); setMarketSaveState("idle"); }} style={{ flex: "1 1 160px", height: 48, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--foreground)" }}>
+                    Start new analysis
+                  </button>
+                </div>
               </div>
             )}
           </div>
