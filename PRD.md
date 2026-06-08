@@ -185,7 +185,7 @@ Fixed 280px left panel, always visible.
 | Group | Items | ViewId |
 |---|---|---|
 | **Plan** | Overview, Strategy Engine, Career Roadmap | `dashboard`, `unified`, `career` |
-| **Apply** | Resume Builder, Impact Audit, Profile Lab | `resume_generation`, `resume`, `linkedin` |
+| **Apply** | Resume Builder, Cover Letter, LinkedIn Optimization | `resume_generation`, `cover_letter`, `linkedin` |
 | **Practice** | Behavioral Sim, Technical Sim, Case Study | `mock_behavioral`, `mock_tech`, `mock_case_study` |
 | **Research** | Company Intel, Market Data, Salary Negotiator | `company_research`, `market`, `salary` |
 

@@ -3,7 +3,11 @@ import { supabase } from "@/lib/supabaseClient";
 import { WorkflowId } from "@/components/Sidebar";
 import { workflowsConfig } from "@/config/workflows";
 import { useUserProfile } from "@/context/UserProfileContext";
-import { createTechCoachChat, sendMessageStream, analyzeResume, ResumeAnalysisResult } from "@/services/geminiService";
+import { createTechCoachChat, sendMessageStream, analyzeResume, ResumeAnalysisResult, analyzeLinkedInProfile, LinkedInAnalysisResult } from "@/services/geminiService";
+import { parseDocumentToText } from "@/services/documentParserService";
+import { captureLinkedInScreenshot, ScreenshotResult } from "@/services/linkedinScreenshotService";
+import { LinkedInUploadForm, LinkedInUploadSubmit } from "@/components/LinkedInUploadForm";
+import { LinkedInOptimizationWorkspace } from "@/components/LinkedInOptimizationWorkspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,20 +69,7 @@ const fieldStyle: React.CSSProperties = {
 export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const config = workflowsConfig[workflowId];
   const { profile, updateProfile } = useUserProfile();
-  const [formData, setFormData] = useState<Record<string, any>>(() => {
-    if (workflowId === "linkedin")
-      return { url: profile.linkedin ?? "", profile: profile.linkedinText ?? "" };
-    return {};
-  });
-
-  useEffect(() => {
-    if (workflowId === "linkedin" && profile.linkedinStoragePath) {
-      downloadResume(profile.linkedinStoragePath)
-        .then(text => setFormData(prev => ({ ...prev, profile: text })))
-        .catch(() => {});
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflowId]);
+  const [formData, setFormData] = useState<Record<string, any>>({});
   const [fileData, setFileData] = useState<Record<string, FileData>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const rawFileMap = useRef<Record<string, File>>({});
@@ -134,6 +125,51 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState(1);
   const [mainDocumentText, setMainDocumentText] = useState("");
+
+  /* ── LinkedIn Optimization state ──────────────────────────────── */
+  const [linkedinSubmitted, setLinkedinSubmitted] = useState(false);
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [linkedinResult, setLinkedinResult] = useState<LinkedInAnalysisResult | null>(null);
+  const [isLinkedinAnalyzing, setIsLinkedinAnalyzing] = useState(false);
+  const [linkedinScreenshot, setLinkedinScreenshot] = useState<ScreenshotResult | null>(null);
+  const [isLinkedinCapturing, setIsLinkedinCapturing] = useState(false);
+  const [linkedinFile, setLinkedinFile] = useState<{ file: File; objectUrl: string } | null>(null);
+
+  const handleLinkedinSubmit = async ({ file, url, targetRole, screenshotFile }: LinkedInUploadSubmit) => {
+    setLinkedinSubmitted(true);
+    setLinkedinUrl(url);
+    setLinkedinResult(null);
+    setLinkedinScreenshot(null);
+    setLinkedinFile(prev => { if (prev?.objectUrl) URL.revokeObjectURL(prev.objectUrl); return { file, objectUrl: URL.createObjectURL(file) }; });
+    setIsLinkedinAnalyzing(true);
+
+    if (screenshotFile) {
+      // A screenshot the user took while logged in is the best visual — it has the
+      // real headshot, cover photo, and layout. Use it directly, skip live capture.
+      const reader = new FileReader();
+      reader.onload = () => setLinkedinScreenshot({ image: reader.result as string, blocked: false });
+      reader.readAsDataURL(screenshotFile);
+    } else if (url) {
+      // Best-effort live capture; LinkedIn often serves an authwall → PDF fallback.
+      setIsLinkedinCapturing(true);
+      captureLinkedInScreenshot(url)
+        .then(setLinkedinScreenshot)
+        .catch(() => setLinkedinScreenshot(null))
+        .finally(() => setIsLinkedinCapturing(false));
+    }
+
+    // Content + design analysis from the uploaded PDF.
+    try {
+      const text = await parseDocumentToText(file);
+      const result = await analyzeLinkedInProfile(text, targetRole);
+      setLinkedinResult(result);
+    } catch (err) {
+      console.error("LinkedIn analysis failed:", err);
+      setLinkedinResult({ profileText: "", overallScore: null, summary: "Analysis failed. Please try again.", improvements: [], designRecommendations: [] });
+    } finally {
+      setIsLinkedinAnalyzing(false);
+    }
+  };
 
   const tryParseMarketData = (text: string): MarketCompData | null => {
     try {
@@ -259,6 +295,48 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     return (
       <div className="flex-1 flex flex-col h-full relative">
         <GoalPlanningWorkspace onNavigate={onNavigate} />
+      </div>
+    );
+  }
+
+  /* ── LinkedIn Optimization ───────────────────────────────────── */
+  if (workflowId === "linkedin") {
+    if (!linkedinSubmitted) {
+      return (
+        <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+          <PageHeader title={config.title} description={config.description} />
+          <div className="flex-1 overflow-auto no-scrollbar p-8">
+            <LinkedInUploadForm
+              initialUrl={profile.linkedin ?? ""}
+              initialTargetRole={profile.targetRole ?? ""}
+              isSubmitting={false}
+              onSubmit={handleLinkedinSubmit}
+            />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <LinkedInOptimizationWorkspace
+          result={linkedinResult}
+          isAnalyzing={isLinkedinAnalyzing}
+          screenshot={linkedinScreenshot}
+          isCapturing={isLinkedinCapturing}
+          profileUrl={linkedinUrl}
+          file={linkedinFile?.file ?? null}
+          fileObjectUrl={linkedinFile?.objectUrl ?? null}
+          onReset={() => {
+            if (linkedinFile?.objectUrl) URL.revokeObjectURL(linkedinFile.objectUrl);
+            setLinkedinSubmitted(false);
+            setLinkedinResult(null);
+            setLinkedinScreenshot(null);
+            setIsLinkedinAnalyzing(false);
+            setIsLinkedinCapturing(false);
+            setLinkedinUrl("");
+            setLinkedinFile(null);
+          }}
+        />
       </div>
     );
   }

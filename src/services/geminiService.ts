@@ -193,6 +193,100 @@ export async function analyzeResume(
   }
 }
 
+// ─── LinkedIn profile optimization ──────────────────────────────────────────
+
+export type ProfileRegionKey =
+  | 'banner' | 'photo' | 'headline' | 'about' | 'featured'
+  | 'experience' | 'education' | 'skills' | 'none';
+
+export interface DesignRecommendation {
+  id: string;
+  priority: 'high' | 'medium' | 'low';
+  category: 'banner' | 'photo' | 'url' | 'featured' | 'formatting' | 'completeness' | 'scannability';
+  title: string;
+  description: string;
+  region: ProfileRegionKey; // which part of the profile this points at (for highlighting)
+}
+
+export interface LinkedInAnalysisResult {
+  profileText: string;
+  overallScore: number | null;
+  summary: string;
+  improvements: Improvement[];
+  designRecommendations: DesignRecommendation[];
+}
+
+const LINKEDIN_ANALYSIS_SYSTEM = `You are an expert LinkedIn profile strategist, recruiter, and personal-branding coach who has reviewed thousands of profiles across many industries. You give honest, specific, prioritized feedback that helps the profile win attention from both human recruiters and LinkedIn keyword search. You optimize for the candidate's target role when one is given. Output only the requested JSON: no prose, no explanations, no code fences; begin with "{" and end with "}".`;
+
+const buildLinkedInAnalysisPrompt = (profileText: string, targetRole: string): string => `
+Analyze the LinkedIn profile below (extracted from the user's "Save to PDF" export) and return ONLY a raw JSON object — no markdown fences, no explanation.
+
+Required JSON shape:
+{
+  "overallScore": <integer 0-100>,
+  "summary": "<2-3 sentence assessment of the profile's biggest strengths and gaps>",
+  "improvements": [
+    {
+      "id": "<unique string like '1', '2', ...>",
+      "priority": "high" | "medium" | "low",
+      "category": "impact" | "clarity" | "grammar" | "keywords" | "formatting",
+      "checklistLabel": "<short imperative label naming the section, max 8 words, e.g. 'Headline: lead with measurable value'>",
+      "description": "<1-2 sentences explaining what to fix and why>",
+      "originalText": "<a SHORT exact substring (one sentence or phrase) copied character-for-character from the LinkedIn Profile text below>",
+      "suggestedText": "<improved replacement text the user can paste into LinkedIn>"
+    }
+  ],
+  "designRecommendations": [
+    {
+      "id": "<unique string like 'd1', 'd2', ...>",
+      "priority": "high" | "medium" | "low",
+      "category": "banner" | "photo" | "url" | "featured" | "formatting" | "completeness" | "scannability",
+      "title": "<short imperative, max 8 words>",
+      "description": "<1-2 sentences of concrete, actionable design/presentation advice>",
+      "region": "banner" | "photo" | "headline" | "about" | "featured" | "experience" | "education" | "skills" | "none"
+    }
+  ]
+}
+
+Rules:
+- "improvements" are CONTENT edits (Headline, About, Experience, Skills). Produce 5-8 of the highest-impact, prioritized — name the section in checklistLabel. originalText must be a SHORT exact substring copied character-for-character from the LinkedIn Profile text below so the app can locate it; never paraphrase or add line breaks that aren't in the source. Keep any Headline rewrite under 220 characters.
+- "designRecommendations" are PRESENTATION/visual best practices that are NOT text edits — the profile PDF does not reveal these, so advise based on standard LinkedIn best practice. Produce 3-5, prioritized. Cover, where relevant: a custom background banner (banner), a professional headshot (photo), a custom profile URL (url), using the Featured section (featured), formatting/readability of the About and Experience (formatting), completeness of sections like Skills/Education/Recommendations (completeness), and scannability — short paragraphs, line breaks, bullet points (scannability). Set "region" to the profile area each tip points at so the app can highlight it on the screenshot (banner, photo, headline, about, featured, experience, education, skills) — use "none" only if it maps to no single area.
+- overallScore guide: 85-100 = strong, recruiter-ready; 70-84 = solid with clear gaps; 50-69 = needs significant work; below 50 = major issues. Score against the target role if provided, otherwise against general best practice for the candidate's field.
+- Use only the candidate's real experience — never invent roles, employers, metrics, or skills.
+${targetRole ? `\nTarget role: ${targetRole}` : ''}
+
+LinkedIn Profile:
+${profileText}
+`.trim();
+
+export async function analyzeLinkedInProfile(
+  profileText: string,
+  targetRole: string = ""
+): Promise<LinkedInAnalysisResult> {
+  const prompt = buildLinkedInAnalysisPrompt(profileText, targetRole);
+  const response = await generateWorkflowData(LINKEDIN_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
+
+  try {
+    const parsed = parseResumeAnalysisResponse(response);
+    return {
+      profileText: parsed.profileText ?? profileText,
+      overallScore: parsed.overallScore ?? null,
+      summary: parsed.summary ?? '',
+      improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
+      designRecommendations: Array.isArray(parsed.designRecommendations) ? parsed.designRecommendations : [],
+    };
+  } catch (e) {
+    console.error('Failed to parse LinkedIn analysis JSON. Raw response preview:', response.slice(0, 500));
+    return {
+      profileText,
+      overallScore: null,
+      summary: "We couldn't generate suggestions this time — please try analysing again.",
+      improvements: [],
+      designRecommendations: [],
+    };
+  }
+}
+
 export interface TailorSuggestion {
   id: string;
   section: string;

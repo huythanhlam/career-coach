@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { spawn } from 'child_process';
+import { captureScreenshot } from './api/_lib/capture';
 
 const app = express();
 app.use(helmet());
@@ -167,6 +168,24 @@ app.post('/api/bls', async (req, res) => {
   } catch (error: any) {
     console.error('[BLS] Error:', error.message);
     res.status(502).json({ error: 'BLS request failed' });
+  }
+});
+
+// --- Screenshot proxy (LinkedIn profile preview, local dev) ---
+// Mirrors the Vercel api/screenshot.ts function so the feature works in dev.
+
+app.post('/api/screenshot', async (req, res) => {
+  const { url } = req.body as { url?: string };
+  if (!url) {
+    res.status(400).json({ error: 'Missing url' });
+    return;
+  }
+  try {
+    const result = await captureScreenshot(url);
+    res.json(result);
+  } catch (error: any) {
+    console.error('[screenshot] Error:', error.message);
+    res.status(500).json({ error: 'Failed to capture screenshot.' });
   }
 });
 
