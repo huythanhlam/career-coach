@@ -93,6 +93,32 @@ export async function getCachedMarketData(key: string): Promise<CachedMarket | n
   }
 }
 
+/**
+ * Return the cached row's data regardless of age (localStorage then Supabase),
+ * without the freshness gate. Used to reuse still-valid BLS bands across AI
+ * regenerations (BLS data updates ~annually, so it needn't be re-fetched on the
+ * AI's 30-day cycle).
+ */
+export async function getStaleRow(key: string): Promise<MarketCompData | null> {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + key);
+    if (raw) {
+      const parsed = JSON.parse(raw) as CachedMarket;
+      if (parsed?.data) return parsed.data;
+    }
+  } catch { /* ignore */ }
+  try {
+    const { data } = await supabase
+      .from("market_data_cache")
+      .select("data")
+      .eq("cache_key", key)
+      .maybeSingle();
+    return (data?.data as MarketCompData) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Upsert a freshly generated result into both the shared table and localStorage. */
 export async function putCachedMarketData(
   key: string,

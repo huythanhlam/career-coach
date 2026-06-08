@@ -24,7 +24,7 @@ import { TailorResumeWorkspace } from "@/components/TailorResumeWorkspace";
 import { downloadResume, deleteResume } from "@/services/resumeStorageService";
 import { useEffect } from "react";
 import { MarketCompensationViz, MarketCompData, marketToMarkdown } from "@/components/MarketCompensationViz";
-import { marketCacheKey, getCachedMarketData, putCachedMarketData } from "@/services/marketDataCache";
+import { marketCacheKey, getCachedMarketData, putCachedMarketData, getStaleRow } from "@/services/marketDataCache";
 import { enrichWithBls } from "@/services/blsService";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
@@ -172,7 +172,8 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
       await sendMessageStream(chat, prompt as string, chunk => { full += chunk; });
       const parsed = tryParseMarketData(full);
       if (parsed) {
-        const enriched = await enrichWithBls(parsed, parts.role);
+        const prior = forceRefresh ? undefined : (await getStaleRow(key))?.locations;
+        const enriched = await enrichWithBls(parsed, parts.role, prior);
         setMarketData(enriched);
         setMarketCachedAt(new Date().toISOString());
         void putCachedMarketData(key, parts, enriched);

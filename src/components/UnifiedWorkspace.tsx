@@ -15,7 +15,7 @@ import { Button } from "./ui/button";
 import { generateWorkflowData, analyzeResume } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
 import { buildSourceGuidance } from "@/config/marketDataSources";
-import { marketCacheKey, getCachedMarketData, putCachedMarketData } from "@/services/marketDataCache";
+import { marketCacheKey, getCachedMarketData, putCachedMarketData, getStaleRow } from "@/services/marketDataCache";
 import { enrichWithBls } from "@/services/blsService";
 import { MarketCompensationViz } from "./MarketCompensationViz";
 import Markdown from "react-markdown";
@@ -96,7 +96,8 @@ export function UnifiedWorkspace() {
       );
       const match = res.match(/```json\s*([\s\S]*?)\s*(?:```|$)/);
       const parsed = JSON.parse(match ? match[1] : res);
-      const enriched = await enrichWithBls(parsed, jobInput);
+      const prior = forceRefresh ? undefined : (await getStaleRow(key))?.locations;
+      const enriched = await enrichWithBls(parsed, jobInput, prior);
       setMarketData(enriched);
       setMarketCachedAt(new Date().toISOString());
       void putCachedMarketData(key, parts, enriched);

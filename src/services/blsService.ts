@@ -12,7 +12,13 @@
  * junior→senior), so the bands reflect the whole occupation in that metro, not a
  * specific YoE. London/non-US and custom roles fall back to the AI estimate.
  */
-import type { MarketCompData } from "@/components/MarketCompensationViz";
+import type { MarketCompData, LocationCompData } from "@/components/MarketCompensationViz";
+
+// BLS OEWS publishes ~annually, so its bands get a much longer TTL than the AI
+// estimate's 30-day cache: reuse recent BLS bands across AI regenerations and
+// only re-hit the API after this window (180 days ≈ twice a year).
+const BLS_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+const blsIsFresh = (ts?: string) => !!ts && Date.now() - new Date(ts).getTime() < BLS_TTL_MS;
 
 // Derive the BLS endpoint from the AI gateway URL — both the local Express
 // gateway (/api/ai/generate → /api/bls) and the Supabase Edge Function
@@ -134,10 +140,30 @@ export async function fetchBlsBands(role: string, locationName: string): Promise
 /**
  * Overlay real BLS base-wage bands onto an AI-generated result. Locations with
  * no BLS coverage (London, custom metros) or custom roles are returned unchanged.
+ *
+ * `prior` is the previously cached row (if any): when it already carries BLS
+ * bands fetched within BLS_TTL_MS, those are reused instead of re-hitting the
+ * API — so BLS is re-fetched only ~twice a year even though the AI estimate
+ * refreshes every 30 days. Pass no `prior` (e.g. on a manual Refresh) to force a
+ * fresh BLS fetch.
  */
-export async function enrichWithBls(data: MarketCompData, role: string): Promise<MarketCompData> {
+export async function enrichWithBls(
+  data: MarketCompData,
+  role: string,
+  prior?: LocationCompData[]
+): Promise<MarketCompData> {
   const locations = await Promise.all(
     data.locations.map(async (loc) => {
+      const prev = prior?.find((p) => p.locationName === loc.locationName);
+      if (prev?.blsCachedAt && blsIsFresh(prev.blsCachedAt) && prev.salaryBands.source?.label?.startsWith("BLS")) {
+        const p = prev.salaryBands;
+        return {
+          ...loc,
+          salaryBands: { ...loc.salaryBands, min: p.min, q1: p.q1, median: p.median, q3: p.q3, max: p.max, source: p.source },
+          dataAsOf: prev.dataAsOf,
+          blsCachedAt: prev.blsCachedAt,
+        };
+      }
       const bands = await fetchBlsBands(role, loc.locationName);
       if (!bands) return loc;
       return {
@@ -152,6 +178,7 @@ export async function enrichWithBls(data: MarketCompData, role: string): Promise
           source: { label: `BLS OEWS — ${bands.areaLabel}`, url: bands.page, asOf: bands.year },
         },
         dataAsOf: bands.year,
+        blsCachedAt: new Date().toISOString(),
       };
     })
   );

@@ -16,6 +16,8 @@ export interface LocationCompData {
   dataAsOf?: string;
   /** Combined federal + state + local effective tax rate on median base, as a decimal (e.g. 0.30). */
   effectiveTaxRate?: number;
+  /** Internal: ISO timestamp the BLS bands were last fetched (for the BLS-specific TTL). */
+  blsCachedAt?: string;
   /** Typical compensation by seniority level for this role/market. */
   levelLadder?: { level: string; baseMedian: number; totalMedian: number }[];
   salaryBands: {
