@@ -90,6 +90,12 @@ export interface UserProfile {
   savedCoverLetters?: SavedCoverLetter[];
   savedCareerPlans?: SavedCareerPlan[];
   careerSurvey?: CareerSurvey;
+  /** Latest Resume Analyzer score (0–100); undefined until the user runs an analysis. */
+  resumeScore?: number;
+  resumeScoreAt?: string;
+  /** Latest LinkedIn Optimization score (0–100); undefined until the user runs an analysis. */
+  linkedinScore?: number;
+  linkedinScoreAt?: string;
   onboardingComplete: boolean;
   aiConsentGivenAt?: string;
   createdAt: string;
