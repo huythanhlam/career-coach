@@ -1,20 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-
-const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
-const corsHeaders = {
-  "Access-Control-Allow-Origin": allowedOrigin,
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
-function isPrivateUrl(rawUrl: string): boolean {
-  try {
-    const { hostname } = new URL(rawUrl);
-    return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|0\.0\.0\.0|169\.254\.)/.test(hostname);
-  } catch {
-    return true;
-  }
-}
+import { corsHeaders } from "../_shared/cors.ts";
+import { safeFetchText } from "../_shared/safe-fetch.ts";
 
 function decodeEntities(s: string): string {
   return s
@@ -113,13 +99,6 @@ function extractFromSemanticHtml(html: string): string {
   return best.slice(0, 8000) || innerText(cleaned).slice(0, 8000);
 }
 
-function unauthorized() {
-  return new Response(JSON.stringify({ error: "Unauthorized" }), {
-    status: 401,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
 async function verifyUser(authHeader: string | null) {
   if (!authHeader) return null;
   const client = createClient(
@@ -131,56 +110,58 @@ async function verifyUser(authHeader: string | null) {
   return error ? null : user;
 }
 
+function json(body: unknown, status: number, cors: Record<string, string>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: cors });
   }
 
   const user = await verifyUser(req.headers.get("Authorization"));
-  if (!user) return unauthorized();
+  if (!user) return json({ error: "Unauthorized" }, 401, cors);
 
   try {
     const { url } = await req.json();
 
-    if (!url || !/^https?:\/\//i.test(url)) {
-      return new Response(JSON.stringify({ error: "Invalid URL" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (isPrivateUrl(url)) {
-      return new Response(JSON.stringify({ error: "URL not allowed" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!url || typeof url !== "string" || !/^https?:\/\//i.test(url)) {
+      return json({ error: "Invalid URL" }, 400, cors);
     }
 
-    const pageRes = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; TechCoachBot/1.0)",
-        "Accept": "text/html,application/xhtml+xml",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+    // SSRF-safe fetch: validates the host (and each redirect hop), rejects
+    // private/loopback/metadata targets, and caps the body size + time.
+    let pageRes;
+    try {
+      pageRes = await safeFetchText(url, {
+        maxBytes: 2 * 1024 * 1024,
+        timeoutMs: 10_000,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; TechCoachBot/1.0)",
+          "Accept": "text/html,application/xhtml+xml",
+        },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Fetch failed";
+      // Validation failures are client errors; everything else is upstream.
+      const status = msg === "URL not allowed" || msg === "Invalid URL" ? 400 : 502;
+      return json({ error: msg }, status, cors);
+    }
 
     if (!pageRes.ok) {
-      return new Response(
-        JSON.stringify({ error: `Fetch failed: ${pageRes.statusText}` }),
-        { status: pageRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: `Fetch failed: ${pageRes.statusText}` }, pageRes.status, cors);
     }
 
-    const html = await pageRes.text();
+    const html = pageRes.text;
     const text = extractFromJsonLd(html) ?? extractFromSemanticHtml(html);
 
-    return new Response(JSON.stringify({ text }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ text }, 200, cors);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: message }, 500, cors);
   }
 });

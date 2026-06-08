@@ -1,12 +1,6 @@
 import { GoogleGenAI } from "npm:@google/genai";
 import { createClient } from "npm:@supabase/supabase-js@2";
-
-const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
-const corsHeaders = {
-  "Access-Control-Allow-Origin": allowedOrigin,
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 // Map Claude model names (sent by the frontend) to Gemini equivalents
 function toGeminiModel(model: string): string {
@@ -16,10 +10,10 @@ function toGeminiModel(model: string): string {
   return model;
 }
 
-function unauthorized() {
-  return new Response(JSON.stringify({ error: "Unauthorized" }), {
-    status: 401,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+function json(body: unknown, status: number, cors: Record<string, string>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 }
 
@@ -34,13 +28,31 @@ async function verifyUser(authHeader: string | null) {
   return error ? null : user;
 }
 
+// Best-effort per-user rate limit. Module scope persists across warm invocations
+// (so it meaningfully throttles abuse of the paid Gemini quota); a hard global
+// limit would need a shared store (e.g. Upstash).
+const WINDOW_MS = 60_000;
+const MAX_PER_WINDOW = 20;
+const hits = new Map<string, number[]>();
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
+  recent.push(now);
+  hits.set(key, recent);
+  return recent.length > MAX_PER_WINDOW;
+}
+
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: cors });
   }
 
   const user = await verifyUser(req.headers.get("Authorization"));
-  if (!user) return unauthorized();
+  if (!user) return json({ error: "Unauthorized" }, 401, cors);
+  if (isRateLimited(user.id)) {
+    return json({ error: "Too many requests — please wait a moment and try again." }, 429, cors);
+  }
 
   try {
     const { prompt, systemInstruction, model } = await req.json();
@@ -56,14 +68,9 @@ Deno.serve(async (req) => {
       },
     });
 
-    return new Response(JSON.stringify({ text: response.text }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ text: response.text }, 200, cors);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: message }, 500, cors);
   }
 });

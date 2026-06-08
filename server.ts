@@ -5,10 +5,20 @@ import rateLimit from 'express-rate-limit';
 import { spawn } from 'child_process';
 import { captureScreenshot } from './api/_lib/capture';
 
+// This Express gateway is for LOCAL DEVELOPMENT ONLY. It shells out to the
+// Claude CLI with --dangerously-skip-permissions, which must never be exposed
+// publicly. Production uses the Supabase Edge Functions instead. Refuse to boot
+// in a deployed environment.
+if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+  console.error('server.ts is a local-dev gateway and must not run in production.');
+  process.exit(1);
+}
+
 const app = express();
 app.use(helmet());
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+// Dev gateway: only the local Vite app should call it.
+app.use(cors({ origin: ['http://localhost:3000', 'http://127.0.0.1:3000'] }));
+app.use(express.json({ limit: '2mb' }));
 app.use('/api/', rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false }));
 
 // --- Claude CLI gateway ---
@@ -77,42 +87,92 @@ app.post('/api/ai/generate', async (req, res) => {
 
 // --- URL fetch proxy (for job description links) ---
 
-// Block requests to private/loopback addresses to prevent SSRF
-function isPrivateUrl(rawUrl: string): boolean {
-  try {
-    const { hostname } = new URL(rawUrl);
-    return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|0\.0\.0\.0|169\.254\.)/.test(hostname);
-  } catch {
-    return true;
+// Block requests to private/loopback/metadata addresses to prevent SSRF. A
+// literal-host check isn't enough: fetch follows redirects and DNS names can
+// resolve to internal IPs. We reject literal private hosts, resolve the name and
+// reject private IPs, follow redirects manually (re-validating each hop), and
+// cap the response body size.
+function isPrivateIp(ip: string): boolean {
+  const v4 = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = v4.slice(1).map(Number);
+    return (
+      a === 10 || a === 127 || a === 0 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127)
+    );
   }
+  const h = ip.toLowerCase();
+  return h === '::1' || h === '::' || h.startsWith('fe80') || h.startsWith('fc') || h.startsWith('fd') ||
+    (h.startsWith('::ffff:') && isPrivateIp(h.replace('::ffff:', '')));
 }
 
-app.post('/api/fetch-url', async (req, res) => {
-  const { url } = req.body as { url?: string };
-  if (!url || !/^https?:\/\//i.test(url)) {
-    res.status(400).json({ error: 'Invalid URL' });
-    return;
+async function assertPublicUrl(rawUrl: string): Promise<URL> {
+  const u = new URL(rawUrl);
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('URL not allowed');
+  const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal')) {
+    throw new Error('URL not allowed');
   }
-  if (isPrivateUrl(url)) {
-    res.status(400).json({ error: 'URL not allowed' });
-    return;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':')) {
+    if (isPrivateIp(host)) throw new Error('URL not allowed');
+  } else {
+    const { lookup } = await import('node:dns/promises');
+    const records = await lookup(host, { all: true }).catch(() => []);
+    for (const r of records) {
+      if (isPrivateIp(r.address)) throw new Error('URL not allowed');
+    }
   }
+  return u;
+}
 
-  try {
-    const response = await fetch(url, {
+async function safeFetchText(rawUrl: string, maxBytes = 2 * 1024 * 1024): Promise<Response> {
+  let current = await assertPublicUrl(rawUrl);
+  for (let hop = 0; hop <= 4; hop++) {
+    const res = await fetch(current.toString(), {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; TechCoachBot/1.0)',
         'Accept': 'text/html,application/xhtml+xml',
       },
+      redirect: 'manual',
       signal: AbortSignal.timeout(10000),
     });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('location');
+      if (!loc) return res;
+      current = await assertPublicUrl(new URL(loc, current).toString());
+      continue;
+    }
+    return res;
+  }
+  throw new Error('Too many redirects');
+}
+
+app.post('/api/fetch-url', async (req, res) => {
+  const { url } = req.body as { url?: string };
+  if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+    res.status(400).json({ error: 'Invalid URL' });
+    return;
+  }
+
+  try {
+    let response: Response;
+    try {
+      response = await safeFetchText(url);
+    } catch (e: any) {
+      const msg = e?.message === 'URL not allowed' ? 'URL not allowed' : 'Failed to fetch URL. Please try again.';
+      res.status(msg === 'URL not allowed' ? 400 : 502).json({ error: msg });
+      return;
+    }
 
     if (!response.ok) {
       res.status(response.status).json({ error: `Fetch failed: ${response.statusText}` });
       return;
     }
 
-    const html = await response.text();
+    const html = (await response.text()).slice(0, 2 * 1024 * 1024);
     // Strip HTML tags and condense whitespace to get readable plain text
     const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')

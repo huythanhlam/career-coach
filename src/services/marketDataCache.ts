@@ -129,18 +129,17 @@ export async function putCachedMarketData(
   writeLocal(key, { data, cachedAt });
 
   try {
-    await supabase.from("market_data_cache").upsert(
-      {
-        cache_key: key,
-        role: parts.role,
-        location: parts.location,
-        secondary_location: parts.secondaryLocation ?? null,
-        yoe_tier: yoeToTier(parts.yoe),
-        data,
-        updated_at: cachedAt,
-      },
-      { onConflict: "cache_key" }
-    );
+    // Writes go through a security-definer RPC (validates + bounds the payload)
+    // rather than a direct table upsert, so a client can't poison the shared
+    // cache with arbitrary rows. Reads remain a plain SELECT.
+    await supabase.rpc("upsert_market_data_cache", {
+      p_cache_key: key,
+      p_role: parts.role,
+      p_location: parts.location,
+      p_secondary_location: parts.secondaryLocation ?? null,
+      p_yoe_tier: yoeToTier(parts.yoe),
+      p_data: data,
+    });
   } catch {
     /* offline / RLS — localStorage still serves this device */
   }
