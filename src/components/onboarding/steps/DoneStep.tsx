@@ -30,7 +30,7 @@ export function DoneStep({ name, onStart }: Props) {
         {[
           { icon: "📄", label: "Resume Builder", desc: "Pre-filled with your work history, education & skills" },
           { icon: "🔍", label: "Resume Analyzer", desc: "Uses your resume text as the starting point" },
-          { icon: "💼", label: "Profile Lab", desc: "Pre-loaded with your LinkedIn content" },
+          { icon: "💼", label: "LinkedIn Optimization", desc: "Scores your LinkedIn PDF export and suggests improvements" },
         ].map(({ icon, label, desc }) => (
           <li
             key={label}

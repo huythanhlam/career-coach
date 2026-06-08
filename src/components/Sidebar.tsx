@@ -69,7 +69,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "resume_generation", label: "Resume Builder", icon: FileText },
       { id: "cover_letter",      label: "Cover Letter",   icon: Mail },
-      { id: "linkedin",          label: "Profile Lab",    icon: Briefcase },
+      { id: "linkedin",          label: "LinkedIn Optimization", icon: Briefcase },
     ],
   },
   {
