@@ -193,7 +193,7 @@ const features: Feature[] = [
     id: "resume_generation",
     icon: PenTool,
     title: "AI Resume Builder",
-    description: "Generate a polished, ATS-optimized resume from scratch using your career history. Choose from 6 professional templates.",
+    description: "Generate a polished resume from scratch using your career history — built to pass automated screening filters and impress recruiters. Choose from 6 professional templates.",
     color: "#D97757",
     tab: "resume_generation",
   },
@@ -201,7 +201,7 @@ const features: Feature[] = [
     id: "resume",
     icon: FileText,
     title: "Resume Analyzer",
-    description: "Upload your resume and a job description. Get a gap analysis, bullet-point rewrites using the XYZ formula, and a match score.",
+    description: "Upload your resume and a job description. Get a gap analysis, rewritten bullet points that clearly show your impact and results, and a match score.",
     color: "#2F6B4F",
     tab: "resume",
   },
@@ -217,7 +217,7 @@ const features: Feature[] = [
     id: "market",
     icon: LineChart,
     title: "Market Compensation",
-    description: "Get real salary bands, equity benchmarks, and cost-of-living comparisons for any tech role across US markets.",
+    description: "Get real salary bands, equity benchmarks, and cost-of-living comparisons for any role across US markets.",
     color: "#3B82F6",
     tab: "market",
   },
@@ -233,7 +233,7 @@ const features: Feature[] = [
     id: "interview",
     icon: Target,
     title: "Interview & Job Search",
-    description: "Get a personalized week-by-week job search plan, STAR-method behavioral prep, and recommended certifications.",
+    description: "Get a personalized week-by-week job search plan, guided practice for behavioral interview questions, and recommended certifications.",
     color: "#8B5CF6",
     tab: "interview",
   },
@@ -241,7 +241,7 @@ const features: Feature[] = [
     id: "mock_behavioral",
     icon: Users,
     title: "Mock Behavioral Interview",
-    description: "Practice with an AI interviewer that gives real-time STAR-method feedback after each answer.",
+    description: "Practice with an AI interviewer that shows you how to structure each answer with a clear situation, action, and result.",
     color: "#D97757",
     tab: "mock_behavioral",
   },
@@ -275,18 +275,18 @@ const testimonials = [
   {
     name: "Sarah K.",
     role: "Marketing Coordinator → Marketing Manager",
-    quote: "TechCoach AI helped me negotiate $40k more in TC. The salary strategy was incredibly specific and gave me the confidence to push back.",
+    quote: "TechCoach AI helped me negotiate $40k more in total compensation. The salary strategy was incredibly specific and gave me the confidence to push back.",
     stars: 5,
   },
   {
     name: "Marcus L.",
-    role: "Data Scientist → ML Engineer at Google",
-    quote: "The resume analyzer caught issues I'd missed for years. The XYZ formula rewrites made my bullets 10x more impactful.",
+    role: "Operations Lead → Director of Operations",
+    quote: "The resume analyzer caught issues I'd missed for years. The rewritten bullet points made my impact 10x clearer.",
     stars: 5,
   },
   {
     name: "Priya M.",
-    role: "PM at Series B startup",
+    role: "Project Manager",
     quote: "Company research saved me from a bad hire. Found red flags in Glassdoor reviews I would have missed. Now at a company I actually love.",
     stars: 5,
   },
@@ -426,12 +426,12 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           style={{ color: "var(--foreground)" }}
         >
           Land your dream{" "}
-          <span style={{ color: "var(--primary)" }}>tech job</span>
+          <span style={{ color: "var(--primary)" }}>job</span>
           <br />with an AI career coach
         </h1>
 
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-          10 AI-powered tools that cover every stage of the tech job search — from resume building to salary negotiation.
+          10 AI-powered tools that cover every stage of the job search — from resume building to salary negotiation.
           Specific, data-backed guidance. Not generic career advice.
         </p>
 
@@ -581,19 +581,19 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           <div>
             <p className="eyebrow mb-3">About Us</p>
             <h2 className="font-display text-4xl font-semibold mb-6">
-              Built for tech professionals, by people who've been there
+              Built for ambitious professionals, by people who've been there
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              TechCoach AI was built because we saw how broken the tech job search is. Candidates spend hundreds of hours
+              TechCoach AI was built because we saw how broken the job search is. Candidates spend hundreds of hours
               on resumes, preparation, and negotiation — often alone, without expert guidance.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-8">
-              We built 10 AI-powered tools that give every engineer, PM, and data scientist access to the same caliber
+              We built 10 AI-powered tools that give every professional access to the same caliber
               of career coaching that used to cost thousands of dollars or require a referral from the right person.
             </p>
             <ul className="space-y-3">
               {[
-                "AI trained on thousands of successful tech job searches",
+                "AI trained on thousands of successful job searches",
                 "Grounded in real salary data and market intelligence",
                 "Built with privacy-first principles — your data stays yours",
                 "Free to start, no credit card required",
