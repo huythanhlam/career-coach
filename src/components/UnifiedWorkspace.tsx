@@ -14,6 +14,9 @@ import {
 import { Button } from "./ui/button";
 import { generateWorkflowData, analyzeResume } from "@/services/geminiService";
 import { workflowsConfig } from "@/config/workflows";
+import { buildSourceGuidance } from "@/config/marketDataSources";
+import { marketCacheKey, getCachedMarketData, putCachedMarketData } from "@/services/marketDataCache";
+import { enrichWithBls } from "@/services/blsService";
 import { MarketCompensationViz } from "./MarketCompensationViz";
 import Markdown from "react-markdown";
 
@@ -26,6 +29,7 @@ export function UnifiedWorkspace() {
 
   // Auto-Pilot Output States
   const [marketData, setMarketData] = useState<any>(null);
+  const [marketCachedAt, setMarketCachedAt] = useState<string | null>(null);
   const [companyIntel, setCompanyIntel] = useState<any>(null);
   const [resumeFit, setResumeFit] = useState<any>(null);
   const [interviewStrategy, setInterviewStrategy] = useState<any>(null);
@@ -58,6 +62,7 @@ export function UnifiedWorkspace() {
     setYoe(data.yoe || "");
     setLevel(data.level || "");
     setMarketData(data.marketData);
+    setMarketCachedAt(data.createdAt ?? null);
     setCompanyIntel(data.companyIntel);
     setResumeFit(data.resumeFit);
     setInterviewStrategy(data.interviewStrategy);
@@ -70,6 +75,37 @@ export function UnifiedWorkspace() {
     removeAnalysis(id);
   };
 
+  const loadMarket = async (forceRefresh = false) => {
+    const parts = { role: jobInput, location: "Remote (US)", yoe };
+    const key = marketCacheKey(parts);
+    setGenerationProgress(p => ({ ...p, market: "generating" }));
+    try {
+      if (!forceRefresh) {
+        const cached = await getCachedMarketData(key);
+        if (cached) {
+          setMarketData(cached.data);
+          setMarketCachedAt(cached.cachedAt);
+          setGenerationProgress(p => ({ ...p, market: "done" }));
+          return;
+        }
+      }
+      const res = await generateWorkflowData(
+        workflowsConfig.market.systemInstruction,
+        `Estimate the market compensation for a ${jobInput} at ${level} level with ${yoe} years of experience, based on your training knowledge. Assume US national average / remote if no location is specified, and state your confidence.` +
+          buildSourceGuidance(jobInput, "Remote (US)")
+      );
+      const match = res.match(/```json\s*([\s\S]*?)\s*(?:```|$)/);
+      const parsed = JSON.parse(match ? match[1] : res);
+      const enriched = await enrichWithBls(parsed, jobInput);
+      setMarketData(enriched);
+      setMarketCachedAt(new Date().toISOString());
+      void putCachedMarketData(key, parts, enriched);
+      setGenerationProgress(p => ({ ...p, market: "done" }));
+    } catch {
+      setGenerationProgress(p => ({ ...p, market: "error" }));
+    }
+  };
+
   const handleStartAnalysis = async (e: React.FormEvent) => {
     e.preventDefault();
     setStep("processing");
@@ -80,13 +116,7 @@ export function UnifiedWorkspace() {
       interview: "generating"
     });
 
-    const marketP = generateWorkflowData(
-      workflowsConfig.market.systemInstruction,
-      `Estimate the market compensation for a ${jobInput} at ${level} level with ${yoe} years of experience, based on your training knowledge. Assume US national average / remote if no location is specified, and state your confidence.`
-    ).then(res => {
-      const match = res.match(/```json\s*([\s\S]*?)\s*(?:```|$)/);
-      return JSON.parse(match ? match[1] : res);
-    });
+    void loadMarket(false);
 
     const companyP = generateWorkflowData(
       workflowsConfig.company_research.systemInstruction,
@@ -98,18 +128,13 @@ export function UnifiedWorkspace() {
       `Create an interview-prep and job-search guide for a ${level}-level role with ${yoe} years of experience, based on this job description or title: ${jobInput}. Tailor it to the role's field.`
     );
 
-    // Run sequentially to grab JSON reliably or use Promise.allSettled
-    Promise.allSettled([marketP, companyP, interviewP]).then((results) => {
+    Promise.allSettled([companyP, interviewP]).then((results) => {
       if (results[0].status === "fulfilled") {
-        setMarketData(results[0].value);
-        setGenerationProgress(p => ({ ...p, market: "done" }));
-      }
-      if (results[1].status === "fulfilled") {
-        setCompanyIntel(results[1].value);
+        setCompanyIntel(results[0].value);
         setGenerationProgress(p => ({ ...p, company: "done" }));
       }
-      if (results[2].status === "fulfilled") {
-        setInterviewStrategy(results[2].value);
+      if (results[1].status === "fulfilled") {
+        setInterviewStrategy(results[1].value);
         setGenerationProgress(p => ({ ...p, interview: "done" }));
       }
     });
@@ -161,25 +186,28 @@ export function UnifiedWorkspace() {
               <button onClick={saveAnalysis} style={{ height: 44, padding: "0 18px", background: "var(--card)", color: "var(--foreground)", border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 Save plan
               </button>
-              <button onClick={() => { setStep("intake"); setMarketData(null); setCompanyIntel(null); setResumeFit(null); setInterviewStrategy(null); }} style={{ height: 44, padding: "0 18px", background: "var(--foreground)", color: "var(--background)", border: "1px solid var(--foreground)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={() => { setStep("intake"); setMarketData(null); setMarketCachedAt(null); setCompanyIntel(null); setResumeFit(null); setInterviewStrategy(null); }} style={{ height: 44, padding: "0 18px", background: "var(--foreground)", color: "var(--background)", border: "1px solid var(--foreground)", borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 Start new
               </button>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>
-            {/* Market comp */}
+          {/* Market comp — full-width row */}
+          <div style={{ marginBottom: 18 }}>
             <ResultCard
               icon={<LineChart className="w-4 h-4" />}
               iconBg="rgba(217,119,87,0.10)" iconBorder="rgba(217,119,87,0.25)" iconColor="var(--primary)"
               title="Market compensation"
               badge="Live data"
-              style={{ gridColumn: "1 / 2", gridRow: "1 / 2" }}
-              height={480}
+              height="auto"
             >
-              {marketData ? <MarketCompensationViz data={marketData} /> : <EmptySlot>Loading market data…</EmptySlot>}
+              {marketData
+                ? <MarketCompensationViz data={marketData} cachedAt={marketCachedAt ?? undefined} onRefresh={() => loadMarket(true)} isRefreshing={generationProgress.market === "generating"} />
+                : <EmptySlot>Loading market data…</EmptySlot>}
             </ResultCard>
+          </div>
 
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>
             {/* Company intel */}
             <ResultCard
               icon={<Building className="w-4 h-4" />}
@@ -450,8 +478,9 @@ function ResultCard({
 }: {
   icon: React.ReactNode; iconBg: string; iconBorder: string; iconColor: string;
   title: string; badge?: string; children: React.ReactNode;
-  style?: React.CSSProperties; height?: number;
+  style?: React.CSSProperties; height?: number | "auto";
 }) {
+  const fit = height === "auto";
   return (
     <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.04)", ...style }}>
       <div style={{ padding: "18px 22px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
@@ -463,7 +492,7 @@ function ResultCard({
           <span style={{ marginLeft: "auto", background: "rgba(217,119,87,0.10)", color: "var(--primary)", border: "1px solid rgba(217,119,87,0.25)", padding: "4px 10px", borderRadius: 9999, fontSize: 10, fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase" }}>{badge}</span>
         )}
       </div>
-      <div style={{ padding: "20px 22px", height, overflowY: "auto" }} className="no-scrollbar">
+      <div style={{ padding: "20px 22px", height: fit ? undefined : height, overflowY: fit ? "visible" : "auto" }} className="no-scrollbar">
         {children}
       </div>
     </div>

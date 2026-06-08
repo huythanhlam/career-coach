@@ -129,6 +129,47 @@ app.post('/api/fetch-url', async (req, res) => {
   }
 });
 
+// --- BLS Public Data API proxy ---
+// Keeps the (free) registration key server-side and avoids browser CORS.
+app.post('/api/bls', async (req, res) => {
+  const { seriesIds, startyear, endyear } = req.body as {
+    seriesIds?: string[];
+    startyear?: string;
+    endyear?: string;
+  };
+  // Only allow OEWS series IDs — prevents using this as a general BLS proxy.
+  const VALID_BLS_SERIES = /^OEU[NSM]\d{21}$/;
+  const ids = Array.isArray(seriesIds)
+    ? seriesIds.filter((s) => typeof s === 'string' && VALID_BLS_SERIES.test(s)).slice(0, 50)
+    : [];
+  if (ids.length === 0) {
+    res.status(400).json({ error: 'No valid BLS series IDs' });
+    return;
+  }
+
+  const now = new Date().getFullYear();
+  const payload: Record<string, unknown> = {
+    seriesid: ids,
+    startyear: startyear ?? String(now - 2),
+    endyear: endyear ?? String(now),
+  };
+  if (process.env.BLS_API_KEY) payload.registrationkey = process.env.BLS_API_KEY;
+
+  try {
+    const response = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    console.error('[BLS] Error:', error.message);
+    res.status(502).json({ error: 'BLS request failed' });
+  }
+});
+
 const PORT = 4000;
 app.listen(PORT, () => {
   console.log(`TechCoach AI — Claude Gateway running at http://localhost:${PORT}`);
