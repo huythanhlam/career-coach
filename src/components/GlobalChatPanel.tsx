@@ -77,7 +77,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   if (!isOpen) return null;
 
   return (
-    <div className="w-[400px] h-full border-l border-border flex flex-col shadow-xl animate-in slide-in-from-right duration-300 z-50"
+    <div className="fixed inset-0 w-full md:static md:inset-auto md:w-[400px] h-full border-l border-border flex flex-col shadow-xl animate-in slide-in-from-right duration-300 z-50"
       style={{ background: "var(--card)" }}>
 
       {/* Header */}
