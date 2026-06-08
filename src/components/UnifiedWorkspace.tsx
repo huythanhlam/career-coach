@@ -19,8 +19,10 @@ import { marketCacheKey, getCachedMarketData, putCachedMarketData, getStaleRow }
 import { enrichWithBls } from "@/services/blsService";
 import { MarketCompensationViz } from "./MarketCompensationViz";
 import Markdown from "react-markdown";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export function UnifiedWorkspace() {
+  const isMobile = useIsMobile();
   const [step, setStep] = useState<"intake" | "processing" | "results">("intake");
   const [jobInput, setJobInput] = useState("");
   const [yoe, setYoe] = useState("");
@@ -171,15 +173,15 @@ export function UnifiedWorkspace() {
 
   if (step === "results") {
     return (
-      <div className="flex-1 overflow-auto no-scrollbar" style={{ background: "var(--background)", padding: "32px 40px 80px" }}>
+      <div className="flex-1 overflow-auto no-scrollbar" style={{ background: "var(--background)", padding: isMobile ? "20px 16px 72px" : "32px 40px 80px" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}
           className="animate-in fade-in slide-in-from-bottom-4 duration-700">
 
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 22, borderBottom: "1px solid var(--border)", marginBottom: 24 }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "flex-end", justifyContent: "space-between", gap: isMobile ? 16 : 0, paddingBottom: 22, borderBottom: "1px solid var(--border)", marginBottom: 24 }}>
             <div>
               <div className="eyebrow" style={{ marginBottom: 8 }}>Your action plan</div>
-              <h1 className="font-display" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--foreground)", margin: 0 }}>
+              <h1 className="font-display" style={{ fontSize: isMobile ? 24 : 30, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--foreground)", margin: 0 }}>
                 Strategy for <em style={{ color: "var(--primary)", fontStyle: "normal" }}>{jobInput}</em>
               </h1>
             </div>
@@ -208,7 +210,7 @@ export function UnifiedWorkspace() {
             </ResultCard>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: 18 }}>
             {/* Company intel */}
             <ResultCard
               icon={<Building className="w-4 h-4" />}
@@ -250,7 +252,7 @@ export function UnifiedWorkspace() {
               icon={<MessageSquare className="w-4 h-4" />}
               iconBg="rgba(59,130,246,0.10)" iconBorder="rgba(59,130,246,0.25)" iconColor="#3B82F6"
               title="Interview strategy"
-              style={{ gridColumn: "1 / 3" }}
+              style={isMobile ? undefined : { gridColumn: "1 / 3" }}
               height={400}
             >
               {interviewStrategy
@@ -303,14 +305,14 @@ export function UnifiedWorkspace() {
   }
 
   return (
-    <div className="flex-1 overflow-auto no-scrollbar" style={{ background: "var(--background)", padding: "32px 40px 80px", display: "flex", justifyContent: "center" }}>
+    <div className="flex-1 overflow-auto no-scrollbar" style={{ background: "var(--background)", padding: isMobile ? "20px 16px 72px" : "32px 40px 80px", display: "flex", justifyContent: "center" }}>
       <div style={{ maxWidth: 760, width: "100%" }}
         className="animate-in fade-in slide-in-from-bottom-4 duration-700">
 
         {/* Hero copy */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
+        <div style={{ textAlign: "center", marginBottom: isMobile ? 28 : 36 }}>
           <div className="eyebrow" style={{ marginBottom: 14 }}>Strategy Engine · Auto-pilot</div>
-          <h1 className="font-display" style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.025em", color: "var(--foreground)", lineHeight: 1.05, margin: 0 }}>
+          <h1 className="font-display" style={{ fontSize: isMobile ? 30 : 44, fontWeight: 600, letterSpacing: "-0.025em", color: "var(--foreground)", lineHeight: 1.05, margin: 0 }}>
             Let's build your{" "}
             <em style={{ color: "var(--primary)", fontStyle: "normal" }}>next chapter.</em>
           </h1>
@@ -320,7 +322,7 @@ export function UnifiedWorkspace() {
         </div>
 
         {/* Form card */}
-        <form onSubmit={handleStartAnalysis} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 28, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", padding: 32 }}>
+        <form onSubmit={handleStartAnalysis} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 28, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", padding: isMobile ? 20 : 32 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
             {/* Step 1 */}
@@ -336,7 +338,7 @@ export function UnifiedWorkspace() {
 
             {/* Step 2 */}
             <FormStep n={2} label="What's your experience level?">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                 <input
                   required
                   type="number"
@@ -390,7 +392,7 @@ export function UnifiedWorkspace() {
             </FormStep>
           </div>
 
-          <div style={{ paddingLeft: 40, paddingTop: 24 }}>
+          <div style={{ paddingLeft: isMobile ? 0 : 40, paddingTop: 24 }}>
             <button type="submit" style={{
               width: "100%", height: 52, background: "var(--primary)", color: "#FFF",
               border: "1px solid var(--primary)", borderRadius: 14, fontFamily: "inherit",
@@ -459,6 +461,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 function FormStep({ n, label, children }: { n: number; label: string; children: React.ReactNode }) {
+  const isMobile = useIsMobile();
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
@@ -469,7 +472,7 @@ function FormStep({ n, label, children }: { n: number; label: string; children: 
         }}>{n}</div>
         <label style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)" }}>{label}</label>
       </div>
-      <div style={{ paddingLeft: 40 }}>{children}</div>
+      <div style={{ paddingLeft: isMobile ? 0 : 40 }}>{children}</div>
     </div>
   );
 }
