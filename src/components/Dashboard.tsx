@@ -5,11 +5,21 @@ import {
   FileText,
   Users,
   X,
+  CheckCircle2,
+  Circle,
+  Linkedin,
+  Target,
+  Compass,
+  LineChart,
+  Briefcase,
+  Mail,
+  Lock,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useJobApplications, type Application } from "@/hooks/useJobApplications";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
+import type { ViewId } from "@/components/Sidebar";
 
 const STATUS_MAP: Record<Application["status"], { bg: string; fg: string; border: string; label: string }> = {
   applied:      { bg: "rgba(59,130,246,0.10)",  fg: "#3B82F6", border: "rgba(59,130,246,0.25)",  label: "Applied" },
@@ -19,15 +29,43 @@ const STATUS_MAP: Record<Application["status"], { bg: string; fg: string; border
   pending:      { bg: "rgba(113,113,122,0.10)", fg: "#71717A", border: "rgba(113,113,122,0.25)", label: "Pending" },
 };
 
-export function Dashboard() {
+/** Relative "time ago" label, e.g. "3d ago". Empty string for missing/invalid dates. */
+function timeAgo(iso?: string): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`;
+  const mo = Math.floor(d / 30); if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
+}
+
+/** Score → terracotta / marigold / forest, mirroring the analyzer score bands. */
+function scoreColor(score: number): string {
+  if (score >= 85) return "var(--forest)";
+  if (score >= 70) return "var(--marigold, #E8B948)";
+  return "var(--primary)";
+}
+
+interface DashboardProps {
+  onNavigate?: (view: ViewId) => void;
+}
+
+export function Dashboard({ onNavigate }: DashboardProps) {
   const { apps, addApplication } = useJobApplications();
   const { profile } = useUserProfile();
   const isMobile = useIsMobile();
+  const { analyses } = useSavedAnalyses();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newApp, setNewApp] = useState<Partial<Application>>({
     company: "", role: "", status: "applied", location: "",
     date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
   });
+
+  const go = (view: ViewId) => onNavigate?.(view);
 
   const handleAddApplication = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +82,52 @@ export function Dashboard() {
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }) });
   };
 
-  const interviewing = apps.filter(a => a.status === "interviewing").length;
-  const applied = apps.filter(a => a.status === "applied").length;
+  /* ── Profile completion checklist ───────────────────────────────── */
+  const checklist: { label: string; done: boolean; view: ViewId }[] = [
+    { label: "Set your target role",            done: !!profile.targetRole?.trim(),                              view: "profile_settings" },
+    { label: "Add your work history",           done: profile.workHistory.length > 0,                           view: "profile_settings" },
+    { label: "List at least 5 skills",          done: profile.skills.length >= 5,                               view: "profile_settings" },
+    { label: "Add your education",              done: profile.education.length > 0,                             view: "profile_settings" },
+    { label: "Write a professional summary",    done: !!profile.summary?.trim(),                                view: "profile_settings" },
+    { label: "Upload or build a resume",        done: !!(profile.resumeText || profile.savedResumes?.length),   view: "resume_generation" },
+    { label: "Import your LinkedIn profile",    done: !!profile.linkedinText?.trim(),                           view: "linkedin" },
+  ];
+  const doneCount = checklist.filter(c => c.done).length;
+  const completionPct = Math.round((doneCount / checklist.length) * 100);
+  const remaining = checklist.length - doneCount;
+  const firstTodo = checklist.find(c => !c.done);
+
+  /* ── Recent activity (merged, timestamp-sorted) ─────────────────── */
+  type Activity = { id: string; icon: typeof Briefcase; title: string; sub: string; ts?: string; view: ViewId };
+  const activity: Activity[] = [
+    ...apps.map(a => ({ id: `app-${a.id}`, icon: Briefcase, title: `Applied · ${a.role}`, sub: [a.company, a.location].filter(Boolean).join(" · "), ts: a.createdAt, view: "dashboard" as ViewId })),
+    ...analyses.map(a => ({ id: `an-${a.id}`, icon: Compass, title: "Strategy analysis", sub: a.jobInput || "Job analysis", ts: a.createdAt, view: "unified" as ViewId })),
+    ...(profile.savedResumes ?? []).map(r => ({ id: `r-${r.id}`, icon: FileText, title: "Resume saved", sub: r.name, ts: r.createdAt, view: "resume_generation" as ViewId })),
+    ...(profile.savedCoverLetters ?? []).map(l => ({ id: `cl-${l.id}`, icon: Mail, title: "Cover letter", sub: [l.jobTitle, l.company].filter(Boolean).join(" · ") || l.name, ts: l.createdAt, view: "cover_letter" as ViewId })),
+    ...(profile.savedCareerPlans ?? []).map(p => ({ id: `cp-${p.id}`, icon: Target, title: "Goal plan", sub: p.goalSummary || p.goalType, ts: p.createdAt, view: "goal_planning" as ViewId })),
+  ];
+  const recent = activity
+    .filter(a => a.ts)
+    .sort((a, b) => new Date(b.ts!).getTime() - new Date(a.ts!).getTime())
+    .slice(0, 6);
+
+  /* ── Career path ────────────────────────────────────────────────── */
+  const currentRole = profile.currentRole?.trim() || profile.workHistory[0]?.role || "";
+  const targetRole = profile.targetRole?.trim() || "";
+
+  /* ── Suggested next actions ─────────────────────────────────────── */
+  const actions: { icon: typeof Compass; label: string; note: string; view: ViewId }[] = [
+    { icon: Compass,   label: "Strategy Engine", note: "Match your resume to a job", view: "unified" },
+    { icon: Target,    label: "Goal Planner",    note: "Map your next move",          view: "goal_planning" },
+    { icon: LineChart, label: "Market Data",     note: "Check your pay range",         view: "market" },
+    { icon: Users,     label: "Behavioral Sim",  note: "Practice interview answers",   view: "mock_behavioral" },
+  ];
+
+  /* ── Greeting ───────────────────────────────────────────────────── */
+  const hour = new Date().getHours();
+  const partOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const firstName = profile.preferredName || profile.fullName.split(" ")[0] || "there";
+  const todayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   return (
     <div className="flex-1 h-full overflow-y-auto no-scrollbar" style={{ background: "var(--background)", padding: isMobile ? "20px 16px 72px" : "32px 40px 80px" }}>
@@ -60,68 +142,174 @@ export function Dashboard() {
             background: "var(--foreground)", color: "var(--background)",
             border: "1px solid var(--foreground)", borderRadius: 24,
             padding: isMobile ? 22 : 32, boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+            display: "flex", flexDirection: "column",
           }}>
             <div className="eyebrow" style={{ color: "rgba(251,247,241,0.55)", marginBottom: 14 }}>
-              This morning · Tue, May 6
+              Good {partOfDay} · {todayLabel}
             </div>
             <div className="font-display" style={{ fontSize: isMobile ? 26 : 36, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.1, color: "var(--background)" }}>
-              Hey {profile.preferredName || profile.fullName.split(" ")[0] || "there"} 👋 Welcome back to your career coach.
+              Hey {firstName} 👋 Welcome back to your career coach.
             </div>
-            <p style={{ fontSize: 14, color: "rgba(251,247,241,0.65)", marginTop: 14, lineHeight: 1.6, maxWidth: 500 }}>
-              We re-read your résumé and the JD over the weekend. Three things to tighten before Thursday — none of them big. Want to walk through them?
+            <p style={{ fontSize: 14, color: "rgba(251,247,241,0.65)", marginTop: 14, lineHeight: 1.6, maxWidth: 520 }}>
+              {completionPct < 100
+                ? `Your profile is ${completionPct}% complete — ${remaining} ${remaining === 1 ? "step" : "steps"} left to unlock sharper, more personalized coaching.`
+                : `Your profile is in great shape. Keep your pipeline moving and your scores fresh.`}
             </p>
-            <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-              <button style={{
-                height: 44, padding: "0 18px", background: "var(--primary)", color: "#FFF",
-                border: "1px solid var(--primary)", borderRadius: 14, fontFamily: "inherit",
-                fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex",
-                alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(217,119,87,0.3)",
-              }}>
-                Start prep <ArrowRight className="w-3.5 h-3.5" />
+
+            {/* Completion bar */}
+            <div style={{ marginTop: 18, maxWidth: 520 }}>
+              <div style={{ height: 8, background: "rgba(251,247,241,0.14)", borderRadius: 9999, overflow: "hidden" }}>
+                <div style={{ width: `${completionPct}%`, height: "100%", background: "linear-gradient(90deg, var(--primary), var(--marigold, #E8B948))", borderRadius: 9999, transition: "width 0.5s ease" }} />
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(251,247,241,0.5)", marginTop: 8, letterSpacing: "0.04em" }}>
+                {doneCount} of {checklist.length} profile steps complete
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 22 }}>
+              <button
+                onClick={() => go(firstTodo ? firstTodo.view : "unified")}
+                style={{
+                  height: 44, padding: "0 18px", background: "var(--primary)", color: "#FFF",
+                  border: "1px solid var(--primary)", borderRadius: 14, fontFamily: "inherit",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex",
+                  alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(217,119,87,0.3)",
+                }}
+              >
+                {firstTodo ? "Complete your profile" : "Open Strategy Engine"} <ArrowRight className="w-3.5 h-3.5" />
               </button>
-              <button style={{
-                height: 44, padding: "0 18px", background: "transparent",
-                border: "1px solid rgba(251,247,241,0.22)", color: "var(--background)",
-                borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer",
-              }}>
-                Skim the notes
+              <button
+                onClick={() => go("goal_planning")}
+                style={{
+                  height: 44, padding: "0 18px", background: "transparent",
+                  border: "1px solid rgba(251,247,241,0.22)", color: "var(--background)",
+                  borderRadius: 14, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Plan my next move
               </button>
             </div>
           </div>
 
-          {/* Stats column */}
+          {/* Score column — Resume + LinkedIn */}
           <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 16 }}>
-            {/* Your week */}
-            <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 22, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
-              <div className="eyebrow">Your week</div>
-              <div style={{ marginTop: 8 }}>
-                <div className="font-display" style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--foreground)", lineHeight: 1 }}>
-                  {interviewing + applied}
-                </div>
-                <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>active conversations</div>
-              </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                <StatusPill kind="interviewing">{interviewing} onsite</StatusPill>
-                <StatusPill kind="applied">{applied} phone</StatusPill>
-              </div>
-            </div>
+            <ScoreCard
+              label="Resume"
+              icon={FileText}
+              accent="var(--primary)"
+              score={profile.resumeScore}
+              updatedAt={profile.resumeScoreAt}
+              emptyHint="Run the Resume Analyzer to get your score"
+              ctaLabel="Analyze my resume"
+              onRun={() => go("resume_generation")}
+            />
+            <ScoreCard
+              label="LinkedIn"
+              icon={Linkedin}
+              accent="#0A66C2"
+              score={profile.linkedinScore}
+              updatedAt={profile.linkedinScoreAt}
+              emptyHint="Run LinkedIn Optimization to get your score"
+              ctaLabel="Optimize my profile"
+              onRun={() => go("linkedin")}
+            />
+          </div>
+        </div>
 
-            {/* Reply rate */}
-            <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 22, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
-              <div className="eyebrow">Reply rate</div>
-              <div style={{ marginTop: 8 }}>
-                <div className="font-display" style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--forest)", lineHeight: 1 }}>
-                  15<span style={{ fontSize: 22 }}>%</span>
-                </div>
-                <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4 }}>last 30 days</div>
-              </div>
-              <div style={{ marginTop: 14, height: 6, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
-                <div style={{ width: "62%", height: "100%", background: "linear-gradient(90deg, var(--forest), var(--highlight))", borderRadius: 9999 }} />
-              </div>
-              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 8 }}>
-                Tracking just above the senior-PM benchmark (12%).
-              </div>
+        {/* ── Career path ────────────────────────────────────────── */}
+        <CareerPath
+          currentRole={currentRole}
+          targetRole={targetRole}
+          yoe={profile.yearsOfExperience}
+          onBuildPlan={() => go("goal_planning")}
+          onSetTarget={() => go("profile_settings")}
+        />
+
+        {/* ── Checklist + Recent activity ────────────────────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 20 }}>
+
+          {/* Profile checklist */}
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+              <h3 className="font-display" style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0 }}>
+                Complete your profile
+              </h3>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>{completionPct}%</span>
             </div>
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 14px" }}>
+              The more we know, the better your coaching gets.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {checklist.map((item, i) => (
+                <button
+                  key={item.label}
+                  onClick={() => go(item.view)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", textAlign: "left",
+                    background: "transparent", border: "none",
+                    borderBottom: i < checklist.length - 1 ? "1px solid var(--border)" : "none",
+                    cursor: "pointer", fontFamily: "inherit",
+                  }}
+                  className="group"
+                >
+                  {item.done
+                    ? <CheckCircle2 className="w-5 h-5 shrink-0" style={{ color: "var(--forest)" }} />
+                    : <Circle className="w-5 h-5 shrink-0" style={{ color: "var(--muted-foreground)", opacity: 0.5 }} />}
+                  <span style={{
+                    flex: 1, fontSize: 14, fontWeight: 500,
+                    color: item.done ? "var(--muted-foreground)" : "var(--foreground)",
+                    textDecoration: item.done ? "line-through" : "none",
+                  }}>
+                    {item.label}
+                  </span>
+                  {!item.done && <ArrowRight className="w-3.5 h-3.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--primary)" }} />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent activity */}
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+            <h3 className="font-display" style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: "0 0 14px" }}>
+              Recent activity
+            </h3>
+            {recent.length === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "32px 16px", color: "var(--muted-foreground)" }}>
+                <Compass className="w-8 h-8 mb-3" style={{ opacity: 0.4 }} />
+                <div style={{ fontSize: 13 }}>No activity yet. Run an analysis or add an application to get started.</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {recent.map((a, i) => {
+                  const Icon = a.icon;
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => go(a.view)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", textAlign: "left",
+                        background: "transparent", border: "none",
+                        borderBottom: i < recent.length - 1 ? "1px solid var(--border)" : "none",
+                        cursor: "pointer", fontFamily: "inherit",
+                      }}
+                    >
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 11, background: "rgba(217,119,87,0.10)",
+                        border: "1px solid rgba(217,119,87,0.20)", color: "var(--primary)",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
+                        {a.sub && <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.sub}</div>}
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--muted-foreground)", flexShrink: 0, whiteSpace: "nowrap" }}>{timeAgo(a.ts)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -155,7 +343,17 @@ export function Dashboard() {
               ))}
             </div>
 
-            {apps.map((app, i) => (
+            {apps.length === 0 ? (
+              <div style={{ padding: "40px 22px", textAlign: "center", color: "var(--muted-foreground)" }}>
+                <div style={{ fontSize: 14, marginBottom: 12 }}>No applications tracked yet.</div>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  style={{ height: 38, padding: "0 16px", background: "var(--primary)", color: "#FFF", border: "none", borderRadius: 12, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Add your first application
+                </button>
+              </div>
+            ) : apps.map((app, i) => (
               <div
                 key={app.id}
                 style={{
@@ -190,23 +388,22 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ── Quick tools ────────────────────────────────────────── */}
+        {/* ── Suggested next actions ─────────────────────────────── */}
         <div>
           <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: "0 0 14px" }}>
-            Pick up where you left off
+            Things you can do
           </h3>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 16 }}>
-            {[
-              { icon: FileText,    label: "Resume Builder", note: "v8 · 28 edits since Apr 1" },
-              { icon: Users,       label: "Behavioral Sim", note: "Last topic: leadership" },
-            ].map((tool, i) => {
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)", gap: 16 }}>
+            {actions.map((tool) => {
               const Icon = tool.icon;
               return (
-                <div
-                  key={i}
+                <button
+                  key={tool.label}
+                  onClick={() => go(tool.view)}
                   style={{
                     background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24,
                     padding: 22, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", cursor: "pointer",
+                    textAlign: "left", fontFamily: "inherit",
                   }}
                   className="group hover:border-primary/30 transition-colors duration-200"
                 >
@@ -217,14 +414,14 @@ export function Dashboard() {
                   }}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  <div className="font-display" style={{ fontSize: 18, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
+                  <div className="font-display" style={{ fontSize: 17, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
                     {tool.label}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 6 }}>{tool.note}</div>
                   <div style={{ marginTop: 14, color: "var(--primary)", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                    Continue <ArrowRight className="w-3 h-3" />
+                    Open <ArrowRight className="w-3 h-3" />
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -313,6 +510,171 @@ export function Dashboard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Score card (Resume / LinkedIn) ───────────────────────────────── */
+function ScoreCard({
+  label, icon: Icon, accent, score, updatedAt, emptyHint, ctaLabel, onRun,
+}: {
+  label: string;
+  icon: typeof FileText;
+  accent: string;
+  score?: number;
+  updatedAt?: string;
+  emptyHint: string;
+  ctaLabel: string;
+  onRun: () => void;
+}) {
+  const has = score != null;
+  return (
+    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 22, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="eyebrow" style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <Icon className="w-3.5 h-3.5" style={{ color: accent }} /> {label} score
+        </div>
+        {has && updatedAt && (
+          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>updated {timeAgo(updatedAt)}</span>
+        )}
+      </div>
+
+      {has ? (
+        <>
+          <div style={{ marginTop: 8, display: "flex", alignItems: "baseline", gap: 2 }}>
+            <div className="font-display" style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.03em", color: scoreColor(score!), lineHeight: 1 }}>
+              {score}
+            </div>
+            <span style={{ fontSize: 18, color: "var(--muted-foreground)", fontWeight: 600 }}>/100</span>
+          </div>
+          <div style={{ marginTop: 14, height: 6, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
+            <div style={{ width: `${score}%`, height: "100%", background: scoreColor(score!), borderRadius: 9999, transition: "width 0.5s ease" }} />
+          </div>
+          <button
+            onClick={onRun}
+            style={{ marginTop: 14, alignSelf: "flex-start", background: "transparent", border: "none", color: accent, fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, padding: 0 }}
+          >
+            Re-run analysis <ArrowRight className="w-3 h-3" />
+          </button>
+        </>
+      ) : (
+        <div style={{ marginTop: 10, flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted-foreground)" }}>
+            <Lock className="w-4 h-4" style={{ opacity: 0.6 }} />
+            <span className="font-display" style={{ fontSize: 22, fontWeight: 600, color: "var(--muted-foreground)" }}>—</span>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "8px 0 0", lineHeight: 1.5 }}>{emptyHint}</p>
+          <button
+            onClick={onRun}
+            style={{ marginTop: "auto", height: 38, background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12, fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "var(--foreground)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            {ctaLabel} <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Career path strip ────────────────────────────────────────────── */
+function CareerPath({
+  currentRole, targetRole, yoe, onBuildPlan, onSetTarget,
+}: {
+  currentRole: string;
+  targetRole: string;
+  yoe?: number;
+  onBuildPlan: () => void;
+  onSetTarget: () => void;
+}) {
+  const isMobile = useIsMobile();
+  return (
+    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
+        <h3 className="font-display" style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0 }}>
+          Your career path
+        </h3>
+        {targetRole && (
+          <button
+            onClick={onBuildPlan}
+            style={{ height: 34, padding: "0 14px", background: "var(--primary)", color: "#FFF", border: "none", borderRadius: 12, fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 4px 14px rgba(217,119,87,0.25)" }}
+          >
+            Build full plan <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {!targetRole ? (
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", gap: 16, padding: "8px 0" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: "rgba(217,119,87,0.10)", border: "1px solid rgba(217,119,87,0.25)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Target className="w-5 h-5" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Tell us your target role</div>
+            <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>Set a goal and we'll map a path from where you are today.</div>
+          </div>
+          <button
+            onClick={onSetTarget}
+            style={{ height: 38, padding: "0 16px", background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12, fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "var(--foreground)", cursor: "pointer", flexShrink: 0 }}
+          >
+            Set target role
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "stretch", gap: 12 }}>
+          <PathNode
+            kind="now"
+            title={currentRole || "Where you are now"}
+            sub={yoe != null ? `${yoe} ${yoe === 1 ? "year" : "years"} experience` : "Current role"}
+          />
+          <PathConnector />
+          <PathNode
+            kind="target"
+            title={targetRole}
+            sub="Your target role"
+          />
+          <PathConnector />
+          <PathNode
+            kind="plan"
+            title="Your roadmap"
+            sub="Get AI-tailored milestones"
+            onClick={onBuildPlan}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PathNode({ kind, title, sub, onClick }: { kind: "now" | "target" | "plan"; title: string; sub: string; onClick?: () => void }) {
+  const styles = {
+    now:    { bg: "var(--muted)",                border: "1px solid var(--border)",            fg: "var(--foreground)",  dot: "var(--muted-foreground)" },
+    target: { bg: "rgba(47,107,79,0.08)",        border: "1px solid rgba(47,107,79,0.25)",     fg: "var(--foreground)",  dot: "var(--forest)" },
+    plan:   { bg: "rgba(217,119,87,0.08)",       border: "1px dashed rgba(217,119,87,0.40)",   fg: "var(--primary)",     dot: "var(--primary)" },
+  }[kind];
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      onClick={onClick}
+      style={{
+        flex: 1, minWidth: 0, background: styles.bg, border: styles.border, borderRadius: 16,
+        padding: "16px 18px", textAlign: "left", fontFamily: "inherit",
+        cursor: onClick ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 8,
+      }}
+    >
+      <div style={{ width: 10, height: 10, borderRadius: 9999, background: styles.dot }} />
+      <div className="font-display" style={{ fontSize: 16, fontWeight: 600, color: styles.fg, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{sub}</div>
+    </Tag>
+  );
+}
+
+function PathConnector() {
+  const isMobile = useIsMobile();
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", flexShrink: 0 }}>
+      <ArrowRight className="w-4 h-4" style={{ opacity: 0.5, transform: isMobile ? "rotate(90deg)" : "none" }} />
     </div>
   );
 }

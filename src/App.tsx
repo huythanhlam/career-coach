@@ -70,7 +70,7 @@ function AppInner() {
 
             {/* Content area — flex-1 + min-h-0 so view `h-full` resolves to the space below the top bar */}
             <div className="flex-1 min-h-0 relative flex flex-col">
-              {activeView === "dashboard" && <Dashboard />}
+              {activeView === "dashboard" && <Dashboard onNavigate={setActiveView} />}
               {activeView === "unified" && <UnifiedWorkspace />}
               {activeView === "profile_settings" && <ProfileSettings />}
               {activeView === "security_settings" && <SecuritySettings />}
