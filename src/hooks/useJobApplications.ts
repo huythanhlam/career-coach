@@ -9,6 +9,7 @@ export interface Application {
   status: "applied" | "interviewing" | "offer" | "rejected" | "pending";
   date: string;
   location: string;
+  createdAt?: string;
 }
 
 function rowToApplication(row: Record<string, unknown>): Application {
@@ -19,6 +20,7 @@ function rowToApplication(row: Record<string, unknown>): Application {
     status: row.status as Application["status"],
     date: row.applied_date as string,
     location: row.location as string,
+    createdAt: (row.created_at as string) ?? undefined,
   };
 }
 

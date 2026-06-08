@@ -39,7 +39,7 @@ function AppInner() {
         {/* Main Workspace Area */}
         <div className="flex-1 h-full overflow-hidden flex relative">
           <div className="flex-1 h-full overflow-hidden flex flex-col relative">
-            {activeView === "dashboard" && <Dashboard />}
+            {activeView === "dashboard" && <Dashboard onNavigate={setActiveView} />}
             {activeView === "unified" && <UnifiedWorkspace />}
 {activeView === "profile_settings" && <ProfileSettings />}
             {activeView === "security_settings" && <SecuritySettings />}
