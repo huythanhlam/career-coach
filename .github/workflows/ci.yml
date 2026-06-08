@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: this workflow only needs to read the repo.
+# Denying everything else means a compromised dependency or build
+# step cannot push code, publish packages, or mint OIDC tokens —
+# the exfiltration vector used by recent npm supply-chain worms.
+permissions:
+  contents: read
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # Lockfile-exact install. Honors .npmrc (ignore-scripts=true),
+      # so dependency lifecycle scripts never execute in CI.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # Block the build on known-vulnerable PRODUCTION dependencies.
+      # Dev/build-only tooling (e.g. @vercel/node) is excluded so CI
+      # is not blocked by advisories that never ship to users; review
+      # those separately with `npm audit`.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
