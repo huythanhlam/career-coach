@@ -1,6 +1,7 @@
 import type { UserProfile } from "@/types/userProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
+import { parseJsonObject, parseJsonArray, parseLooseJsonObject } from "@/lib/looseJson";
 
 const GATEWAY_URL =
   (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
@@ -131,23 +132,6 @@ export async function generateWorkflowData(
   return postToGateway({ systemInstruction, prompt, model, enableSearch });
 }
 
-function parseResumeAnalysisResponse(raw: string) {
-  // 1. Direct parse (ideal — model returned clean JSON)
-  try { return JSON.parse(raw.trim()); } catch {}
-
-  // 2. Strip markdown code fences then parse
-  const stripped = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  try { return JSON.parse(stripped); } catch {}
-
-  // 3. Extract the first complete {...} block (handles text before/after the JSON)
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (match) {
-    try { return JSON.parse(match[0]); } catch {}
-  }
-
-  throw new Error("Could not parse JSON from response");
-}
-
 const RESUME_ANALYSIS_SYSTEM = `You are an expert resume reviewer and applicant-tracking-system (ATS) specialist who has screened thousands of resumes across many industries. You give honest, specific, prioritized feedback, tailored to the candidate's field and — when provided — the target job. Output only the requested JSON: no prose, no explanations, no code fences; begin with "{" and end with "}".`;
 
 const buildResumeAnalysisPrompt = (resumeText: string, jd: string): string => `
@@ -197,7 +181,7 @@ export async function analyzeResume(
   const response = await generateWorkflowData(RESUME_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
 
   try {
-    const parsed = parseResumeAnalysisResponse(response);
+    const parsed = parseJsonObject(response);
     return {
       resumeText: parsed.resumeText ?? resumeText,
       overallScore: parsed.overallScore ?? null,
@@ -284,7 +268,7 @@ export async function analyzeLinkedInProfile(
   const response = await generateWorkflowData(LINKEDIN_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
 
   try {
-    const parsed = parseResumeAnalysisResponse(response);
+    const parsed = parseJsonObject(response);
     return {
       profileText: parsed.profileText ?? profileText,
       overallScore: parsed.overallScore ?? null,
@@ -323,14 +307,6 @@ CRITICAL RULES:
 - Focus on: keyword alignment, stronger action verbs, quantification of existing achievements, reordering emphasis
 - Return ONLY a valid JSON array — no markdown fences, no explanation; begin with "[" and end with "]"`;
 
-function parseTailorResponse(raw: string): TailorSuggestion[] {
-  const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  try { return JSON.parse(clean); } catch {}
-  const match = clean.match(/\[[\s\S]*\]/);
-  if (match) { try { return JSON.parse(match[0]); } catch {} }
-  throw new Error("Could not parse tailor suggestions JSON");
-}
-
 export async function tailorResume(
   resumeText: string,
   jobDescription: string,
@@ -368,7 +344,7 @@ ${resumeText}`;
 
   const response = await generateWorkflowData(TAILOR_RESUME_SYSTEM, prompt, 'claude-sonnet-4-6');
   try {
-    return parseTailorResponse(response);
+    return parseJsonArray<TailorSuggestion>(response);
   } catch (e) {
     console.error('Failed to parse tailor suggestions. Raw preview:', response.slice(0, 500));
     return [];
@@ -446,37 +422,6 @@ At most 5 bullets (≤25 words each) and 4 sources. Begin with "{" and end with 
  * largest valid object. Returns a best-effort object; throws only if there is
  * no `{` at all.
  */
-function parseLooseJsonObject(raw: string): any {
-  let t = (raw ?? "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  const start = t.indexOf("{");
-  if (start < 0) throw new Error("No JSON object found in response");
-  t = t.slice(start);
-
-  // Fast paths: as-is, and with a dangling trailing comma removed.
-  for (const cand of [t, t.replace(/,\s*$/, "")]) {
-    try { return JSON.parse(cand); } catch { /* fall through to repair */ }
-  }
-
-  // Repair: rebuild a balanced object, ignoring braces inside strings.
-  let inStr = false, esc = false;
-  const stack: string[] = [];
-  let out = "";
-  for (const ch of t) {
-    out += ch;
-    if (esc) { esc = false; continue; }
-    if (ch === "\\") { esc = true; continue; }
-    if (ch === '"') { inStr = !inStr; continue; }
-    if (inStr) continue;
-    if (ch === "{" || ch === "[") stack.push(ch);
-    else if (ch === "}" || ch === "]") stack.pop();
-  }
-  if (inStr) out += '"';                 // close an unterminated string value
-  out = out.replace(/,\s*$/, "");        // drop a dangling comma at the cut point
-  while (stack.length) out += stack.pop() === "{" ? "}" : "]";
-  out = out.replace(/,\s*([}\]])/g, "$1"); // strip trailing commas before closers
-  return JSON.parse(out);                 // may still throw → caller handles
-}
-
 const EMPTY_SECTION = (summary: string): CompanyResearchSection => ({ summary, bullets: [], sources: [] });
 
 function normalizeSection(raw: any, fallbackSources: SourceLink[]): CompanyResearchSection {
