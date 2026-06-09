@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { motion } from "motion/react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import {
-  ShieldCheck, Building2, Calendar, MapPin, Users, Briefcase, User, Globe, TrendingUp,
-  LineChart, Newspaper, Star, Copy, Check, RotateCcw, ExternalLink,
+  ShieldCheck, Building2, Calendar, MapPin, Users, Briefcase, User, Globe, TrendingUp, TrendingDown,
+  LineChart, Newspaper, Copy, Check, RotateCcw, ExternalLink,
 } from "lucide-react";
 import type { CompanyProfile, FinancialMetric } from "@/types/companyProfile";
 import { MentorCard, SectionHeader, btnStyle, fadeUp } from "./shared";
+import { ReviewLinksCard } from "./ReviewLinks";
 
 interface Props {
   profile: CompanyProfile;
@@ -71,25 +73,92 @@ function KeyFactsCard({ profile }: { profile: CompanyProfile }) {
   );
 }
 
+const METRIC_COLORS: Record<string, string> = {
+  Revenue: "#3B82F6",
+  "Net income": "#2F6B4F",
+  "Total assets": "#9333EA",
+};
+
+interface MetricSeries { label: string; unit: string; points: { year: string; value: number; fy?: number }[] }
+
+/** Group flat financial metrics into per-label annual series, sorted by year. */
+function groupSeries(financials: FinancialMetric[]): MetricSeries[] {
+  const byLabel = new Map<string, MetricSeries>();
+  for (const m of financials) {
+    const s = byLabel.get(m.label) ?? { label: m.label, unit: m.unit, points: [] };
+    s.points.push({ year: m.fiscalYear ? `FY${String(m.fiscalYear).slice(-2)}` : (m.periodEnd ?? "").slice(0, 4), value: m.value, fy: m.fiscalYear });
+    byLabel.set(m.label, s);
+  }
+  for (const s of byLabel.values()) s.points.sort((a, b) => (a.fy ?? 0) - (b.fy ?? 0));
+  return [...byLabel.values()];
+}
+
+/** A single metric: latest value, YoY % change, and an animated bar chart. */
+function MetricChart({ series, index }: { series: MetricSeries; index: number }) {
+  const color = METRIC_COLORS[series.label] ?? "#3B82F6";
+  const pts = series.points;
+  const latest = pts[pts.length - 1];
+  const prev = pts.length > 1 ? pts[pts.length - 2] : undefined;
+  const yoy = prev && prev.value !== 0 ? ((latest.value - prev.value) / Math.abs(prev.value)) * 100 : undefined;
+  const up = (yoy ?? 0) >= 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.08, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      style={{ padding: "16px 16px 8px", borderRadius: 16, background: "var(--muted)", border: "1px solid var(--border)" }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap", padding: "0 4px" }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>{series.label}</div>
+          <div className="font-display" style={{ fontSize: 22, fontWeight: 700, color: "var(--foreground)", lineHeight: 1.1, marginTop: 2 }}>
+            {fmtCurrency(latest.value, series.unit)}
+          </div>
+        </div>
+        {yoy != null && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: up ? "#2F6B4F" : "#C0392B", background: `color-mix(in srgb, ${up ? "#2F6B4F" : "#C0392B"} 12%, transparent)`, padding: "3px 9px", borderRadius: 999 }}>
+            {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+            {up ? "+" : ""}{yoy.toFixed(1)}% YoY
+          </span>
+        )}
+      </div>
+      <div style={{ height: 132, marginTop: 8 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={pts} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+            <XAxis dataKey="year" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+            <YAxis hide domain={[0, "dataMax"]} />
+            <Tooltip
+              cursor={{ fill: "color-mix(in srgb, var(--foreground) 6%, transparent)" }}
+              contentStyle={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", fontSize: 12 }}
+              formatter={(v: number) => [fmtCurrency(v, series.unit), series.label]}
+            />
+            <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive>
+              {pts.map((_, i) => (
+                <Cell key={i} fill={i === pts.length - 1 ? color : `color-mix(in srgb, ${color} 45%, var(--muted))`} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </motion.div>
+  );
+}
+
 function FinancialsCard({ financials }: { financials: FinancialMetric[] }) {
   if (!financials.length) return null;
+  const series = groupSeries(financials);
+  const latestYear = Math.max(...financials.map((m) => m.fiscalYear ?? 0));
   return (
     <MentorCard style={{ overflow: "hidden" }}>
-      <SectionHeader Icon={LineChart} color="#3B82F6" title="Financials" trailing={<span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>SEC EDGAR</span>} />
-      <div style={{ padding: "18px 22px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
-        {financials.map((m, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.35, ease: "easeOut" }}
-            style={{ padding: "14px 16px", borderRadius: 14, background: "var(--muted)", border: "1px solid var(--border)" }}
-          >
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>{m.label}</div>
-            <div className="font-display" style={{ fontSize: 20, fontWeight: 700, color: "var(--foreground)", marginTop: 4, lineHeight: 1.1 }}>{fmtCurrency(m.value, m.unit)}</div>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 3 }}>
-              {m.fiscalYear ? `FY${m.fiscalYear}` : fmtDate(m.periodEnd)}{m.form ? ` · ${m.form}` : ""}
-            </div>
-          </motion.div>
+      <SectionHeader
+        Icon={LineChart}
+        color="#3B82F6"
+        title="Financials"
+        trailing={<span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>SEC EDGAR · 10-K{latestYear ? ` · through FY${latestYear}` : ""}</span>}
+      />
+      <div style={{ padding: "18px 22px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+        {series.map((s, i) => (
+          <MetricChart key={s.label} series={s} index={i} />
         ))}
       </div>
     </MentorCard>
@@ -128,29 +197,6 @@ function NewsCard({ profile }: { profile: CompanyProfile }) {
   );
 }
 
-function RatingLinksCard({ profile }: { profile: CompanyProfile }) {
-  if (!profile.ratingLinks.length) return null;
-  return (
-    <MentorCard style={{ overflow: "hidden" }}>
-      <SectionHeader Icon={Star} color="#E8B948" title="Employee reviews" />
-      <div style={{ padding: "16px 22px" }}>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "0 0 12px", lineHeight: 1.5 }}>
-          Verified links to review sites (scores aren't pulled — no free, reliable rating API exists).
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {profile.ratingLinks.map((l, i) => (
-            <a
-              key={i} href={l.url} target="_blank" rel="noopener noreferrer"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 14px", borderRadius: 10, background: "var(--muted)", border: "1px solid var(--border)", fontSize: 13, fontWeight: 500, color: "var(--foreground)", textDecoration: "none" }}
-            >
-              <Star className="w-3.5 h-3.5" style={{ color: "#E8B948", fill: "#E8B948" }} /> {l.label} <ExternalLink className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
-            </a>
-          ))}
-        </div>
-      </div>
-    </MentorCard>
-  );
-}
 
 function toMarkdown(p: CompanyProfile): string {
   const lines = [`# ${p.name}`];
@@ -179,7 +225,7 @@ export function CompanyProfileViz({ profile, onReset }: Props) {
     hasFacts ? <KeyFactsCard key="facts" profile={profile} /> : null,
     profile.financials.length ? <FinancialsCard key="fin" financials={profile.financials} /> : null,
     profile.news.length ? <NewsCard key="news" profile={profile} /> : null,
-    profile.ratingLinks.length ? <RatingLinksCard key="ratings" profile={profile} /> : null,
+    <ReviewLinksCard key="ratings" company={profile.name} />,
   ].filter((n): n is React.ReactElement => n !== null);
 
   return (

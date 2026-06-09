@@ -35,7 +35,7 @@ async function main() {
   }
 
   console.log(`Refreshing ${targets.length} compan${targets.length === 1 ? "y" : "ies"}${dryRun ? " (dry run)" : ""}…`);
-  const tickerMap = await loadTickerMap(realHttpGet).catch(() => ({}));
+  const tickerMap = await loadTickerMap(realHttpGet).catch(() => ({ byTicker: {}, byName: {} }));
 
   const profiles: CompanyProfile[] = [];
   let ok = 0;

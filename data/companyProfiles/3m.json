@@ -1,0 +1,241 @@
+{
+  "slug": "3m",
+  "name": "3M",
+  "keyFacts": {
+    "founded": "1902",
+    "website": "https://www.3m.com/",
+    "employeeCount": 94987,
+    "employeeCountAsOf": "2020",
+    "headquarters": "Maplewood",
+    "industry": "occupational safety",
+    "ceo": "William M. Brown",
+    "country": "United States"
+  },
+  "financials": [
+    {
+      "label": "Revenue",
+      "value": 32184000000,
+      "unit": "USD",
+      "periodEnd": "2020-12-31",
+      "fiscalYear": 2020,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 35355000000,
+      "unit": "USD",
+      "periodEnd": "2021-12-31",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 34229000000,
+      "unit": "USD",
+      "periodEnd": "2022-12-31",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 24575000000,
+      "unit": "USD",
+      "periodEnd": "2024-12-31",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 24948000000,
+      "unit": "USD",
+      "periodEnd": "2025-12-31",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 5921000000,
+      "unit": "USD",
+      "periodEnd": "2021-12-31",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 5777000000,
+      "unit": "USD",
+      "periodEnd": "2022-12-31",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": -6995000000,
+      "unit": "USD",
+      "periodEnd": "2023-12-31",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 4173000000,
+      "unit": "USD",
+      "periodEnd": "2024-12-31",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 3250000000,
+      "unit": "USD",
+      "periodEnd": "2025-12-31",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 47072000000,
+      "unit": "USD",
+      "periodEnd": "2021-12-31",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 46455000000,
+      "unit": "USD",
+      "periodEnd": "2022-12-31",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 50580000000,
+      "unit": "USD",
+      "periodEnd": "2023-12-31",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 39868000000,
+      "unit": "USD",
+      "periodEnd": "2024-12-31",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 37733000000,
+      "unit": "USD",
+      "periodEnd": "2025-12-31",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    }
+  ],
+  "news": [
+    {
+      "title": "3M to create a leading fire and safety business; acquires Madison Fire & Rescue and combines with Scott Safety - 3M News Center",
+      "url": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxNMzZscjRMU3JZWUgzRWZwMF9zZUE1OVBhcFF3OUJ2MktKel9qVjRadnFnSlVqMUVxekJVSzZBUkNWSnZ0a3A2U0Nmd2NRQUJjM0JVUzBvS0FQYzk3QlhOM2RDRXJnaXdFd1VLZTVCdFc5VjJFeW9VSEVNcFBNYS1jOE1qS1V4SGgwR0sxVkllTFlxajdNWUROVXJwdVNPdk5WLTItdzYzSEZIQmpNV0dzQkZjZVR5RTlZaVJPSG5vMm1QTTF6OXNYZWowSUdZZFgtWjc2bA?oc=5",
+      "publishedAt": "2026-03-19T07:00:00.000Z",
+      "source": "3M News Center"
+    },
+    {
+      "title": "Minnesota sues 3M, says ‘forever chemicals’ from Cottage Grove continue to pollute water - MPR News",
+      "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxNZkVNZ3AyekxwZ0RVWU9BTU9LMldoSmVIejJzbVpTaVdKcGdTVGdBZThwc3N0TUcwdy16aUNoRVNFU0NhLUlqUnh4REtLalhoeU5KWEtpbzY3bUpoVFpJWnFUbC1ZLVJHVWd2c2wwNlQ5WU1FV2tDNGF2SW9rM0F1R1NaQjBnaFpOWWFvcnh1VmRzS2FJcVRLcHA5ZHNmQk1MY0k5c0twdkE4bWxYNS1sV0c0dlVNWERUX01UMFZYR29lRlo5?oc=5",
+      "publishedAt": "2026-05-17T07:00:00.000Z",
+      "source": "MPR News"
+    },
+    {
+      "title": "Australia Sues 3M for $1.4 Billion Over ‘Forever Chemicals’ - The New York Times",
+      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE9qelN0dlB3Umpnbl9xTmlwVk91azJMT0pTdUV1dXFqTUN1VDYxMlk3dlU5VllwU2QzWnZ3OFBzcWppaGFjaFRueTcta0hSTFV6NHJnUm9rMmZmcTVoNjZIRDRFUEtXeTJ2U0VnalVsSWpzYlN0dHlxVVh4WmlaeEE?oc=5",
+      "publishedAt": "2026-05-28T07:00:00.000Z",
+      "source": "The New York Times"
+    },
+    {
+      "title": "Australia sues 3M for $1.4 billion over PFAS 'forever chemicals' contamination - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxOODBJcmNrdy1GcHJqV3VMX2NpQnZPUW54UVllZURGclhVVFRReFRqcHZaUEhncTlOSEVWOXVqbTBrZnBvNkExZ1RwY2dtQlJudE1mWFlSVmtxUEFNLW5QbERXd3dIQUhqS0k3anJjeFRCeC1GQ3NSSkM4NzNSSHBJU2lYRWVjWF92Qm9jNGZpbWlTM2pFQlVkRG9tN01OQlZlQUJ5bmJjTzNPOHBKLS1FQWF3?oc=5",
+      "publishedAt": "2026-05-28T07:00:00.000Z",
+      "source": "Reuters"
+    },
+    {
+      "title": "3M announces capacity investment for Expanded Beam Optical (EBO) production - PR Newswire",
+      "url": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxNbVdINFRBckI4RWlRckJZVXRuZ0txRDVoRmw3T2NTRjZXQWJaYnpiT3RFSmNROC1vV2FkdXB4aDY3RG1BelNndjhBYWpzZm5tekFObVg1VG42dVRPajhaRmUxaUdRM3BjYldRSmJ1VTQ3dXFkblMtek1yVmRkTHlRaGFWWkk1elRnVThIOFhmUWNXc2p4ME9KdTd6OGhnVTZZZE9KVDI5a0tSSjhuT2xZQlREc241QllaZUJiQnlGaF85NEV6OWlJRw?oc=5",
+      "publishedAt": "2026-03-16T07:00:00.000Z",
+      "source": "PR Newswire"
+    },
+    {
+      "title": "3M faces new lawsuit over ‘forever chemicals’ pollution in Minnesota - FOX 9 Minneapolis-St. Paul",
+      "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQMFEzTkRPZnZUQmJQa0RyYUpZM2pjMnZUQUF3WUIxUHVnZ1NEOUYxWEFhcmZyQTk1MEVCWWlQQ2FkV05JeGlvbVNDazdyVnN5LURvVlBUV0NzdDZ4Mk40RG5XbmJsZHV6YVFKb2YxQTdZSjc3S2gtb2dfTVd3OUZpUmhzQ19ZdkRjeno2NVRRVzhxOHPSAZgBQVVfeXFMUGJoV1NrNXY3MzRxTDV6R1BSdlpmSHNkQkoxTk9manVoYVFSQ3NWWGJXcFNwQjU1d3A2REk4cThRdVYwZmhSTnVEOHFIMlZEeWxJbUZvRV9ObWYxM0pjbVdQZGd6R05Ua0ZFRzRGdlQ3cWFDdm1JOWd6Vi01T1ZjTGUya0JOYlVEaDZQUEYwYmllMl8zc1NRV0s?oc=5",
+      "publishedAt": "2026-05-13T07:00:00.000Z",
+      "source": "FOX 9 Minneapolis-St. Paul"
+    }
+  ],
+  "ratingLinks": [
+    {
+      "label": "Glassdoor reviews",
+      "url": "https://www.glassdoor.com/Search/results.htm?keyword=3M",
+      "provider": "links"
+    },
+    {
+      "label": "Indeed company reviews",
+      "url": "https://www.indeed.com/cmp/3M/reviews",
+      "provider": "links"
+    },
+    {
+      "label": "Blind",
+      "url": "https://www.teamblind.com/search/3M",
+      "provider": "links"
+    },
+    {
+      "label": "Comparably",
+      "url": "https://www.comparably.com/companies/3m",
+      "provider": "links"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Wikidata — Q159433",
+      "url": "https://www.wikidata.org/wiki/Q159433",
+      "provider": "wikidata"
+    },
+    {
+      "label": "Wikipedia — 3M",
+      "url": "https://en.wikipedia.org/wiki/3M",
+      "provider": "wikipedia"
+    },
+    {
+      "label": "SEC EDGAR",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000066740&type=10-K",
+      "provider": "sec"
+    },
+    {
+      "label": "Google News",
+      "url": "https://news.google.com/search?q=3M",
+      "provider": "news"
+    },
+    {
+      "label": "Glassdoor reviews",
+      "url": "https://www.glassdoor.com/Search/results.htm?keyword=3M",
+      "provider": "links"
+    },
+    {
+      "label": "Indeed company reviews",
+      "url": "https://www.indeed.com/cmp/3M/reviews",
+      "provider": "links"
+    },
+    {
+      "label": "Blind",
+      "url": "https://www.teamblind.com/search/3M",
+      "provider": "links"
+    },
+    {
+      "label": "Comparably",
+      "url": "https://www.comparably.com/companies/3m",
+      "provider": "links"
+    }
+  ],
+  "fetchedAt": "2026-06-09T23:49:34.794Z",
+  "overview": "The 3M Company is an American multinational conglomerate operating in the fields of industry, worker safety, and consumer goods. Based in the Saint Paul suburb of Maplewood, the company produces over 60,000 products, including adhesives, abrasives, laminates, passive fire protection, personal protective equipment, window films, paint protection film, electrical, electronic connecting, insulating materials, car-care products, electronic circuits, and optical films. Among its best-known consumer brands are Scotch Tape, Scotchgard surface protectants, Post-it notes, and Nexcare adhesive bandages. 3M's stock ticker symbol is MMM and is listed on the New York Stock Exchange, Inc. (NYSE), and the SIX Swiss Exchange.",
+  "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/3M_wordmark.svg/330px-3M_wordmark.svg.png"
+}

@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Loader2, Sparkles, RefreshCw, Copy, Check, RotateCcw } from "lucide-react";
 import type { CompanyResearchResult, CompanyResearchSection } from "@/services/geminiService";
 import { MentorCard, btnStyle, fadeUp } from "./shared";
-import { RatingsPanel } from "./RatingsPanel";
+import { ReviewLinksCard } from "./ReviewLinks";
 import { ValueTags } from "./ValueTags";
 import { BenefitsGrid } from "./BenefitsGrid";
 import { NewsTimeline } from "./NewsTimeline";
@@ -30,13 +30,9 @@ function toMarkdown(data: CompanyResearchResult, company: string): string {
     if (s?.sources?.length) lines.push(`Sources: ${s.sources.map((x) => `[${x.label}](${x.url})`).join(", ")}`);
     return lines.join("\n");
   };
-  const ratings = (data.ratings ?? []).length
-    ? ["## Employee ratings", ...data.ratings.map((r) => `- ${r.source}: ${r.score}/${r.scale}${r.reviewCount != null ? ` (${r.reviewCount} reviews)` : ""} — ${r.url}`)].join("\n")
-    : "";
   return [
     `# Research: ${company}`,
     data.overview,
-    ratings,
     sec("What they value when hiring", data.hiringValues),
     sec("Key benefits & perks", data.benefits),
     sec("Recent news", data.news),
@@ -63,11 +59,11 @@ export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt
 
   // Each entry renders one section; index drives the staggered entrance.
   const sections = [
-    <RatingsPanel key="ratings" ratings={data.ratings ?? []} summary={data.ratingsSummary} />,
     <ValueTags key="values" section={data.hiringValues} />,
     <BenefitsGrid key="benefits" section={data.benefits} />,
     <NewsTimeline key="news" section={data.news} />,
     <FinancialsCard key="financials" section={data.financials} />,
+    <ReviewLinksCard key="reviews" company={companyName} />,
   ];
 
   return (

@@ -7,25 +7,20 @@ import type { HttpGet } from "./lib.ts";
 import { slugify, dedupeByUrl } from "./lib.ts";
 import { fetchWikipedia } from "./sources/wikipedia.ts";
 import { fetchWikidata } from "./sources/wikidata.ts";
-import { fetchSecFinancials, type TickerMap } from "./sources/sec.ts";
+import { fetchSecFinancials, resolveCik, type TickerMaps } from "./sources/sec.ts";
 import { fetchNews } from "./sources/news.ts";
+import { buildReviewLinks } from "../../src/config/reviewSites.ts";
 import type { CompanyProfile, CompanyListEntry, ProfileSource } from "../../src/types/companyProfile.ts";
 
-/** Deterministic rating *links* (no scores — no free rating API exists). */
+/** Deterministic review *links* (no scores — no free rating API exists). */
 function ratingLinks(company: string): ProfileSource[] {
-  const q = encodeURIComponent(company);
-  return [
-    { label: "Glassdoor reviews", url: `https://www.glassdoor.com/Search/results.htm?keyword=${q}`, provider: "links" },
-    { label: "Indeed company reviews", url: `https://www.indeed.com/cmp/${encodeURIComponent(company.replace(/\s+/g, "-"))}/reviews`, provider: "links" },
-    { label: "Blind", url: `https://www.teamblind.com/search/${q}`, provider: "links" },
-    { label: "Comparably", url: `https://www.comparably.com/companies/${slugify(company)}`, provider: "links" },
-  ];
+  return buildReviewLinks(company).map((l) => ({ ...l, provider: "links" as const }));
 }
 
 export interface BuildDeps {
   httpGet: HttpGet;
-  /** Pre-loaded SEC ticker→CIK map so we fetch it once per run, not per company. */
-  tickerMap?: TickerMap;
+  /** Pre-loaded SEC ticker/name → CIK maps so we fetch the index once per run. */
+  tickerMap?: TickerMaps;
 }
 
 export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Promise<CompanyProfile> {
@@ -71,19 +66,19 @@ export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Pr
     notes.push(`Wikipedia fetch failed: ${errMsg(e)}`);
   }
 
-  // SEC — financials (public companies with a known ticker only).
+  // SEC — financials. Resolve the CIK from the ticker (entry or Wikidata) first,
+  // then fall back to matching the company name against SEC filer titles, so
+  // public companies without an explicit ticker still get financials.
   try {
-    const ticker = (entry.ticker ?? profile.keyFacts.ticker)?.toUpperCase();
-    const cik = ticker && tickerMap ? tickerMap[ticker] : undefined;
+    const ticker = entry.ticker ?? profile.keyFacts.ticker;
+    const cik = tickerMap ? resolveCik(tickerMap, { ticker, name: entry.name }) : undefined;
     if (cik) {
       const sec = await fetchSecFinancials(cik, httpGet);
       profile.financials = sec.financials;
       if (sec.source) sources.push(sec.source);
       if (!sec.financials.length) notes.push("No SEC financials found.");
-    } else if (ticker) {
-      notes.push(`No SEC CIK for ticker ${ticker} (private or non-US?).`);
     } else {
-      notes.push("No ticker — financials skipped (likely private).");
+      notes.push("No SEC filer match — financials skipped (likely private or non-US).");
     }
   } catch (e) {
     notes.push(`SEC fetch failed: ${errMsg(e)}`);

@@ -3,7 +3,7 @@ import type { HttpGet, HttpResponse } from "./lib.ts";
 import { slugify, dedupeByUrl } from "./lib.ts";
 import { fetchWikipedia } from "./sources/wikipedia.ts";
 import { fetchWikidata, currentEntityId } from "./sources/wikidata.ts";
-import { fetchSecFinancials, loadTickerMap } from "./sources/sec.ts";
+import { fetchSecFinancials, loadTickerMap, resolveCik, normalizeCompanyName } from "./sources/sec.ts";
 import { fetchNews } from "./sources/news.ts";
 import { buildProfile } from "./buildProfile.ts";
 
@@ -152,6 +152,7 @@ describe("SEC", () => {
   const tickersBody = JSON.stringify({
     "0": { cik_str: 320193, ticker: "AAPL", title: "Apple Inc." },
     "1": { cik_str: 789019, ticker: "MSFT", title: "Microsoft Corp" },
+    "2": { cik_str: 66740, ticker: "MMM", title: "3M CO" },
   });
   const factsBody = JSON.stringify({
     facts: {
@@ -171,21 +172,41 @@ describe("SEC", () => {
     },
   });
 
-  it("loadTickerMap indexes ticker → padded CIK", async () => {
+  it("loadTickerMap indexes by ticker and by normalized name", async () => {
     const http = mockHttp([{ match: "company_tickers.json", body: tickersBody }]);
-    const map = await loadTickerMap(http);
-    expect(map.AAPL).toBe("0000320193");
-    expect(map.MSFT).toBe("0000789019");
+    const maps = await loadTickerMap(http);
+    expect(maps.byTicker.AAPL).toBe("0000320193");
+    expect(maps.byTicker.MSFT).toBe("0000789019");
+    expect(maps.byName["3m"]).toBe("0000066740"); // "3M CO" → "3m"
+    expect(maps.byName.apple).toBe("0000320193"); // "Apple Inc." → "apple"
   });
 
-  it("picks the latest annual (10-K) revenue and other metrics", async () => {
+  it("normalizeCompanyName strips suffixes and parentheticals", () => {
+    expect(normalizeCompanyName("3M CO")).toBe("3m");
+    expect(normalizeCompanyName("3M")).toBe("3m");
+    expect(normalizeCompanyName("Apple Inc.")).toBe("apple");
+    expect(normalizeCompanyName("Alphabet (Google)")).toBe("alphabet");
+    expect(normalizeCompanyName("Microsoft Corporation")).toBe("microsoft");
+  });
+
+  it("resolveCik prefers ticker, falls back to name", async () => {
+    const http = mockHttp([{ match: "company_tickers.json", body: tickersBody }]);
+    const maps = await loadTickerMap(http);
+    expect(resolveCik(maps, { ticker: "AAPL" })).toBe("0000320193");
+    // 3M has no explicit ticker here → resolved by name.
+    expect(resolveCik(maps, { name: "3M" })).toBe("0000066740");
+    expect(resolveCik(maps, { ticker: "NOPE", name: "Unknown LLC" })).toBeUndefined();
+  });
+
+  it("builds an annual (10-K) series per metric, excluding quarterly filings", async () => {
     const http = mockHttp([{ match: "companyfacts/CIK0000320193", body: factsBody }]);
     const r = await fetchSecFinancials("0000320193", http);
-    const revenue = r.financials.find((m) => m.label === "Revenue");
-    expect(revenue?.value).toBe(383285000000); // 2023 10-K, not the Q3 10-Q
-    expect(revenue?.periodEnd).toBe("2023-09-30");
-    expect(revenue?.form).toBe("10-K");
-    expect(r.financials.map((m) => m.label).sort()).toEqual(["Net income", "Revenue", "Total assets"]);
+    const revenue = r.financials.filter((m) => m.label === "Revenue");
+    // Two annual years (2022, 2023), oldest→newest; the Q3 10-Q is excluded.
+    expect(revenue.map((m) => m.fiscalYear)).toEqual([2022, 2023]);
+    expect(revenue.map((m) => m.value)).toEqual([394328000000, 383285000000]);
+    expect(revenue.every((m) => m.form === "10-K")).toBe(true);
+    expect(new Set(r.financials.map((m) => m.label))).toEqual(new Set(["Revenue", "Net income", "Total assets"]));
     expect(r.source?.provider).toBe("sec");
   });
 
@@ -226,7 +247,7 @@ describe("buildProfile (composition + degradation)", () => {
     const http = mockHttp(routes);
     const profile = await buildProfile(
       { slug: "apple", name: "Apple", ticker: "AAPL", wikidataTitle: "Apple Inc." },
-      { httpGet: http, tickerMap: { AAPL: "0000320193" } },
+      { httpGet: http, tickerMap: { byTicker: { AAPL: "0000320193" }, byName: {} } },
     );
     expect(profile.slug).toBe("apple");
     expect(profile.overview).toBe("Apple makes phones.");
@@ -243,7 +264,7 @@ describe("buildProfile (composition + degradation)", () => {
     const http = mockHttp([routes[0]]);
     const profile = await buildProfile(
       { slug: "apple", name: "Apple", ticker: "AAPL" },
-      { httpGet: http, tickerMap: {} },
+      { httpGet: http, tickerMap: { byTicker: {}, byName: {} } },
     );
     expect(profile.overview).toBe("Apple makes phones."); // wiki worked
     expect(profile.financials).toEqual([]);                // sec skipped (no cik)

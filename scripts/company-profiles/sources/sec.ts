@@ -16,32 +16,77 @@ export interface SecResult {
   cik?: string;
 }
 
-export type TickerMap = Record<string, string>; // UPPER ticker → 10-digit CIK
+/** Indexes from the SEC ticker file: by ticker symbol and by normalized name. */
+export interface TickerMaps {
+  byTicker: Record<string, string>; // UPPER ticker → 10-digit CIK
+  byName: Record<string, string>;   // normalized company name → 10-digit CIK
+}
 
 interface TickerRow { cik_str: number; ticker: string; title: string }
 
-/** Load and index the SEC ticker→CIK file. Call once per run. */
-export async function loadTickerMap(httpGet: HttpGet): Promise<TickerMap> {
+/**
+ * Normalize a company name/title for matching: lowercase, drop parentheticals
+ * and common corporate suffixes, collapse to alphanumerics. So "3M", "3M CO",
+ * and "Alphabet (Google)" reduce to "3m" / "3m" / "alphabet".
+ */
+export function normalizeCompanyName(s: string): string {
+  return (s ?? "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/&/g, " and ")
+    .replace(/\b(the|co|company|inc|incorporated|corp|corporation|plc|ltd|limited|llc|holdings|holding|group|sa|nv|ag|se)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
+/** Load and index the SEC ticker→CIK file (by ticker and by name). Call once per run. */
+export async function loadTickerMap(httpGet: HttpGet): Promise<TickerMaps> {
   const res = await httpGet("https://www.sec.gov/files/company_tickers.json");
-  if (!res.ok) return {};
+  const empty: TickerMaps = { byTicker: {}, byName: {} };
+  if (!res.ok) return empty;
   const data = safeJson<Record<string, TickerRow>>(res.text);
-  if (!data) return {};
-  const map: TickerMap = {};
+  if (!data) return empty;
+  const maps: TickerMaps = { byTicker: {}, byName: {} };
   for (const row of Object.values(data)) {
-    if (row?.ticker && row.cik_str != null) {
-      map[row.ticker.toUpperCase()] = String(row.cik_str).padStart(10, "0");
-    }
+    if (row?.cik_str == null) continue;
+    const cik = String(row.cik_str).padStart(10, "0");
+    if (row.ticker) maps.byTicker[row.ticker.toUpperCase()] = cik;
+    const name = normalizeCompanyName(row.title);
+    // First-write wins (the file is ordered by market cap), so the most
+    // prominent issuer for a given name takes precedence.
+    if (name && !(name in maps.byName)) maps.byName[name] = cik;
   }
-  return map;
+  return maps;
+}
+
+/** Resolve a CIK from an (optional) ticker first, then an exact normalized name. */
+export function resolveCik(maps: TickerMaps, opts: { ticker?: string; name?: string }): string | undefined {
+  const t = opts.ticker?.trim().toUpperCase();
+  if (t && maps.byTicker[t]) return maps.byTicker[t];
+  const n = opts.name ? normalizeCompanyName(opts.name) : "";
+  return n ? maps.byName[n] : undefined;
 }
 
 interface XbrlUnitEntry { end: string; val: number; fy?: number; fp?: string; form?: string }
 
-/** Pick the most recent annual (10-K) value; fall back to most recent of any. */
-function latestAnnual(entries: XbrlUnitEntry[] | undefined): XbrlUnitEntry | undefined {
-  if (!Array.isArray(entries) || !entries.length) return undefined;
-  const byEndDesc = [...entries].sort((a, b) => (a.end < b.end ? 1 : -1));
-  return byEndDesc.find((e) => e.form === "10-K") ?? byEndDesc[0];
+/** How many years of annual history to keep per metric (for the YoY chart). */
+const SERIES_YEARS = 5;
+
+/**
+ * Annual (10-K, full-year) series for a concept: one value per fiscal year
+ * (restatements resolved by latest `end`), oldest→newest, capped to the last
+ * SERIES_YEARS years.
+ */
+function annualSeries(entries: XbrlUnitEntry[] | undefined): XbrlUnitEntry[] {
+  if (!Array.isArray(entries) || !entries.length) return [];
+  const annual = entries.filter((e) => e.form === "10-K" && (e.fp === "FY" || e.fp == null) && Number.isFinite(e.val));
+  const byYear = new Map<number, XbrlUnitEntry>();
+  for (const e of annual) {
+    const fy = e.fy ?? Number(e.end.slice(0, 4));
+    const prev = byYear.get(fy);
+    if (!prev || e.end > prev.end) byYear.set(fy, { ...e, fy });
+  }
+  return [...byYear.values()].sort((a, b) => (a.fy! - b.fy!)).slice(-SERIES_YEARS);
 }
 
 /** First us-gaap concept that exists, across known aliases. */
@@ -53,16 +98,15 @@ function pickConcept(usGaap: Record<string, any>, names: string[]): XbrlUnitEntr
   return undefined;
 }
 
-function metric(label: string, entry: XbrlUnitEntry | undefined): FinancialMetric | null {
-  if (!entry || !Number.isFinite(entry.val)) return null;
-  return {
+function seriesMetrics(label: string, entries: XbrlUnitEntry[] | undefined): FinancialMetric[] {
+  return annualSeries(entries).map((e) => ({
     label,
-    value: entry.val,
+    value: e.val,
     unit: "USD",
-    periodEnd: entry.end,
-    fiscalYear: entry.fy,
-    form: entry.form,
-  };
+    periodEnd: e.end,
+    fiscalYear: e.fy,
+    form: e.form,
+  }));
 }
 
 export async function fetchSecFinancials(
@@ -77,15 +121,16 @@ export async function fetchSecFinancials(
   const usGaap = data?.facts?.["us-gaap"];
   if (!usGaap) return { financials: [], cik };
 
+  // Multi-year series per metric so the UI can chart YoY change.
   const financials = [
-    metric("Revenue", latestAnnual(pickConcept(usGaap, [
+    ...seriesMetrics("Revenue", pickConcept(usGaap, [
       "RevenueFromContractWithCustomerExcludingAssessedTax",
       "Revenues",
       "SalesRevenueNet",
-    ]))),
-    metric("Net income", latestAnnual(pickConcept(usGaap, ["NetIncomeLoss"]))),
-    metric("Total assets", latestAnnual(pickConcept(usGaap, ["Assets"]))),
-  ].filter((m): m is FinancialMetric => m !== null);
+    ])),
+    ...seriesMetrics("Net income", pickConcept(usGaap, ["NetIncomeLoss"])),
+    ...seriesMetrics("Total assets", pickConcept(usGaap, ["Assets"])),
+  ];
 
   return {
     financials,

@@ -80,7 +80,7 @@ async function main() {
   if (!targets.length) { console.log("Nothing to build."); return; }
   console.log(`Building ${targets.length} profile(s)…`);
 
-  const tickerMap = await loadTickerMap(realHttpGet).catch(() => ({}));
+  const tickerMap = await loadTickerMap(realHttpGet).catch(() => ({ byTicker: {}, byName: {} }));
   let ok = 0;
   for (const entry of targets) {
     try {

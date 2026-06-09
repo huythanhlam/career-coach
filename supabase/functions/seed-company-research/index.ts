@@ -51,10 +51,10 @@ Produce, searching where needed:
 - hiringValues: what the company values when hiring (careers/jobs/culture pages — traits, principles, competencies).
 - benefits: key benefits & perks (comp philosophy, health/leave, equity, remote/flexibility, learning budget).
 - financials: most recent quarterly earnings, revenue/growth, guidance, stock; private → latest funding/valuation. Date-stamp every figure. If unknown, say so in the summary and leave bullets sparse.
-- ratings: current employer ratings from review sites. Search each of Glassdoor, Indeed, Blind, Comparably, and AmbitionBox; include an entry ONLY when you retrieve a real score and its URL. Never invent a score, count, or URL — omit any source you can't verify. Use each site's native scale (usually 5).
+Do NOT output employee ratings or review scores — those are shown from verified sources elsewhere, not from you.
 
 Output ONLY a compact JSON object, no markdown fences:
-{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"ratingsSummary":"1 sentence on how employees rate the company (or empty if unknown)","ratings":[{"source":"Glassdoor","score":4.1,"scale":5,"reviewCount":18432,"url":"https://...","asOf":"2026"}],"sources":[{"label":"...","url":"..."}]}
+{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"sources":[{"label":"...","url":"..."}]}
 At most 4 bullets/section (≤25 words each) and 3 sources/section. Begin with "{" and end with "}".`;
 
 const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news. Date-stamp each item.
