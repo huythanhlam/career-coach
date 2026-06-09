@@ -34,6 +34,10 @@ import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
 import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
+import { JobDetailsSection, JobDetailsValue } from "@/components/JobDetailsSection";
+import { researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult } from "@/services/geminiService";
+import { CompanyResearchViz } from "@/components/CompanyResearchViz";
+import { getCachedCompanyResearch, putCachedCompanyResearch } from "@/config/companyResearchCache";
 import type { ViewId } from "@/components/Sidebar";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -125,6 +129,84 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState(1);
   const [mainDocumentText, setMainDocumentText] = useState("");
+
+  /* ── Research Company state ───────────────────────────────────── */
+  const [companyJobDetails, setCompanyJobDetails] = useState<JobDetailsValue>({ jobTitle: "", companyName: "", jobDescription: "" });
+  const [companyResult, setCompanyResult] = useState<CompanyResearchResult | null>(null);
+  const [isResearching, setIsResearching] = useState(false);   // first load (no cache → full loader)
+  const [isRevalidating, setIsRevalidating] = useState(false); // background / explicit refresh
+  const [companyCachedAt, setCompanyCachedAt] = useState<string | null>(null);
+
+  // Fetch a fresh tier (one grounded call) and persist it to the cache.
+  const fetchProfileFresh = async (company: string) => {
+    const p = await researchCompanyProfile(companyJobDetails);
+    await putCachedCompanyResearch(company, "profile", p);
+    return p;
+  };
+  const fetchNewsFresh = async (company: string) => {
+    const n = await researchCompanyNews(companyJobDetails);
+    await putCachedCompanyResearch(company, "news", n);
+    return n;
+  };
+
+  /**
+   * mode "auto"  → stale-while-revalidate: serve cache instantly, refresh only
+   *                stale tiers in the background. Miss → fetch missing tiers.
+   * mode "news"  → re-ground news only (cheap), reuse cached profile.
+   * mode "all"   → re-ground both tiers.
+   */
+  const runCompanyResearch = async (mode: "auto" | "news" | "all" = "auto") => {
+    const company = companyJobDetails.companyName;
+    if (!company.trim() || isResearching || isRevalidating) return;
+
+    if (mode === "auto") {
+      const [cp, cn] = await Promise.all([
+        getCachedCompanyResearch(company, "profile"),
+        getCachedCompanyResearch(company, "news"),
+      ]);
+      if (cp && cn) {
+        // Serve cached immediately (even if stale), then revalidate stale tiers.
+        setCompanyResult(assembleCompanyResearch(cp.data, cn.data));
+        setCompanyCachedAt(cp.cachedAt < cn.cachedAt ? cp.cachedAt : cn.cachedAt);
+        if (!cp.fresh || !cn.fresh) {
+          setIsRevalidating(true);
+          try {
+            const [p, n] = await Promise.all([
+              cp.fresh ? Promise.resolve(cp.data) : fetchProfileFresh(company),
+              cn.fresh ? Promise.resolve(cn.data) : fetchNewsFresh(company),
+            ]);
+            setCompanyResult(assembleCompanyResearch(p, n));
+            setCompanyCachedAt(new Date().toISOString());
+          } catch (err) { console.error(err); } finally { setIsRevalidating(false); }
+        }
+        return;
+      }
+      // Partial or total miss → fetch only the missing tier(s).
+      setIsResearching(true);
+      try {
+        const [p, n] = await Promise.all([
+          cp?.data ?? fetchProfileFresh(company),
+          cn?.data ?? fetchNewsFresh(company),
+        ]);
+        setCompanyResult(assembleCompanyResearch(p, n));
+        setCompanyCachedAt(new Date().toISOString());
+      } catch (err) { console.error(err); } finally { setIsResearching(false); }
+      return;
+    }
+
+    // Explicit refresh — re-ground the requested tier(s), reuse cache for the rest.
+    setIsRevalidating(true);
+    try {
+      const wantP = mode === "all";
+      const wantN = mode === "all" || mode === "news";
+      const [p, n] = await Promise.all([
+        wantP ? fetchProfileFresh(company) : getCachedCompanyResearch(company, "profile").then((c) => c?.data ?? fetchProfileFresh(company)),
+        wantN ? fetchNewsFresh(company) : getCachedCompanyResearch(company, "news").then((c) => c?.data ?? fetchNewsFresh(company)),
+      ]);
+      setCompanyResult(assembleCompanyResearch(p, n));
+      setCompanyCachedAt(new Date().toISOString());
+    } catch (err) { console.error(err); } finally { setIsRevalidating(false); }
+  };
 
   /* ── LinkedIn Optimization state ──────────────────────────────── */
   const [linkedinSubmitted, setLinkedinSubmitted] = useState(false);
@@ -598,6 +680,59 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
                   </button>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Research Company ─────────────────────────────────────────── */
+  if (workflowId === "company_research") {
+    const canSubmit = !!companyJobDetails.companyName.trim();
+    return (
+      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+        <PageHeader title={config.title} description={config.description} />
+        <div className="flex-1 overflow-auto no-scrollbar p-8">
+          <div style={{ maxWidth: 760, margin: "0 auto" }}>
+            {!companyResult && !isResearching && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <JobDetailsSection value={companyJobDetails} onChange={setCompanyJobDetails} jobDescriptionOptional />
+                <button
+                  onClick={() => runCompanyResearch("auto")}
+                  disabled={!canSubmit}
+                  style={{
+                    height: 52, background: "var(--primary)", color: "#FFF", border: "1px solid var(--primary)",
+                    borderRadius: 14, fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+                    cursor: canSubmit ? "pointer" : "not-allowed", display: "flex", alignItems: "center",
+                    justifyContent: "center", gap: 8, boxShadow: "0 4px 14px rgba(217,119,87,0.25)", opacity: canSubmit ? 1 : 0.6,
+                  }}
+                >
+                  <Sparkles className="w-4 h-4" /> Start research
+                </button>
+              </div>
+            )}
+
+            {isResearching && !companyResult && (
+              <MentorCard style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16 }}>
+                <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--primary)" }} />
+                <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}>
+                  Researching {companyJobDetails.companyName || "the company"}
+                </div>
+                <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Searching careers pages, news, and financials…</div>
+              </MentorCard>
+            )}
+
+            {companyResult && (
+              <CompanyResearchViz
+                data={companyResult}
+                companyName={companyJobDetails.companyName}
+                isRevalidating={isRevalidating}
+                cachedAt={companyCachedAt ?? undefined}
+                onRefreshNews={() => runCompanyResearch("news")}
+                onRefreshAll={() => runCompanyResearch("all")}
+                onReset={() => { setCompanyResult(null); setCompanyCachedAt(null); }}
+              />
             )}
           </div>
         </div>

@@ -17,6 +17,20 @@ function json(body: unknown, status: number, cors: Record<string, string>) {
   });
 }
 
+// Pull the real source URLs from Gemini's Google-Search grounding metadata so
+// the client can render verifiable links. Returns [] when search wasn't used.
+function extractGroundingSources(response: unknown): { label: string; url: string }[] {
+  // deno-lint-ignore no-explicit-any
+  const chunks = (response as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  const out: { label: string; url: string }[] = [];
+  // deno-lint-ignore no-explicit-any
+  for (const c of chunks as any[]) {
+    const uri = c?.web?.uri;
+    if (typeof uri === "string" && uri) out.push({ label: c?.web?.title ?? uri, url: uri });
+  }
+  return out.filter((s, i) => out.findIndex((o) => o.url === s.url) === i);
+}
+
 async function verifyUser(authHeader: string | null) {
   if (!authHeader) return null;
   const client = createClient(
@@ -55,20 +69,32 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { prompt, systemInstruction, model } = await req.json();
+    const { prompt, systemInstruction, model, enableSearch } = await req.json();
 
     const ai = new GoogleGenAI({ apiKey: Deno.env.get("GEMINI_API_KEY") });
 
+    const geminiModel = toGeminiModel(model ?? "claude-haiku-4-5-20251001");
+    // Google Search grounding: 3.x / 2.0 flash use `googleSearch`; legacy 1.5
+    // uses `googleSearchRetrieval`. Only attach when the caller opts in.
+    const tools = enableSearch
+      ? [geminiModel.includes("1.5") ? { googleSearchRetrieval: {} } : { googleSearch: {} }]
+      : undefined;
+
     const response = await ai.models.generateContent({
-      model: toGeminiModel(model ?? "claude-haiku-4-5-20251001"),
+      model: geminiModel,
       contents: prompt ?? "",
       config: {
         systemInstruction: systemInstruction || undefined,
         maxOutputTokens: 8096,
+        ...(tools ? { tools } : {}),
+        // 2.5/3.x-flash "thinking" tokens count against maxOutputTokens and can
+        // truncate a structured JSON answer mid-string. Disable thinking for the
+        // search-grounded structured call so the full budget goes to the output.
+        ...(enableSearch ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
       },
     });
 
-    return json({ text: response.text }, 200, cors);
+    return json({ text: response.text, sources: extractGroundingSources(response) }, 200, cors);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return json({ error: message }, 500, cors);

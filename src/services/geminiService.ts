@@ -1,5 +1,6 @@
 import type { UserProfile } from "@/types/userProfile";
 import { supabase } from "@/lib/supabaseClient";
+import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 
 const GATEWAY_URL =
   (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
@@ -81,7 +82,18 @@ async function getAuthHeader(): Promise<string> {
   return `Bearer ${data.session?.access_token ?? ""}`;
 }
 
-async function postToGateway(body: object): Promise<string> {
+export interface SourceLink { label: string; url: string }
+
+const GATEWAY_DOWN_MESSAGE =
+  "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal.";
+
+/**
+ * Low-level gateway call that surfaces both the generated text AND any grounding
+ * sources the gateway returns (production Gemini search grounding populates
+ * `sources`; the local Claude-CLI gateway returns `[]` and embeds citations in
+ * the text instead). Most callers want only the text — use `postToGateway`.
+ */
+async function postToGatewayRaw(body: object): Promise<{ text: string; sources: SourceLink[] }> {
   console.log("🚀 Sending to gateway:", GATEWAY_URL);
   try {
     const authHeader = await getAuthHeader();
@@ -99,19 +111,24 @@ async function postToGateway(body: object): Promise<string> {
       throw new Error(`Gateway ${response.status}: ${errBody}`);
     }
     const data = await response.json();
-    return data.text;
+    return { text: data.text, sources: Array.isArray(data.sources) ? data.sources : [] };
   } catch (error) {
     console.error("❌ Gateway Error:", error);
-    return "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal.";
+    return { text: GATEWAY_DOWN_MESSAGE, sources: [] };
   }
+}
+
+async function postToGateway(body: object): Promise<string> {
+  return (await postToGatewayRaw(body)).text;
 }
 
 export async function generateWorkflowData(
   systemInstruction: string,
   prompt: string,
-  model: string = "claude-haiku-4-5-20251001"
+  model: string = "claude-haiku-4-5-20251001",
+  enableSearch: boolean = false
 ) {
-  return postToGateway({ systemInstruction, prompt, model });
+  return postToGateway({ systemInstruction, prompt, model, enableSearch });
 }
 
 function parseResumeAnalysisResponse(raw: string) {
@@ -356,6 +373,230 @@ ${resumeText}`;
     console.error('Failed to parse tailor suggestions. Raw preview:', response.slice(0, 500));
     return [];
   }
+}
+
+// ─── Research Company (live web search) ─────────────────────────────────────
+
+/**
+ * Model for the grounded company-research call. Passed straight through the
+ * gateway: `toGeminiModel` forwards unknown `gemini-*` names as-is.
+ *
+ * `gemini-2.5-flash` is verified working with Google-Search grounding on the
+ * current API key (returns real groundingMetadata source URLs). The 3.x flash
+ * *preview* models (e.g. `gemini-3.1-flash-lite-preview`) return HTTP 429
+ * "quota exceeded" on this plan — swap this constant to one of them once that
+ * model is enabled/has grounding quota on the project's billing tier.
+ */
+export const COMPANY_RESEARCH_MODEL = "gemini-2.5-flash";
+
+export interface CompanyResearchSection {
+  summary: string;
+  bullets: string[];
+  sources: SourceLink[];
+}
+
+/** Combined shape the UI renders (assembled from the two cached tiers). */
+export interface CompanyResearchResult {
+  overview: string;
+  hiringValues: CompanyResearchSection;
+  benefits: CompanyResearchSection;
+  news: CompanyResearchSection;
+  financials: CompanyResearchSection;
+  sources: SourceLink[];
+}
+
+/** Slow-moving tier — cached for weeks. */
+export interface CompanyProfileData {
+  overview: string;
+  hiringValues: CompanyResearchSection;
+  benefits: CompanyResearchSection;
+  financials: CompanyResearchSection;
+  sources: SourceLink[];
+}
+
+/** Fast-moving tier — cached briefly. */
+export interface CompanyNewsData {
+  news: CompanyResearchSection;
+  sources: SourceLink[];
+}
+
+// Lean, purpose-built system prompts (no basePersona) to minimize input tokens.
+const COMPANY_PROFILE_SYSTEM = `You research a company to help a candidate interview well. A live web search tool IS available — use it for anything time-sensitive and cite the real URLs you retrieve; never invent URLs or figures. You are given JOB POSTING TEXT — use it directly for benefits/values where present and only search for what it doesn't cover.
+
+Produce, searching where needed:
+- hiringValues: what the company values when hiring (careers/jobs/culture pages — traits, principles, competencies).
+- benefits: key benefits & perks (comp philosophy, health/leave, equity, remote/flexibility, learning budget).
+- financials: most recent quarterly earnings, revenue/growth, guidance, stock; private → latest funding/valuation. Date-stamp every figure. If unknown, say so in the summary and leave bullets sparse.
+
+Output ONLY a compact JSON object, no markdown fences:
+{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"sources":[{"label":"...","url":"..."}]}
+At most 4 bullets/section (≤25 words each) and 3 sources/section. Begin with "{" and end with "}".`;
+
+const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news. Date-stamp each item.
+
+Output ONLY a compact JSON object, no markdown fences:
+{"news":{"summary":"1-2 sentences","bullets":["headline — date — why it matters"],"sources":[{"label":"...","url":"https://..."}]},"sources":[{"label":"...","url":"..."}]}
+At most 5 bullets (≤25 words each) and 4 sources. Begin with "{" and end with "}".`;
+
+/**
+ * Parse a JSON object from an LLM response that may be fenced (```json) and/or
+ * TRUNCATED (e.g. cut off at the token limit mid-string). Strips fences, then
+ * if a clean parse fails, walks the text tracking string/escape state and
+ * closes any unterminated string and open braces/brackets to recover the
+ * largest valid object. Returns a best-effort object; throws only if there is
+ * no `{` at all.
+ */
+function parseLooseJsonObject(raw: string): any {
+  let t = (raw ?? "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  const start = t.indexOf("{");
+  if (start < 0) throw new Error("No JSON object found in response");
+  t = t.slice(start);
+
+  // Fast paths: as-is, and with a dangling trailing comma removed.
+  for (const cand of [t, t.replace(/,\s*$/, "")]) {
+    try { return JSON.parse(cand); } catch { /* fall through to repair */ }
+  }
+
+  // Repair: rebuild a balanced object, ignoring braces inside strings.
+  let inStr = false, esc = false;
+  const stack: string[] = [];
+  let out = "";
+  for (const ch of t) {
+    out += ch;
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  if (inStr) out += '"';                 // close an unterminated string value
+  out = out.replace(/,\s*$/, "");        // drop a dangling comma at the cut point
+  while (stack.length) out += stack.pop() === "{" ? "}" : "]";
+  out = out.replace(/,\s*([}\]])/g, "$1"); // strip trailing commas before closers
+  return JSON.parse(out);                 // may still throw → caller handles
+}
+
+const EMPTY_SECTION = (summary: string): CompanyResearchSection => ({ summary, bullets: [], sources: [] });
+
+function normalizeSection(raw: any, fallbackSources: SourceLink[]): CompanyResearchSection {
+  const sources: SourceLink[] = Array.isArray(raw?.sources)
+    ? raw.sources.filter((s: any) => s && typeof s.url === "string" && s.url.trim())
+        .map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
+    : [];
+  return {
+    summary: typeof raw?.summary === "string" ? raw.summary : "",
+    bullets: Array.isArray(raw?.bullets) ? raw.bullets.filter((b: any) => typeof b === "string") : [],
+    sources: sources.length ? sources : fallbackSources,
+  };
+}
+
+// Bound how much of the (free, user-provided) JD we feed each grounded call, so
+// inputs stay small. The profile call gets more — it mines benefits/values from
+// the posting; the news call only needs light role context.
+const JD_PROFILE_EXCERPT = 1500;
+const JD_ROLE_SNIPPET = 400;
+
+function roleLine(jobTitle: string, jobDescription: string, snippetLen: number): string {
+  const title = jobTitle?.trim() ? jobTitle.trim() : "(role described in the posting excerpt)";
+  const snippet = (jobDescription ?? "").trim().slice(0, snippetLen);
+  return `TARGET ROLE: ${title}${snippet ? `\nROLE CONTEXT (excerpt): ${snippet}` : ""}`;
+}
+
+/** Model-declared sources + gateway grounding URLs, deduped; fallback if none. */
+function collectSources(parsed: any, grounding: SourceLink[], fallback: SourceLink[]): SourceLink[] {
+  const declared: SourceLink[] = Array.isArray(parsed?.sources)
+    ? parsed.sources.filter((s: any) => s && typeof s.url === "string").map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
+    : [];
+  const merged = [...declared, ...grounding];
+  const dedup = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
+  return dedup.length ? dedup : fallback;
+}
+
+/**
+ * Slow-moving tier: hiring values, benefits, financials (+overview). Mines the
+ * provided JD excerpt for benefits/values before searching. Cached for weeks.
+ */
+export async function researchCompanyProfile(input: {
+  jobTitle: string;
+  companyName: string;
+  jobDescription: string;
+}): Promise<CompanyProfileData> {
+  const { jobTitle, companyName, jobDescription } = input;
+  const fallback = buildCompanyResearchSources(companyName);
+  const prompt = `COMPANY: ${companyName}
+${roleLine(jobTitle, jobDescription, JD_PROFILE_EXCERPT)}
+
+JOB POSTING TEXT (use for benefits/values where present; don't search for what's already here):
+${(jobDescription || "(none provided)").slice(0, JD_PROFILE_EXCERPT)}
+
+Return only the JSON object.`;
+  const { text, sources: grounding } = await postToGatewayRaw({
+    systemInstruction: COMPANY_PROFILE_SYSTEM,
+    prompt,
+    model: COMPANY_RESEARCH_MODEL,
+    enableSearch: true,
+  });
+  try {
+    const parsed = parseLooseJsonObject(text);
+    return {
+      overview: typeof parsed.overview === "string" ? parsed.overview : "",
+      hiringValues: normalizeSection(parsed.hiringValues, [fallback.careers]),
+      benefits: normalizeSection(parsed.benefits, [fallback.careers]),
+      financials: normalizeSection(parsed.financials, [fallback.financials]),
+      sources: collectSources(parsed, grounding, [fallback.careers, fallback.financials]),
+    };
+  } catch {
+    console.error("Failed to parse company profile JSON. Raw preview:", text.slice(0, 500));
+    return {
+      overview: "",
+      hiringValues: EMPTY_SECTION(""),
+      benefits: EMPTY_SECTION(""),
+      financials: EMPTY_SECTION(""),
+      sources: [fallback.careers, fallback.financials],
+    };
+  }
+}
+
+/** Fast-moving tier: role-relevant news (fallback: recent company news). Cached briefly. */
+export async function researchCompanyNews(input: {
+  jobTitle: string;
+  companyName: string;
+  jobDescription: string;
+}): Promise<CompanyNewsData> {
+  const { jobTitle, companyName, jobDescription } = input;
+  const fallback = buildCompanyResearchSources(companyName);
+  const prompt = `COMPANY: ${companyName}
+${roleLine(jobTitle, jobDescription, JD_ROLE_SNIPPET)}
+
+Find recent news (role/team-relevant first, else important recent company news). Return only the JSON object.`;
+  const { text, sources: grounding } = await postToGatewayRaw({
+    systemInstruction: COMPANY_NEWS_SYSTEM,
+    prompt,
+    model: COMPANY_RESEARCH_MODEL,
+    enableSearch: true,
+  });
+  try {
+    const parsed = parseLooseJsonObject(text);
+    return { news: normalizeSection(parsed.news, [fallback.news]), sources: collectSources(parsed, grounding, [fallback.news]) };
+  } catch {
+    console.error("Failed to parse company news JSON. Raw preview:", text.slice(0, 500));
+    return { news: EMPTY_SECTION(""), sources: [fallback.news] };
+  }
+}
+
+/** Merge the two cached tiers into the shape the UI renders. */
+export function assembleCompanyResearch(profile: CompanyProfileData, news: CompanyNewsData): CompanyResearchResult {
+  const merged = [...profile.sources, ...news.sources];
+  const sources = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
+  return {
+    overview: profile.overview,
+    hiringValues: profile.hiringValues,
+    benefits: profile.benefits,
+    news: news.news,
+    financials: profile.financials,
+    sources,
+  };
 }
 
 export async function rewriteResumeSelection(selectedText: string, instruction: string, fullResumeText: string) {
