@@ -86,6 +86,21 @@ export function useJobPostings() {
   const addPosting = useCallback(
     async (posting: NewPosting): Promise<JobPosting | null> => {
       if (!user) return null;
+      // Idempotent: if this exact posting is already on the board (saved or
+      // suggested), promote/return it instead of hitting the
+      // (user_id, source, external_id) unique index and failing silently.
+      if (posting.externalId) {
+        const dup = postings.find((p) => p.source === posting.source && p.externalId === posting.externalId);
+        if (dup) {
+          if (dup.status === "suggested") {
+            await supabase.from("job_postings").update({ status: "saved" }).eq("id", dup.id);
+            const promoted = { ...dup, status: "saved" as JobStatus };
+            setPostings((prev) => prev.map((p) => (p.id === dup.id ? promoted : p)));
+            return promoted;
+          }
+          return dup;
+        }
+      }
       const { data, error } = await supabase
         .from("job_postings")
         .insert({ user_id: user.id, status: "saved", favorite: false, ...postingToRow(posting) })
@@ -96,7 +111,7 @@ export function useJobPostings() {
       setPostings((prev) => [mapped, ...prev]);
       return mapped;
     },
-    [user],
+    [user, postings],
   );
 
   /** Bulk-save scan/import results, skipping ones already saved (by source+externalId). */

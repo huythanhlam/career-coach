@@ -452,7 +452,7 @@ function DiscoverPanel({
       </div>
       <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>
         {mode === "search"
-          ? "Searches keyless job boards (Remotive, Arbeitnow, RemoteOK) — no setup required."
+          ? "Searches keyless job boards (Workable, Remotive) — no setup required."
           : `Scans our built-in list of popular boards${companies.length > 0 ? ` + your ${companies.length} compan${companies.length === 1 ? "y" : "ies"}` : ""}, filtered to this role.`}
       </div>
 
@@ -476,13 +476,16 @@ function DiscoverPanel({
             <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{aggResults.length} postings</span>
             <button style={{ ...ghostBtn, height: 36 }} onClick={saveAllAgg}><Plus className="w-3.5 h-3.5" /> Save all</button>
           </div>
-          {aggResults.map((j, i) => (
-            <ResultRow key={`${j.externalId ?? j.url}-${i}`}
-              title={j.title} sub={[j.company, j.location].filter(Boolean).join(" · ")}
-              badge={j.provider} saved={savedKeys.has(aggKey(j))}
-              onSave={() => { onAdd(aggToNew(j)); setSavedKeys((s) => new Set(s).add(aggKey(j))); }}
-              onOpen={j.url ?? undefined} />
-          ))}
+          {aggResults.map((j, i) => {
+            const alreadyOnBoard = j.externalId ? existingExternal.has(`web:${j.externalId}`) : false;
+            return (
+              <ResultRow key={`${j.externalId ?? j.url}-${i}`}
+                title={j.title} sub={[j.company, j.location].filter(Boolean).join(" · ")}
+                badge={j.provider} saved={alreadyOnBoard || savedKeys.has(aggKey(j))}
+                onSave={() => { onAdd(aggToNew(j)); setSavedKeys((s) => new Set(s).add(aggKey(j))); }}
+                onOpen={j.url ?? undefined} />
+            );
+          })}
         </div>
       )}
 

@@ -4,7 +4,7 @@ import { safeFetchText } from "../_shared/safe-fetch.ts";
 
 // ── Targeted Job Postings: keyless aggregator search ───────────────────────
 // Role-only discovery across many employers using public, NO-KEY job APIs:
-// Remotive, Arbeitnow, and RemoteOK. Results are full postings the user can save
+// Workable's global search + Remotive. Results are full postings the user can save
 // directly. Skews remote/tech, but needs no company list and no API key.
 
 interface NormalizedJob {

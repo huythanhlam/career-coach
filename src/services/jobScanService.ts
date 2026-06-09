@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { AtsProvider, AggregatorJob, ScannedJob, TargetCompany } from "@/types/jobPosting";
 
 // Targeted Job Postings — sourcing layer.
-// Two discovery paths (ATS feed scan + Brave web search) plus a single-URL
+// Two discovery paths (ATS feed scan + keyless aggregator search) plus a single-URL
 // importer, each backed by an Edge Function. Kept behind small functions so a
 // different provider could be swapped in without touching callers.
 
@@ -42,7 +42,7 @@ export async function scanJobs(
   return callFunction("scan-jobs", { companies: payload, keywords, exclude, includeSeed });
 }
 
-/** Role-keyword search across keyless aggregators (Remotive/Arbeitnow/RemoteOK). */
+/** Role-keyword search across keyless aggregators (Workable global search + Remotive). */
 export async function searchAggregators(query: string, exclude: string[] = []): Promise<AggregatorJob[]> {
   const { results } = await callFunction<{ results: AggregatorJob[] }>("job-search", { query, exclude });
   return results;

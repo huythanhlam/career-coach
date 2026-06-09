@@ -23,7 +23,7 @@ interface NormalizedJob {
 }
 
 // Allowlisted ATS API hosts (defense-in-depth alongside safeFetchText's SSRF
-// checks — we only ever hit these three).
+// checks — we only ever hit these known ATS hosts).
 const ATS_HOSTS: Record<Ats, string> = {
   greenhouse: "boards-api.greenhouse.io",
   lever: "api.lever.co",
