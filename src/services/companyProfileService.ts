@@ -40,6 +40,37 @@ export async function getCompanyProfile(name: string): Promise<CompanyProfile | 
   }
 }
 
+/** Lightweight row for the "browse companies" grid. */
+export interface CompanyProfileSummary {
+  slug: string;
+  name: string;
+  logoUrl?: string;
+  industry?: string;
+}
+
+/**
+ * List the companies that already have a deterministic profile in the app
+ * (the `company_profiles` library), for the browse view. Returns [] on error
+ * or when the table is empty.
+ */
+export async function listCompanyProfiles(): Promise<CompanyProfileSummary[]> {
+  try {
+    const { data, error } = await supabase
+      .from("company_profiles")
+      .select("slug, name, logoUrl:data->>logoUrl, industry:data->keyFacts->>industry")
+      .order("name");
+    if (error || !data) return [];
+    return (data as { slug: string; name: string; logoUrl: string | null; industry: string | null }[]).map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      logoUrl: r.logoUrl ?? undefined,
+      industry: r.industry ?? undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export type RequestProfileResult = "queued" | "exists" | "duplicate" | "error";
 
 /**

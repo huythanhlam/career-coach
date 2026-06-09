@@ -34,11 +34,12 @@ import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
 import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
-import { JobDetailsSection, JobDetailsValue } from "@/components/JobDetailsSection";
+import { type JobDetailsValue } from "@/components/JobDetailsSection";
 import { researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult } from "@/services/geminiService";
 import { CompanyResearchViz } from "@/components/companyResearch";
 import { CompanyProfileViz } from "@/components/companyResearch/CompanyProfileViz";
 import { RequestProfileBanner } from "@/components/companyResearch/RequestProfileBanner";
+import { CompanyBrowser } from "@/components/companyResearch/CompanyBrowser";
 import { getCachedCompanyResearch, putCachedCompanyResearch } from "@/config/companyResearchCache";
 import { getCompanyProfile, requestCompanyProfile, type RequestProfileResult } from "@/services/companyProfileService";
 import type { CompanyProfile } from "@/types/companyProfile";
@@ -146,14 +147,15 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const [requestState, setRequestState] = useState<RequestProfileResult | "requesting" | null>(null);
 
   /**
-   * Entry point for the workspace's "Start research" button. Prefers the
-   * deterministic DB profile; only falls back to the AI path when none exists,
-   * and surfaces a "request a profile" affordance so the user can queue it for
-   * the build routine.
+   * Entry point: research a company (picked from the browser or typed in the
+   * search box). Prefers the deterministic DB profile; only falls back to the
+   * AI path when none exists, surfacing a "request a profile" affordance so the
+   * user can queue it for the build routine.
    */
-  const startCompanyResearch = async () => {
-    const company = companyJobDetails.companyName;
-    if (!company.trim() || isResearching || isRevalidating) return;
+  const startCompanyResearch = async (name: string) => {
+    const company = (name ?? "").trim();
+    if (!company || isResearching || isRevalidating) return;
+    setCompanyJobDetails({ jobTitle: "", companyName: company, jobDescription: "" });
     setProfileMissing(false);
     setRequestState(null);
     setIsResearching(true);
@@ -168,7 +170,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     setProfileMissing(true);
     setIsResearching(false);
     // No deterministic profile yet → use the existing AI research as a fallback.
-    await runCompanyResearch("auto");
+    await runCompanyResearch("auto", company);
   };
 
   const submitProfileRequest = async () => {
@@ -177,14 +179,15 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     setRequestState(result);
   };
 
-  // Fetch a fresh tier (one grounded call) and persist it to the cache.
+  // Fetch a fresh tier (one grounded call) and persist it to the cache. Company
+  // research is company-level — no job title/description needed.
   const fetchProfileFresh = async (company: string) => {
-    const p = await researchCompanyProfile(companyJobDetails);
+    const p = await researchCompanyProfile({ jobTitle: "", companyName: company, jobDescription: "" });
     await putCachedCompanyResearch(company, "profile", p);
     return p;
   };
   const fetchNewsFresh = async (company: string) => {
-    const n = await researchCompanyNews(companyJobDetails);
+    const n = await researchCompanyNews({ jobTitle: "", companyName: company, jobDescription: "" });
     await putCachedCompanyResearch(company, "news", n);
     return n;
   };
@@ -195,9 +198,9 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
    * mode "news"  → re-ground news only (cheap), reuse cached profile.
    * mode "all"   → re-ground both tiers.
    */
-  const runCompanyResearch = async (mode: "auto" | "news" | "all" = "auto") => {
-    const company = companyJobDetails.companyName;
-    if (!company.trim() || isResearching || isRevalidating) return;
+  const runCompanyResearch = async (mode: "auto" | "news" | "all" = "auto", companyArg?: string) => {
+    const company = (companyArg ?? companyJobDetails.companyName).trim();
+    if (!company || isResearching || isRevalidating) return;
 
     if (mode === "auto") {
       const [cp, cn] = await Promise.all([
@@ -729,28 +732,13 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
 
   /* ── Research Company ─────────────────────────────────────────── */
   if (workflowId === "company_research") {
-    const canSubmit = !!companyJobDetails.companyName.trim();
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
         <PageHeader title={config.title} description={config.description} />
         <div className="flex-1 overflow-auto no-scrollbar p-8">
           <div style={{ maxWidth: 760, margin: "0 auto" }}>
             {!companyResult && !companyProfile && !isResearching && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <JobDetailsSection value={companyJobDetails} onChange={setCompanyJobDetails} jobDescriptionOptional />
-                <button
-                  onClick={startCompanyResearch}
-                  disabled={!canSubmit}
-                  style={{
-                    height: 52, background: "var(--primary)", color: "#FFF", border: "1px solid var(--primary)",
-                    borderRadius: 14, fontFamily: "inherit", fontSize: 14, fontWeight: 600,
-                    cursor: canSubmit ? "pointer" : "not-allowed", display: "flex", alignItems: "center",
-                    justifyContent: "center", gap: 8, boxShadow: "0 4px 14px rgba(217,119,87,0.25)", opacity: canSubmit ? 1 : 0.6,
-                  }}
-                >
-                  <Sparkles className="w-4 h-4" /> Start research
-                </button>
-              </div>
+              <CompanyBrowser onPick={startCompanyResearch} />
             )}
 
             {isResearching && !companyResult && !companyProfile && (
