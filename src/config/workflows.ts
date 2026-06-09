@@ -25,11 +25,11 @@ export interface WorkflowConfig {
 
 export const basePersona = `You are "TechCoach AI," an elite, highly empathetic, and strategically brilliant AI-assisted career coach. You help people from all backgrounds, industries, and experience levels — students, recent graduates, career changers, returners, and seasoned professionals alike. Your goal is to help every user land roles they want, maximize their compensation, and build sustainable career paths. Adapt your advice to each user's field and seniority rather than assuming any particular industry.
 
-Today's date is ${new Date().toISOString().slice(0, 10)}. Your knowledge has a training cutoff, so treat any figures, company facts, or market data as estimates from that knowledge — never imply you have live or real-time data.
+Today's date is ${new Date().toISOString().slice(0, 10)}. If a web search tool is available for this task, use it for time-sensitive questions (recent news, financials, current facts) and cite the real source URLs you actually retrieved. Otherwise, work from your training knowledge (which has a cutoff): present figures, company facts, and news as estimates, say so, and never imply real-time data you didn't retrieve or invent source URLs.
 
 Tone: Professional, encouraging, realistic, and highly actionable. Do not use corporate fluff. Provide specific, data-backed advice. Never guarantee a job placement or a specific salary; frame advice as maximizing probability and competitive positioning.
 
-Honesty: If you lack the information needed to answer well, say so plainly and ask the user for it (e.g. paste the job description or profile text) rather than inventing details. You cannot browse the web or open URLs; if a user provides only a link, ask them to paste the relevant text.
+Honesty: If you lack the information needed to answer well, say so plainly and ask the user for it (e.g. paste the job description or profile text) rather than inventing details. If you have no web search tool for this task and the user provides only a link, ask them to paste the relevant text rather than guessing its contents.
 
 Output format: Respond in clean Markdown. Use short section headings and bullet points; lead with the most important, actionable advice. Be concise — no filler preambles. Stay within career, job-search, interviewing, and compensation topics.`;
 
@@ -320,51 +320,20 @@ Be specific and realistic. Reference their actual roles, companies, and skills b
   },
   company_research: {
     id: "company_research",
-    title: "Company Research & Interview Questions",
-    description: "Summarize what's known about a company, build a verification checklist, and generate smart questions to ask.",
-    fields: [
-      {
-        id: "jdUrl",
-        label: "Job Description URL (Optional)",
-        type: "url",
-        placeholder: "https://...",
-        required: false,
-      },
-      {
-        id: "company",
-        label: "Company Name",
-        type: "text",
-        placeholder: "e.g., the company name",
-        required: true,
-      },
-      {
-        id: "role",
-        label: "Target Role",
-        type: "select",
-        options: COMMON_ROLES,
-        allowCustom: true,
-        required: true,
-      }
-    ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Company Research\nAction: Help the user prepare to research and interview at a specific company. You cannot browse the web, search Google, or read Glassdoor / Blind / news in real time — work only from your training knowledge and be explicit about its limits and recency. If a job description is relevant, ask the user to paste its text (you cannot open URLs).
-
-Provide these Markdown sections:
-1. **What I know** — the company's likely industry, products/services, size, and general reputation, based on training data. Clearly mark anything uncertain or possibly out of date. Never invent specific Glassdoor/Blind ratings, employee quotes, headlines, funding rounds, or recent events.
-2. **What to verify yourself** — a short checklist of what to confirm and where: e.g. Glassdoor and Blind for reviews, recent news, the company's own site/blog, LinkedIn for the team, and a pay-data site for compensation.
-3. **Smart questions to ask** — tailored, insightful questions for both the recruiter and the hiring manager/interviewer for this specific role, that show genuine research and help the user evaluate fit.
-
-The questions are the most valuable, hallucination-safe output — make them specific and thoughtful.`,
-    generatePrompt: (data) => {
-      let prompt = `Please help me research ${data.company} for a ${data.role} role.\n\n`;
-      if (data.jdUrl) prompt += `Job description (I'll paste the text if you need it): ${data.jdUrl}\n\n`;
-      prompt += `Summarize what you know (flag anything uncertain), tell me what to verify myself, and suggest smart questions to ask.`;
-      return prompt;
-    },
+    title: "Research Company",
+    description: "Live research on what a company values when hiring, its benefits, role-relevant news, and recent financials — every claim linked to a verifiable source.",
+    // The dedicated WorkflowView branch renders the shared JobDetailsSection card
+    // and calls researchCompany() in geminiService, so no generic form fields are
+    // used here. systemInstruction/generatePrompt are kept only to satisfy the
+    // WorkflowConfig interface (same pattern as the linkedin workflow).
+    fields: [],
+    systemInstruction: `${basePersona}\n\nWorkflow: Research Company`,
+    generatePrompt: (data) => `Research ${data.companyName ?? ""}.`,
     enableSearch: true,
     suggestedPrompts: [
-      "What are the biggest red flags from employee reviews?",
-      "What recent news should I mention in the interview?",
-      "Give me 3 tough questions to ask the hiring manager.",
+      "What does this company value when hiring for my role?",
+      "What recent news or earnings should I mention in the interview?",
+      "What benefits and perks does this company offer?",
     ],
   },
   mock_behavioral: {

@@ -1,5 +1,7 @@
 import type { UserProfile } from "@/types/userProfile";
 import { supabase } from "@/lib/supabaseClient";
+import { basePersona } from "@/config/workflows";
+import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 
 const GATEWAY_URL =
   (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
@@ -81,7 +83,18 @@ async function getAuthHeader(): Promise<string> {
   return `Bearer ${data.session?.access_token ?? ""}`;
 }
 
-async function postToGateway(body: object): Promise<string> {
+export interface SourceLink { label: string; url: string }
+
+const GATEWAY_DOWN_MESSAGE =
+  "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal.";
+
+/**
+ * Low-level gateway call that surfaces both the generated text AND any grounding
+ * sources the gateway returns (production Gemini search grounding populates
+ * `sources`; the local Claude-CLI gateway returns `[]` and embeds citations in
+ * the text instead). Most callers want only the text — use `postToGateway`.
+ */
+async function postToGatewayRaw(body: object): Promise<{ text: string; sources: SourceLink[] }> {
   console.log("🚀 Sending to gateway:", GATEWAY_URL);
   try {
     const authHeader = await getAuthHeader();
@@ -99,19 +112,24 @@ async function postToGateway(body: object): Promise<string> {
       throw new Error(`Gateway ${response.status}: ${errBody}`);
     }
     const data = await response.json();
-    return data.text;
+    return { text: data.text, sources: Array.isArray(data.sources) ? data.sources : [] };
   } catch (error) {
     console.error("❌ Gateway Error:", error);
-    return "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal.";
+    return { text: GATEWAY_DOWN_MESSAGE, sources: [] };
   }
+}
+
+async function postToGateway(body: object): Promise<string> {
+  return (await postToGatewayRaw(body)).text;
 }
 
 export async function generateWorkflowData(
   systemInstruction: string,
   prompt: string,
-  model: string = "claude-haiku-4-5-20251001"
+  model: string = "claude-haiku-4-5-20251001",
+  enableSearch: boolean = false
 ) {
-  return postToGateway({ systemInstruction, prompt, model });
+  return postToGateway({ systemInstruction, prompt, model, enableSearch });
 }
 
 function parseResumeAnalysisResponse(raw: string) {
@@ -355,6 +373,129 @@ ${resumeText}`;
   } catch (e) {
     console.error('Failed to parse tailor suggestions. Raw preview:', response.slice(0, 500));
     return [];
+  }
+}
+
+// ─── Research Company (live web search) ─────────────────────────────────────
+
+/**
+ * Model for the grounded company-research call. Passed straight through the
+ * gateway: `toGeminiModel` forwards unknown `gemini-*` names as-is.
+ *
+ * `gemini-2.5-flash` is verified working with Google-Search grounding on the
+ * current API key (returns real groundingMetadata source URLs). The 3.x flash
+ * *preview* models (e.g. `gemini-3.1-flash-lite-preview`) return HTTP 429
+ * "quota exceeded" on this plan — swap this constant to one of them once that
+ * model is enabled/has grounding quota on the project's billing tier.
+ */
+export const COMPANY_RESEARCH_MODEL = "gemini-2.5-flash";
+
+export interface CompanyResearchSection {
+  summary: string;
+  bullets: string[];
+  sources: SourceLink[];
+}
+
+export interface CompanyResearchResult {
+  overview: string;
+  hiringValues: CompanyResearchSection;
+  benefits: CompanyResearchSection;
+  news: CompanyResearchSection;
+  financials: CompanyResearchSection;
+  sources: SourceLink[];
+}
+
+const COMPANY_RESEARCH_SYSTEM = `${basePersona}
+
+Workflow: Research Company
+A web search tool IS available for this task — use it. Research the specific company and return a structured briefing that helps the candidate interview well. Cover, using live web search:
+- What the company VALUES WHEN HIRING — study its careers/jobs pages, culture/values pages, and team/engineering blog. What traits, principles, or competencies does it emphasize for candidates?
+- KEY BENEFITS & PERKS — compensation philosophy, health/leave, equity, remote/flexibility, learning budgets, etc., from the careers/benefits pages.
+- NEWS — prioritize news connected to the candidate's ROLE, team, or department (product launches, org changes, hiring in that area); if little role-specific news exists, FALL BACK to the most important recent company news.
+- FINANCIALS — the most recent quarterly earnings, revenue/growth, guidance, and stock movement where the company is public; for private companies use the latest funding/valuation. Date-stamp every figure.
+
+Ground the role context in the provided JOB DESCRIPTION. For EVERY section, cite the real source URLs you actually retrieved (each source as { "label": "...", "url": "https://..." }). Never invent URLs or figures — if you couldn't find something, say so in that section's summary and leave its bullets sparse.
+
+Return ONLY a valid JSON object — no markdown fences, no prose — with EXACTLY this shape:
+{
+  "overview": "<2-3 sentences framing the company + a recency note>",
+  "hiringValues": { "summary": "<1-2 sentences>", "bullets": ["..."], "sources": [{ "label": "...", "url": "..." }] },
+  "benefits":     { "summary": "<1-2 sentences>", "bullets": ["..."], "sources": [{ "label": "...", "url": "..." }] },
+  "news":         { "summary": "<1-2 sentences>", "bullets": ["<headline — date — why it matters>"], "sources": [{ "label": "...", "url": "..." }] },
+  "financials":   { "summary": "<1-2 sentences>", "bullets": ["<metric — value — period>"], "sources": [{ "label": "...", "url": "..." }] },
+  "sources": [{ "label": "...", "url": "..." }]
+}
+Begin with "{" and end with "}".`;
+
+const EMPTY_SECTION = (summary: string): CompanyResearchSection => ({ summary, bullets: [], sources: [] });
+
+function normalizeSection(raw: any, fallbackSources: SourceLink[]): CompanyResearchSection {
+  const sources: SourceLink[] = Array.isArray(raw?.sources)
+    ? raw.sources.filter((s: any) => s && typeof s.url === "string" && s.url.trim())
+        .map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
+    : [];
+  return {
+    summary: typeof raw?.summary === "string" ? raw.summary : "",
+    bullets: Array.isArray(raw?.bullets) ? raw.bullets.filter((b: any) => typeof b === "string") : [],
+    sources: sources.length ? sources : fallbackSources,
+  };
+}
+
+/**
+ * Research a company with live web search. Returns structured, source-cited
+ * sections (hiring values, benefits, news, financials). Falls back to curated
+ * verification links per section when grounding returns none.
+ */
+export async function researchCompany(input: {
+  jobTitle: string;
+  companyName: string;
+  jobDescription: string;
+}): Promise<CompanyResearchResult> {
+  const { jobTitle, companyName, jobDescription } = input;
+  const prompt = `Research this company for my interview prep.
+
+COMPANY: ${companyName}
+TARGET ROLE: ${jobTitle || "(not specified — infer from the job description)"}
+
+JOB DESCRIPTION (ground the role/team context in this; do not search it):
+${jobDescription || "(none provided)"}
+
+Use live web search for the company's careers/values pages, role-relevant news (fallback: recent company news), and most recent financials. Return only the JSON object.`;
+
+  const fallback = buildCompanyResearchSources(companyName);
+  const { text, sources: grounding } = await postToGatewayRaw({
+    systemInstruction: COMPANY_RESEARCH_SYSTEM,
+    prompt,
+    model: COMPANY_RESEARCH_MODEL,
+    enableSearch: true,
+  });
+
+  try {
+    const parsed = parseResumeAnalysisResponse(text);
+    const allSources: SourceLink[] = Array.isArray(parsed.sources)
+      ? parsed.sources.filter((s: any) => s && typeof s.url === "string").map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
+      : [];
+    // Grounding URLs from the gateway are a real-source backstop for the "all sources" list.
+    const merged = [...allSources, ...grounding];
+    const dedup = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
+    return {
+      overview: typeof parsed.overview === "string" ? parsed.overview : "",
+      hiringValues: normalizeSection(parsed.hiringValues, [fallback.careers]),
+      benefits: normalizeSection(parsed.benefits, [fallback.careers]),
+      news: normalizeSection(parsed.news, [fallback.news]),
+      financials: normalizeSection(parsed.financials, [fallback.financials]),
+      sources: dedup.length ? dedup : Object.values(fallback),
+    };
+  } catch (e) {
+    console.error("Failed to parse company research JSON. Raw preview:", text.slice(0, 500));
+    return {
+      overview: "We couldn't complete the research this time — please try again.",
+      hiringValues: EMPTY_SECTION(""),
+      benefits: EMPTY_SECTION(""),
+      news: EMPTY_SECTION(""),
+      financials: EMPTY_SECTION(""),
+      sources: Object.values(fallback),
+    };
   }
 }
 

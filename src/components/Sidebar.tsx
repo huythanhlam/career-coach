@@ -83,7 +83,7 @@ const navGroups: NavGroup[] = [
   {
     name: "Research",
     items: [
-      { id: "company_research", label: "Company Intel", icon: Building },
+      { id: "company_research", label: "Research Company", icon: Building },
       { id: "market",           label: "Market Data",   icon: LineChart },
       { id: "salary",           label: "Negotiator",    icon: DollarSign },
     ],

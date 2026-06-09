@@ -24,9 +24,15 @@ app.use('/api/', rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, l
 // --- Claude CLI gateway ---
 // Pipes prompt via stdin to avoid shell arg-length limits on large prompts
 
-function callClaude(prompt: string): Promise<string> {
+function callClaude(prompt: string, enableSearch = false): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn('claude', ['--print', '--dangerously-skip-permissions'], {
+    // Browsing is enabled by the persona (which permits web search for this task)
+    // plus a *scoped* tool allow-list — least privilege, rather than leaning on
+    // --dangerously-skip-permissions to grant browsing. Searches run on the
+    // developer's logged-in Claude subscription (no extra API cost locally).
+    const args = ['--print', '--dangerously-skip-permissions'];
+    if (enableSearch) args.push('--allowedTools', 'WebSearch', 'WebFetch');
+    const proc = spawn('claude', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
@@ -60,9 +66,10 @@ function callClaude(prompt: string): Promise<string> {
 // --- API Endpoint ---
 
 app.post('/api/ai/generate', async (req, res) => {
-  const { prompt, systemInstruction } = req.body as {
+  const { prompt, systemInstruction, enableSearch } = req.body as {
     prompt?: string;
     systemInstruction?: string;
+    enableSearch?: boolean;
   };
 
   const userContent = prompt ?? '';
@@ -71,14 +78,14 @@ app.post('/api/ai/generate', async (req, res) => {
     : userContent;
 
   console.log('\n--- [Claude Gateway] INCOMING REQUEST ---');
-  console.log(`[Claude Gateway] Sending prompt: ${fullPrompt.length} chars`);
+  console.log(`[Claude Gateway] Sending prompt: ${fullPrompt.length} chars${enableSearch ? ' (web search enabled)' : ''}`);
   console.log(`[Claude Gateway] Preview: ${fullPrompt.slice(0, 300).replace(/\n/g, '↵')}`);
 
   try {
-    const text = await callClaude(fullPrompt);
+    const text = await callClaude(fullPrompt, enableSearch === true);
     console.log(`[Claude Gateway] Response: ${text.length} chars`);
     console.log(`[Claude Gateway] Response preview: ${text.slice(0, 200).replace(/\n/g, '↵')}`);
-    res.json({ text });
+    res.json({ text, sources: [] });
   } catch (error: any) {
     console.error('[Claude Gateway] Error:', error.message);
     res.status(500).json({ error: 'AI generation failed. Please try again.' });
