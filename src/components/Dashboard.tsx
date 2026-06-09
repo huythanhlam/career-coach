@@ -15,18 +15,23 @@ import {
   Mail,
   Lock,
 } from "lucide-react";
-import { useJobApplications, type Application } from "@/hooks/useJobApplications";
+import { useJobPostings } from "@/hooks/useJobPostings";
+import type { JobStatus } from "@/types/jobPosting";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import type { ViewId } from "@/components/Sidebar";
 
-const STATUS_MAP: Record<Application["status"], { bg: string; fg: string; border: string; label: string }> = {
+const STATUS_MAP: Record<JobStatus, { bg: string; fg: string; border: string; label: string }> = {
+  saved:        { bg: "rgba(113,113,122,0.10)", fg: "#71717A", border: "rgba(113,113,122,0.25)", label: "Saved" },
   applied:      { bg: "rgba(59,130,246,0.10)",  fg: "#3B82F6", border: "rgba(59,130,246,0.25)",  label: "Applied" },
   interviewing: { bg: "rgba(245,158,11,0.10)",  fg: "#F59E0B", border: "rgba(245,158,11,0.25)",  label: "Interviewing" },
   offer:        { bg: "rgba(16,185,129,0.10)",  fg: "#10B981", border: "rgba(16,185,129,0.25)",  label: "Offer" },
+  accepted:     { bg: "rgba(47,107,79,0.12)",   fg: "#2F6B4F", border: "rgba(47,107,79,0.30)",   label: "Accepted" },
   rejected:     { bg: "rgba(244,63,94,0.10)",   fg: "#F43F5E", border: "rgba(244,63,94,0.25)",   label: "Rejected" },
-  pending:      { bg: "rgba(113,113,122,0.10)", fg: "#71717A", border: "rgba(113,113,122,0.25)", label: "Pending" },
+  archived:     { bg: "rgba(161,161,170,0.10)", fg: "#A1A1AA", border: "rgba(161,161,170,0.22)", label: "Archived" },
 };
+
+interface PipelineForm { company: string; role: string; status: JobStatus; location: string; }
 
 /** Relative "time ago" label, e.g. "3d ago". Empty string for missing/invalid dates. */
 function timeAgo(iso?: string): string {
@@ -54,13 +59,12 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { apps, addApplication } = useJobApplications();
+  const { postings, addPosting } = useJobPostings();
   const { profile } = useUserProfile();
   const { analyses } = useSavedAnalyses();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newApp, setNewApp] = useState<Partial<Application>>({
+  const [newApp, setNewApp] = useState<PipelineForm>({
     company: "", role: "", status: "applied", location: "",
-    date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
   });
 
   const go = (view: ViewId) => onNavigate?.(view);
@@ -68,16 +72,15 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const handleAddApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newApp.company || !newApp.role) return;
-    await addApplication({
-      company: newApp.company!,
-      role: newApp.role!,
-      status: (newApp.status as Application["status"]) || "applied",
-      date: newApp.date!,
+    await addPosting({
+      title: newApp.role,
+      company: newApp.company,
       location: newApp.location || "Remote",
+      source: "manual",
+      status: newApp.status,
     });
     setIsModalOpen(false);
-    setNewApp({ company: "", role: "", status: "applied", location: "",
-      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }) });
+    setNewApp({ company: "", role: "", status: "applied", location: "" });
   };
 
   /* ── Profile completion checklist ───────────────────────────────── */
@@ -89,6 +92,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     { label: "Write a professional summary",    done: !!profile.summary?.trim(),                                view: "profile_settings" },
     { label: "Upload or build a resume",        done: !!(profile.resumeText || profile.savedResumes?.length),   view: "resume_generation" },
     { label: "Import your LinkedIn profile",    done: !!profile.linkedinText?.trim(),                           view: "linkedin" },
+    { label: "Curate target job postings",      done: postings.length > 0,                                      view: "job_postings" },
   ];
   const doneCount = checklist.filter(c => c.done).length;
   const completionPct = Math.round((doneCount / checklist.length) * 100);
@@ -98,7 +102,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   /* ── Recent activity (merged, timestamp-sorted) ─────────────────── */
   type Activity = { id: string; icon: typeof Briefcase; title: string; sub: string; ts?: string; view: ViewId };
   const activity: Activity[] = [
-    ...apps.map(a => ({ id: `app-${a.id}`, icon: Briefcase, title: `Applied · ${a.role}`, sub: [a.company, a.location].filter(Boolean).join(" · "), ts: a.createdAt, view: "dashboard" as ViewId })),
+    ...postings.map(p => ({ id: `job-${p.id}`, icon: Briefcase, title: `${STATUS_MAP[p.status].label} · ${p.title}`, sub: [p.company, p.location].filter(Boolean).join(" · "), ts: p.appliedAt ?? p.createdAt, view: "job_postings" as ViewId })),
     ...analyses.map(a => ({ id: `an-${a.id}`, icon: Compass, title: "Strategy analysis", sub: a.jobInput || "Job analysis", ts: a.createdAt, view: "unified" as ViewId })),
     ...(profile.savedResumes ?? []).map(r => ({ id: `r-${r.id}`, icon: FileText, title: "Resume saved", sub: r.name, ts: r.createdAt, view: "resume_generation" as ViewId })),
     ...(profile.savedCoverLetters ?? []).map(l => ({ id: `cl-${l.id}`, icon: Mail, title: "Cover letter", sub: [l.jobTitle, l.company].filter(Boolean).join(" · ") || l.name, ts: l.createdAt, view: "cover_letter" as ViewId })),
@@ -317,17 +321,30 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0 }}>
               Your pipeline
             </h3>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              style={{
-                height: 36, padding: "0 14px", background: "var(--card)", color: "var(--foreground)",
-                border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit",
-                fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex",
-                alignItems: "center", gap: 6, boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-              }}
-            >
-              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Add application
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => go("job_postings")}
+                style={{
+                  height: 36, padding: "0 14px", background: "var(--card)", color: "var(--foreground)",
+                  border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit",
+                  fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex",
+                  alignItems: "center", gap: 6, boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                }}
+              >
+                Find jobs <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                style={{
+                  height: 36, padding: "0 14px", background: "var(--card)", color: "var(--foreground)",
+                  border: "1px solid var(--border)", borderRadius: 14, fontFamily: "inherit",
+                  fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex",
+                  alignItems: "center", gap: 6, boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                }}
+              >
+                <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Add application
+              </button>
+            </div>
           </div>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", overflow: "hidden" }}>
@@ -341,23 +358,24 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               ))}
             </div>
 
-            {apps.length === 0 ? (
+            {postings.length === 0 ? (
               <div style={{ padding: "40px 22px", textAlign: "center", color: "var(--muted-foreground)" }}>
-                <div style={{ fontSize: 14, marginBottom: 12 }}>No applications tracked yet.</div>
+                <div style={{ fontSize: 14, marginBottom: 12 }}>No postings tracked yet.</div>
                 <button
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={() => go("job_postings")}
                   style={{ height: 38, padding: "0 16px", background: "var(--primary)", color: "#FFF", border: "none", borderRadius: 12, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
                 >
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Add your first application
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Curate job postings
                 </button>
               </div>
-            ) : apps.map((app, i) => (
+            ) : postings.slice(0, 6).map((p, i, shown) => (
               <div
-                key={app.id}
+                key={p.id}
+                onClick={() => go("job_postings")}
                 style={{
                   display: "grid", gridTemplateColumns: "44px 1.6fr 1fr 1fr 148px", gap: 16,
-                  padding: "16px 22px", alignItems: "center",
-                  borderBottom: i < apps.length - 1 ? "1px solid var(--border)" : "none",
+                  padding: "16px 22px", alignItems: "center", cursor: "pointer",
+                  borderBottom: i < shown.length - 1 ? "1px solid var(--border)" : "none",
                 }}
               >
                 {/* Avatar */}
@@ -367,20 +385,22 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   justifyContent: "center", color: "var(--primary)", fontFamily: "'Fraunces',Georgia,serif",
                   fontSize: 13, fontWeight: 600,
                 }}>
-                  {app.company.slice(0, 2)}
+                  {(p.company ?? p.title).slice(0, 2)}
                 </div>
 
-                {/* Company + role */}
-                <div>
-                  <div className="font-display" style={{ fontSize: 16, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
-                    {app.company}
+                {/* Role + company */}
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-display" style={{ fontSize: 16, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.title}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{app.role}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{p.company ?? "—"}</div>
                 </div>
 
-                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{app.location}</div>
-                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{app.date}</div>
-                <div><StatusPill kind={app.status}>{STATUS_MAP[app.status].label}</StatusPill></div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{p.location ?? "—"}</div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                  {new Date(p.appliedAt ?? p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </div>
+                <div><StatusPill kind={p.status}>{STATUS_MAP[p.status].label}</StatusPill></div>
               </div>
             ))}
           </div>
@@ -480,18 +500,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               ))}
               <select
                 value={newApp.status || "applied"}
-                onChange={e => setNewApp({ ...newApp, status: e.target.value as Application["status"] })}
+                onChange={e => setNewApp({ ...newApp, status: e.target.value as JobStatus })}
                 style={{
                   height: 52, background: "var(--muted)", border: "1px solid var(--border)",
                   borderRadius: 14, padding: "0 16px", fontFamily: "inherit", fontSize: 14,
                   color: "var(--foreground)", outline: "none",
                 }}
               >
+                <option value="saved">Saved</option>
                 <option value="applied">Applied</option>
                 <option value="interviewing">Interviewing</option>
                 <option value="offer">Offer</option>
+                <option value="accepted">Accepted</option>
                 <option value="rejected">Rejected</option>
-                <option value="pending">Pending</option>
               </select>
               <button
                 type="submit"
@@ -675,8 +696,8 @@ function PathConnector() {
   );
 }
 
-function StatusPill({ kind, children }: { kind: Application["status"]; children: React.ReactNode }) {
-  const c = STATUS_MAP[kind] || STATUS_MAP.pending;
+function StatusPill({ kind, children }: { kind: JobStatus; children: React.ReactNode }) {
+  const c = STATUS_MAP[kind] || STATUS_MAP.saved;
   return (
     <span style={{
       background: c.bg, color: c.fg, border: `1px solid ${c.border}`,

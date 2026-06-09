@@ -16,6 +16,7 @@ import {
   Lock,
   Mail,
   ShieldCheck,
+  Search,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 
@@ -25,6 +26,7 @@ export type ViewId =
   | "linkedin"
   | "resume_generation"
   | "cover_letter"
+  | "job_postings"
   | "salary"
   | "interview"
   | "market"
@@ -36,7 +38,7 @@ export type ViewId =
   | "profile_settings"
   | "security_settings";
 
-export type WorkflowId = Exclude<ViewId, "unified" | "dashboard" | "profile_settings" | "security_settings">;
+export type WorkflowId = Exclude<ViewId, "unified" | "dashboard" | "profile_settings" | "security_settings" | "job_postings">;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -67,6 +69,7 @@ const navGroups: NavGroup[] = [
   {
     name: "Apply",
     items: [
+      { id: "job_postings",      label: "Job Postings",   icon: Search, badge: "New" },
       { id: "resume_generation", label: "Resume Builder", icon: FileText },
       { id: "cover_letter",      label: "Cover Letter",   icon: Mail },
       { id: "linkedin",          label: "LinkedIn Optimization", icon: Briefcase },

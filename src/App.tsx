@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { ConsentModal } from "@/components/ConsentModal";
 import { ProfileSettings } from "@/components/ProfileSettings";
+import { JobPostingsWorkspace } from "@/components/JobPostingsWorkspace";
 import { SecuritySettings } from "@/components/SecuritySettings";
 import { LandingPage } from "@/components/LandingPage";
 import { MFAChallengePage } from "@/components/MFAChallengePage";
@@ -41,6 +42,7 @@ function AppInner() {
           <div className="flex-1 h-full overflow-hidden flex flex-col relative">
             {activeView === "dashboard" && <Dashboard onNavigate={setActiveView} />}
             {activeView === "unified" && <UnifiedWorkspace />}
+            {activeView === "job_postings" && <JobPostingsWorkspace onNavigate={setActiveView} />}
 {activeView === "profile_settings" && <ProfileSettings />}
             {activeView === "security_settings" && <SecuritySettings />}
 
