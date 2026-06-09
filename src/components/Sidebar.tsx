@@ -16,6 +16,7 @@ import {
   Lock,
   Mail,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 
@@ -41,6 +42,9 @@ export type WorkflowId = Exclude<ViewId, "unified" | "dashboard" | "profile_sett
 interface SidebarProps {
   activeView: ViewId;
   onSelectView: (id: ViewId) => void;
+  /** Mobile drawer open state. On md+ the sidebar is always visible. */
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 type NavItem = {
@@ -90,7 +94,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function Sidebar({ activeView, onSelectView }: SidebarProps) {
+export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: SidebarProps) {
   const { profile } = useUserProfile();
 
   const displayName = profile.preferredName || profile.fullName || "Your Profile";
@@ -103,8 +107,24 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
   const trackLabel = profile.targetRole || profile.currentRole || "Career track";
 
   return (
-    <aside className="w-[280px] h-full bg-paper border-r border-border flex flex-col flex-shrink-0 z-30 overflow-hidden"
-      style={{ background: "var(--paper)" }}>
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/40 animate-in fade-in duration-200"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={cn(
+          "w-[280px] h-full bg-paper border-r border-border flex flex-col flex-shrink-0 overflow-hidden",
+          "fixed inset-y-0 left-0 z-50 transition-transform duration-300 md:relative md:z-30 md:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{ background: "var(--paper)" }}
+      >
 
       {/* Brand mark */}
       <div className="px-[22px] pt-5 pb-[18px] flex items-center gap-3">
@@ -119,6 +139,14 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
             Mentor mode
           </div>
         </div>
+        {/* Close (mobile only) */}
+        <button
+          onClick={onClose}
+          aria-label="Close navigation menu"
+          className="md:hidden w-8 h-8 -mr-1 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-card/60 hover:text-foreground transition-colors flex-shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* New plan CTA */}
@@ -211,5 +239,6 @@ export function Sidebar({ activeView, onSelectView }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   );
 }

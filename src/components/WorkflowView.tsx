@@ -245,6 +245,9 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
       const text = await parseDocumentToText(file);
       const result = await analyzeLinkedInProfile(text, targetRole);
       setLinkedinResult(result);
+      if (result.overallScore != null) {
+        void updateProfile({ linkedinScore: result.overallScore, linkedinScoreAt: new Date().toISOString() });
+      }
     } catch (err) {
       console.error("LinkedIn analysis failed:", err);
       setLinkedinResult({ profileText: "", overallScore: null, summary: "Analysis failed. Please try again.", improvements: [], designRecommendations: [] });
@@ -367,7 +370,12 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     setBuilderAnalysisResult(null);
     setIsBuilderAnalyzing(true);
     analyzeResume(resumeText, "", "")
-      .then(result => setBuilderAnalysisResult(result))
+      .then(result => {
+        setBuilderAnalysisResult(result);
+        if (result.overallScore != null) {
+          void updateProfile({ resumeScore: result.overallScore, resumeScoreAt: new Date().toISOString() });
+        }
+      })
       .catch(() => setBuilderAnalysisResult({ resumeText, overallScore: null, summary: "Analysis failed.", improvements: [] }))
       .finally(() => setIsBuilderAnalyzing(false));
   };

@@ -6,7 +6,7 @@ import { UnifiedWorkspace } from "@/components/UnifiedWorkspace";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { workflowsConfig } from "@/config/workflows";
 import { GlobalChatPanel } from "@/components/GlobalChatPanel";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Menu, Compass } from "lucide-react";
 import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
@@ -19,6 +19,7 @@ import { MFAChallengePage } from "@/components/MFAChallengePage";
 function AppInner() {
   const { profile } = useUserProfile();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const pendingTab = localStorage.getItem("pendingTab") as ViewId | null;
   const [activeView, setActiveView] = useState<ViewId>(
@@ -34,44 +35,75 @@ function AppInner() {
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans text-foreground">
-        <Sidebar activeView={activeView} onSelectView={setActiveView} />
+        <Sidebar
+          activeView={activeView}
+          onSelectView={(v) => { setActiveView(v); setIsSidebarOpen(false); }}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
 
         {/* Main Workspace Area */}
         <div className="flex-1 h-full overflow-hidden flex relative">
           <div className="flex-1 h-full overflow-hidden flex flex-col relative">
-            {activeView === "dashboard" && <Dashboard />}
-            {activeView === "unified" && <UnifiedWorkspace />}
-{activeView === "profile_settings" && <ProfileSettings />}
-            {activeView === "security_settings" && <SecuritySettings />}
 
-            {Object.keys(workflowsConfig).map((id) => (
-              <div
-                key={id}
-                className={`flex-1 h-full overflow-hidden ${activeView === id ? 'flex' : 'hidden'}`}
-              >
-                {/* @ts-ignore */}
-                <WorkflowView workflowId={id as any} onNavigate={setActiveView} />
-              </div>
-            ))}
-
-            {/* Coach FAB */}
-            {!isChatOpen && (
+            {/* Mobile top bar — drawer trigger (hidden on md+ where the sidebar is always visible) */}
+            <header
+              className="md:hidden flex items-center gap-3 px-4 h-14 border-b border-border flex-shrink-0 z-20"
+              style={{ background: "var(--paper)" }}
+            >
               <button
-                onClick={() => setIsChatOpen(true)}
-                className="absolute bottom-6 right-7 w-14 h-14 rounded-full flex items-center justify-center z-40 transition-transform hover:scale-105 animate-in zoom-in duration-300"
-                style={{
-                  background: "var(--primary)", color: "#FFF",
-                  border: "none", cursor: "pointer",
-                  boxShadow: "0 12px 30px rgba(217,119,87,0.35)",
-                }}
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Open navigation menu"
+                className="w-9 h-9 -ml-1 rounded-[10px] flex items-center justify-center text-foreground hover:bg-card/60 transition-colors"
               >
-                <MessageCircle className="w-6 h-6" />
-                <div
-                  className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 animate-pulse"
-                  style={{ background: "var(--forest)", borderColor: "var(--background)" }}
-                />
+                <Menu className="w-5 h-5" />
               </button>
-            )}
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white flex-shrink-0">
+                  <Compass className="w-4 h-4" />
+                </div>
+                <span className="font-display text-[15px] font-semibold tracking-[-0.01em] text-foreground truncate">
+                  Career Coach <em className="not-italic text-primary">AI</em>
+                </span>
+              </div>
+            </header>
+
+            {/* Content area — flex-1 + min-h-0 so view `h-full` resolves to the space below the top bar */}
+            <div className="flex-1 min-h-0 relative flex flex-col">
+              {activeView === "dashboard" && <Dashboard onNavigate={setActiveView} />}
+              {activeView === "unified" && <UnifiedWorkspace />}
+              {activeView === "profile_settings" && <ProfileSettings />}
+              {activeView === "security_settings" && <SecuritySettings />}
+
+              {Object.keys(workflowsConfig).map((id) => (
+                <div
+                  key={id}
+                  className={`flex-1 min-h-0 overflow-hidden ${activeView === id ? 'flex' : 'hidden'}`}
+                >
+                  {/* @ts-ignore */}
+                  <WorkflowView workflowId={id as any} onNavigate={setActiveView} />
+                </div>
+              ))}
+
+              {/* Coach FAB */}
+              {!isChatOpen && (
+                <button
+                  onClick={() => setIsChatOpen(true)}
+                  className="absolute bottom-6 right-7 w-14 h-14 rounded-full flex items-center justify-center z-40 transition-transform hover:scale-105 animate-in zoom-in duration-300"
+                  style={{
+                    background: "var(--primary)", color: "#FFF",
+                    border: "none", cursor: "pointer",
+                    boxShadow: "0 12px 30px rgba(217,119,87,0.35)",
+                  }}
+                >
+                  <MessageCircle className="w-6 h-6" />
+                  <div
+                    className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 animate-pulse"
+                    style={{ background: "var(--forest)", borderColor: "var(--background)" }}
+                  />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Right Side Chat Panel */}
