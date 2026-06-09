@@ -33,6 +33,49 @@ export interface DbCareerSurvey {
   updatedAt?: string;
 }
 
+export interface DbTargetRole {
+  id: string;
+  title: string;
+  keywords?: string[];
+  exclude?: string[];
+  location?: string;
+  seniority?: string;
+  remote?: boolean;
+}
+
+export interface DbTargetCompany {
+  id: string;
+  name: string;
+  ats: "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters";
+  boardToken: string;
+}
+
+export interface DbJobPosting {
+  id: string;
+  user_id: string;
+  title: string;
+  company: string | null;
+  location: string | null;
+  description: string | null;
+  url: string | null;
+  source: "ats" | "web" | "manual";
+  external_id: string | null;
+  employment_type: string | null;
+  remote: boolean | null;
+  target_role_id: string | null;
+  target_company_id: string | null;
+  match_score: number | null;
+  status: string;
+  favorite: boolean;
+  applied_resume_id: string | null;
+  applied_cover_letter_id: string | null;
+  notes: string | null;
+  applied_at: string | null;
+  posting_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DbProfile {
   id: string;
   full_name: string | null;
@@ -52,6 +95,8 @@ export interface DbProfile {
   linkedin_storage_path: string | null;
   saved_resumes: DbSavedResume[];
   saved_career_plans: DbSavedCareerPlan[];
+  target_roles: DbTargetRole[];
+  target_companies: DbTargetCompany[];
   career_survey: DbCareerSurvey;
   onboarding_complete: boolean;
   mfa_enrolled: boolean;

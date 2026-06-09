@@ -6,9 +6,9 @@ import { spawn } from 'child_process';
 import { captureScreenshot } from './api/_lib/capture';
 
 // This Express gateway is for LOCAL DEVELOPMENT ONLY. It shells out to the
-// Claude CLI with --dangerously-skip-permissions, which must never be exposed
-// publicly. Production uses the Supabase Edge Functions instead. Refuse to boot
-// in a deployed environment.
+// developer's Claude CLI (on their own subscription), which must never be
+// exposed publicly. Production uses the Supabase Edge Functions instead. Refuse
+// to boot in a deployed environment.
 if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
   console.error('server.ts is a local-dev gateway and must not run in production.');
   process.exit(1);
@@ -26,11 +26,11 @@ app.use('/api/', rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, l
 
 function callClaude(prompt: string, enableSearch = false): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Browsing is enabled by the persona (which permits web search for this task)
-    // plus a *scoped* tool allow-list — least privilege, rather than leaning on
-    // --dangerously-skip-permissions to grant browsing. Searches run on the
-    // developer's logged-in Claude subscription (no extra API cost locally).
-    const args = ['--print', '--dangerously-skip-permissions'];
+    // Least privilege: plain text generation needs no tools, and browsing is
+    // granted only via a *scoped* allow-list (WebSearch/WebFetch) when requested —
+    // never via --dangerously-skip-permissions. Searches run on the developer's
+    // logged-in Claude subscription (no extra API cost locally).
+    const args = ['--print'];
     if (enableSearch) args.push('--allowedTools', 'WebSearch', 'WebFetch');
     const proc = spawn('claude', args, {
       stdio: ['pipe', 'pipe', 'pipe'],

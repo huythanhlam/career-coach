@@ -24,6 +24,8 @@ export function rowToProfile(row: Record<string, unknown>): UserProfile {
     savedResumes: (row.saved_resumes as UserProfile["savedResumes"]) ?? [],
     savedCoverLetters: (row.saved_cover_letters as UserProfile["savedCoverLetters"]) ?? [],
     savedCareerPlans: (row.saved_career_plans as UserProfile["savedCareerPlans"]) ?? [],
+    targetRoles: (row.target_roles as UserProfile["targetRoles"]) ?? [],
+    targetCompanies: (row.target_companies as UserProfile["targetCompanies"]) ?? [],
     careerSurvey: (row.career_survey as UserProfile["careerSurvey"]) ?? {},
     resumeScore: (row.resume_score as number) ?? undefined,
     resumeScoreAt: (row.resume_score_at as string) ?? undefined,
@@ -71,6 +73,8 @@ export function profileToRow(
         id, name, storagePath, goalType, goalSummary, createdAt,
       })
     ),
+    target_roles: profile.targetRoles ?? [],
+    target_companies: profile.targetCompanies ?? [],
     career_survey: profile.careerSurvey ?? {},
     resume_score: profile.resumeScore ?? null,
     resume_score_at: profile.resumeScoreAt ?? null,

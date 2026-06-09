@@ -17,6 +17,8 @@ export interface Education {
   minor?: string;
 }
 
+import type { TargetRole, TargetCompany } from "@/types/jobPosting";
+
 export interface SavedCoverLetter {
   id: string;
   name: string;
@@ -76,6 +78,10 @@ export interface UserProfile {
   github?: string;
   portfolio?: string;
   targetRole?: string;
+  /** Multiple structured target roles, used by the Targeted Job Postings feature. */
+  targetRoles?: TargetRole[];
+  /** Companies whose public ATS feeds are scanned for postings. */
+  targetCompanies?: TargetCompany[];
   currentRole?: string;
   yearsOfExperience?: number;
   summary?: string;
