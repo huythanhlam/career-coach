@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { safeFetchText } from "../_shared/safe-fetch.ts";
+import { htmlToMarkdown } from "../_shared/html.ts";
 
 // ── Targeted Job Postings: keyless aggregator search ───────────────────────
 // Role-only discovery across many employers using public, NO-KEY job APIs:
@@ -17,22 +18,6 @@ interface NormalizedJob {
   remote: boolean | null;
   source: "web";
   provider: string;
-}
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
-}
-
-function htmlToText(html: string): string {
-  return decodeEntities(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|li|h[1-6]|div)>/gi, "\n")
-      .replace(/<[^>]+>/g, " ").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim(),
-  ).slice(0, 8000);
 }
 
 function str(v: unknown): string | null {
@@ -84,7 +69,7 @@ async function fromRemotive(query: string): Promise<NormalizedJob[]> {
     title: str(j.title) ?? "",
     company: str(j.company_name),
     location: str(j.candidate_required_location) ?? "Remote",
-    description: typeof j.description === "string" ? htmlToText(j.description) : "",
+    description: typeof j.description === "string" ? htmlToMarkdown(j.description) : "",
     url: str(j.url),
     externalId: j.id != null ? `remotive:${j.id}` : null,
     remote: true,
@@ -115,7 +100,7 @@ async function fromWorkableGlobal(query: string): Promise<NormalizedJob[]> {
         title: str(j.title) ?? "",
         company: str(company.title),
         location,
-        description: typeof j.description === "string" ? htmlToText(j.description) : "",
+        description: typeof j.description === "string" ? htmlToMarkdown(j.description) : "",
         url: str(j.url),
         externalId: j.id != null ? `workable:${j.id}` : null,
         remote: workplace ? workplace.includes("remote") : null,

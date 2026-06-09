@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { safeFetchText } from "../_shared/safe-fetch.ts";
+import { htmlToMarkdown } from "../_shared/html.ts";
 
 // ── Targeted Job Postings: scan public ATS feeds ───────────────────────────
 // Fetches a company's open roles directly from its public, keyless ATS JSON
@@ -88,32 +89,6 @@ const SEED_COMPANIES: { ats: Ats; boardToken: string; name: string }[] = [
   { ats: "workable", boardToken: "huggingface", name: "Hugging Face" },
 ];
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
-}
-
-/** Strip HTML to readable text (ATS `content`/`descriptionHtml` fields). */
-function htmlToText(html: string): string {
-  return decodeEntities(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(p|li|h[1-6]|div)>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/[ \t]{2,}/g, " ")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim(),
-  ).slice(0, 8000);
-}
-
 /** ATS board token: keep it to safe characters so it can't alter the URL path. */
 function cleanToken(token: unknown): string | null {
   if (typeof token !== "string") return null;
@@ -155,7 +130,7 @@ function normalize(ats: Ats, raw: unknown, companyName: string | null, token: st
         title,
         company: companyName,
         location: str((j.location as Record<string, unknown>)?.name),
-        description: typeof j.content === "string" ? htmlToText(j.content) : "",
+        description: typeof j.content === "string" ? htmlToMarkdown(j.content) : "",
         url: str(j.absolute_url),
         externalId: j.id != null ? String(j.id) : null,
         employmentType: null,
@@ -174,8 +149,8 @@ function normalize(ats: Ats, raw: unknown, companyName: string | null, token: st
         title,
         company: companyName,
         location: str(cats.location),
-        description: str(j.descriptionPlain) ??
-          (typeof j.description === "string" ? htmlToText(j.description) : ""),
+        description: (typeof j.description === "string" ? htmlToMarkdown(j.description) : "") ||
+          (str(j.descriptionPlain) ?? ""),
         url: str(j.hostedUrl),
         externalId: j.id != null ? String(j.id) : null,
         employmentType: str(cats.commitment),
@@ -193,8 +168,8 @@ function normalize(ats: Ats, raw: unknown, companyName: string | null, token: st
         title,
         company: companyName,
         location: str(j.location),
-        description: str(j.descriptionPlain) ??
-          (typeof j.descriptionHtml === "string" ? htmlToText(j.descriptionHtml) : ""),
+        description: (typeof j.descriptionHtml === "string" ? htmlToMarkdown(j.descriptionHtml) : "") ||
+          (str(j.descriptionPlain) ?? ""),
         url: str(j.jobUrl) ?? str(j.applyUrl),
         externalId: j.id != null ? String(j.id) : null,
         employmentType: str(j.employmentType),

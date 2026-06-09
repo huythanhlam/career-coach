@@ -42,7 +42,11 @@ export async function scanJobs(
   return callFunction("scan-jobs", { companies: payload, keywords, exclude, includeSeed });
 }
 
-/** Role-keyword search across keyless aggregators (Workable global search + Remotive). */
+/**
+ * Keyword search across keyless aggregators (Workable global search + Remotive).
+ * Location/level/workplace filtering is applied client-side by the caller (see
+ * `src/lib/jobFilters.ts`) so it stays consistent across both discovery sources.
+ */
 export async function searchAggregators(query: string, exclude: string[] = []): Promise<AggregatorJob[]> {
   const { results } = await callFunction<{ results: AggregatorJob[] }>("job-search", { query, exclude });
   return results;
