@@ -14,46 +14,22 @@
  *   npx tsx scripts/company-profiles/build.ts --requests-only # only pending requests
  *   npx tsx scripts/company-profiles/build.ts --limit 20      # cap (for cron batches)
  */
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realHttpGet, slugify, sleep } from "./lib.ts";
 import { loadTickerMap } from "./sources/sec.ts";
 import { buildProfile } from "./buildProfile.ts";
+import { DIR, ensureDir, loadList, saveList, filterTargets, parseListArgs } from "./list.ts";
+import { getAdmin } from "./db.ts";
 import type { CompanyListEntry, CompanyProfile } from "../../src/types/companyProfile.ts";
 
-const DIR = join(process.cwd(), "data", "companyProfiles");
-const LIST_FILE = join(DIR, "_list.json");
 const DELAY_MS = 400; // polite gap between companies
 
 interface Args { only?: string[]; limit?: number; requestsOnly: boolean }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { requestsOnly: false };
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--only") args.only = (argv[++i] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    else if (argv[i] === "--limit") args.limit = Number(argv[++i]);
-    else if (argv[i] === "--requests-only") args.requestsOnly = true;
-  }
-  return args;
-}
-
-function loadList(): CompanyListEntry[] {
-  if (!existsSync(LIST_FILE)) return [];
-  return JSON.parse(readFileSync(LIST_FILE, "utf8")) as CompanyListEntry[];
-}
-
-function saveList(list: CompanyListEntry[]): void {
-  const sorted = [...list].sort((a, b) => a.slug.localeCompare(b.slug));
-  writeFileSync(LIST_FILE, JSON.stringify(sorted, null, 2) + "\n");
-}
-
-/** Optional Supabase admin client (service role). Returns null without env. */
-async function getAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  const { createClient } = await import("@supabase/supabase-js");
-  return createClient(url, key, { auth: { persistSession: false } });
+  const { only, limit } = parseListArgs(argv);
+  return { only, limit, requestsOnly: argv.includes("--requests-only") };
 }
 
 /** Pull pending requests, merge new companies into the list, mark them processing. */
@@ -92,16 +68,14 @@ async function intakeRequests(list: CompanyListEntry[]): Promise<CompanyListEntr
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  mkdirSync(DIR, { recursive: true });
+  ensureDir();
 
   const list = loadList();
   const requested = await intakeRequests(list);
 
-  let targets: CompanyListEntry[];
-  if (args.requestsOnly) targets = requested;
-  else if (args.only) targets = list.filter((e) => args.only!.includes(e.slug));
-  else targets = list;
-  if (args.limit) targets = targets.slice(0, args.limit);
+  const targets: CompanyListEntry[] = args.requestsOnly
+    ? requested
+    : filterTargets(list, { only: args.only, limit: args.limit });
 
   if (!targets.length) { console.log("Nothing to build."); return; }
   console.log(`Building ${targets.length} profile(s)…`);

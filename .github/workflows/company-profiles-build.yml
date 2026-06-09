@@ -1,11 +1,11 @@
 name: Company Profiles — Build
 
 # The routine that follows the deterministic "method" to fetch company data and
-# open a PR. Runs weekly (regular updates), on manual dispatch, and when the app
-# fires a repository_dispatch after a user requests a company.
+# open a PR for REVIEW — used when ADDING new companies (manual dispatch, or a
+# repository_dispatch fired after a user requests one). Weekly refresh of
+# companies already in the app goes straight to the DB via
+# company-profiles-refresh.yml (no PR), so there is no schedule here.
 on:
-  schedule:
-    - cron: '0 8 * * 1' # Mondays 08:00 UTC
   workflow_dispatch:
     inputs:
       only:

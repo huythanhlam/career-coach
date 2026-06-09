@@ -14,6 +14,7 @@
     "profiles:seed-list": "tsx scripts/company-profiles/seedList.ts",
     "profiles:build": "tsx scripts/company-profiles/build.ts",
     "profiles:sync": "tsx scripts/company-profiles/sync.ts",
+    "profiles:refresh": "tsx scripts/company-profiles/refresh.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

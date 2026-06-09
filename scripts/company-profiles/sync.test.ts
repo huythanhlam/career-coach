@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { toRow } from "./sync.ts";
+import { toRow } from "./db.ts";
+import { filterTargets } from "./list.ts";
 import { slugify } from "./lib.ts";
+import type { CompanyListEntry } from "../../src/types/companyProfile.ts";
 import { slugifyCompany } from "../../src/services/companyProfileService.ts";
 import type { CompanyProfile } from "../../src/types/companyProfile.ts";
 
@@ -25,6 +27,26 @@ describe("sync.toRow", () => {
     expect(row.sources).toEqual(profile.sources);
     expect((row.data as unknown as CompanyProfile).overview).toBe("makes phones");
     expect(typeof row.updated_at).toBe("string");
+  });
+});
+
+describe("filterTargets", () => {
+  const list: CompanyListEntry[] = [
+    { slug: "apple", name: "Apple" },
+    { slug: "meta", name: "Meta" },
+    { slug: "microsoft", name: "Microsoft" },
+  ];
+  it("returns all when no options", () => {
+    expect(filterTargets(list).map((e) => e.slug)).toEqual(["apple", "meta", "microsoft"]);
+  });
+  it("filters by --only slugs", () => {
+    expect(filterTargets(list, { only: ["apple", "microsoft"] }).map((e) => e.slug)).toEqual(["apple", "microsoft"]);
+  });
+  it("applies --limit", () => {
+    expect(filterTargets(list, { limit: 2 }).map((e) => e.slug)).toEqual(["apple", "meta"]);
+  });
+  it("combines only + limit", () => {
+    expect(filterTargets(list, { only: ["meta", "microsoft", "apple"], limit: 1 }).map((e) => e.slug)).toEqual(["apple"]);
   });
 });
 

@@ -16,31 +16,47 @@ sources, with a review-gated path into the database.
 Every section is isolated: a source that fails or returns nothing degrades only
 that section (recorded in `notes`), never the whole profile.
 
-## Data flow
+## Two tracks
+
+**1. Weekly refresh of companies already in the app → straight to the DB (no PR).**
+These companies are already vetted, so the routine fetches and upserts directly.
 
 ```
-data/companyProfiles/_list.json   ← the defined list (PRs add to it)
-        │  build.ts (fetch)
-        ▼
-data/companyProfiles/<slug>.json  ← committed profiles (a PR changes these)
-        │  merge to main → sync.ts
+data/companyProfiles/_list.json   ← the defined list
+        │  refresh.ts (fetch + upsert)
         ▼
 company_profiles table            ← what the app reads (reliable, instant)
 ```
 
-Users request a company in the app → `company_profile_requests` row → the build
-routine picks it up → opens a PR → review & merge → sync upserts the DB.
+**2. Adding a NEW company → reviewed via PR.**
+A user request (or manual dispatch) builds the profile to committed JSON and
+opens a PR; merging syncs it into the DB.
+
+```
+company_profile_requests / dispatch
+        │  build.ts (fetch → write JSON) → PR
+        ▼  (review & merge)
+data/companyProfiles/<slug>.json
+        │  sync.ts (on push to main)
+        ▼
+company_profiles table
+```
 
 ## Commands
 
 ```bash
-npm run profiles:seed-list                      # regenerate _list.json from POPULAR_COMPANIES
-npm run profiles:build                           # build/refresh every listed company (+ pending requests)
-npm run profiles:build -- --only apple,microsoft # specific slugs
-npm run profiles:build -- --requests-only        # only pending DB requests
-npm run profiles:build -- --limit 20             # cap per run (cron batches)
-npm run profiles:sync                            # upsert committed profiles into the DB
-npm run profiles:sync -- --dry-run               # preview without writing
+# Track 1 — fetch + store directly in the DB (the weekly refresh)
+npm run profiles:refresh                          # refresh every company already in the app
+npm run profiles:refresh -- --only apple,microsoft
+npm run profiles:refresh -- --limit 40            # cron batching
+npm run profiles:refresh -- --dry-run             # fetch + print, don't write
+
+# Track 2 — build committed JSON for review via PR (adding new companies)
+npm run profiles:seed-list                        # regenerate _list.json from POPULAR_COMPANIES
+npm run profiles:build                            # build every listed company (+ pending requests) → JSON
+npm run profiles:build -- --requests-only         # only pending DB requests
+npm run profiles:sync                             # upsert committed JSON into the DB (post-merge)
+npm run profiles:sync -- --dry-run
 ```
 
 ## Environment
@@ -53,9 +69,14 @@ npm run profiles:sync -- --dry-run               # preview without writing
 
 ## Automation
 
-- `.github/workflows/company-profiles-build.yml` — weekly + manual +
-  `repository_dispatch(company-profile-request)`; runs `build`, opens a PR.
+- `.github/workflows/company-profiles-refresh.yml` — **weekly** (Mon 07:00 UTC) +
+  manual; runs `refresh` to fetch every listed company and upsert it directly
+  into the DB. This is the automatic weekly update.
+- `.github/workflows/company-profiles-build.yml` — manual dispatch +
+  `repository_dispatch(company-profile-request)`; runs `build` and opens a PR
+  (for reviewing new additions).
 - `.github/workflows/company-profiles-sync.yml` — on push to `main` under
-  `data/companyProfiles/**`; runs `sync` to push the merged data into the DB.
+  `data/companyProfiles/**`; runs `sync` to push merged JSON into the DB.
 
-Set repository secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+Set repository secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+(and optionally `PROFILES_CONTACT_EMAIL`).
