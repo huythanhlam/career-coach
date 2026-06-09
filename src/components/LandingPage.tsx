@@ -208,8 +208,8 @@ const features: Feature[] = [
   {
     id: "company_research",
     icon: Building,
-    title: "Company Research",
-    description: "Deep-dive any company with AI-powered research from Glassdoor, Blind, and news — plus tailored questions to ask interviewers.",
+    title: "Research Company",
+    description: "Live research on what a company values when hiring, its benefits, role-relevant news, and recent financials — every claim linked to a verifiable source.",
     color: "#E8B948",
     tab: "company_research",
   },

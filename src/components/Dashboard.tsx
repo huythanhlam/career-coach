@@ -18,6 +18,7 @@ import {
 import { useJobPostings } from "@/hooks/useJobPostings";
 import type { JobStatus } from "@/types/jobPosting";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import type { ViewId } from "@/components/Sidebar";
 
@@ -64,6 +65,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   // The dashboard pipeline tracks chosen postings, not weekly "suggested" ones.
   const postings = allPostings.filter((p) => p.status !== "suggested");
   const { profile } = useUserProfile();
+  const isMobile = useIsMobile();
   const { analyses } = useSavedAnalyses();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newApp, setNewApp] = useState<PipelineForm>({
@@ -135,24 +137,24 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const todayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   return (
-    <div className="flex-1 h-full overflow-y-auto no-scrollbar" style={{ background: "var(--background)", padding: "32px 40px 80px" }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28 }}
+    <div className="flex-1 h-full overflow-y-auto no-scrollbar" style={{ background: "var(--background)", padding: isMobile ? "20px 16px 72px" : "32px 40px 80px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: isMobile ? 20 : 28 }}
         className="animate-in fade-in slide-in-from-bottom-4 duration-700">
 
         {/* ── Hero grid ──────────────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: isMobile ? 16 : 20 }}>
 
           {/* Welcome card — dark ink */}
           <div style={{
             background: "var(--foreground)", color: "var(--background)",
             border: "1px solid var(--foreground)", borderRadius: 24,
-            padding: 32, boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+            padding: isMobile ? 22 : 32, boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
             display: "flex", flexDirection: "column",
           }}>
             <div className="eyebrow" style={{ color: "rgba(251,247,241,0.55)", marginBottom: 14 }}>
               Good {partOfDay} · {todayLabel}
             </div>
-            <div className="font-display" style={{ fontSize: 36, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.1, color: "var(--background)" }}>
+            <div className="font-display" style={{ fontSize: isMobile ? 26 : 36, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.1, color: "var(--background)" }}>
               Hey {firstName} 👋 Welcome back to your career coach.
             </div>
             <p style={{ fontSize: 14, color: "rgba(251,247,241,0.65)", marginTop: 14, lineHeight: 1.6, maxWidth: 520 }}>
@@ -231,7 +233,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         />
 
         {/* ── Checklist + Recent activity ────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 20 }}>
 
           {/* Profile checklist */}
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
@@ -353,10 +355,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", overflow: "hidden" }}>
             {/* Table header */}
             <div style={{
-              display: "grid", gridTemplateColumns: "44px 1.6fr 1fr 1fr 148px", gap: 16,
-              padding: "12px 22px", borderBottom: "1px solid var(--border)",
+              display: "grid", gridTemplateColumns: isMobile ? "36px 1fr auto" : "44px 1.6fr 1fr 1fr 148px", gap: isMobile ? 12 : 16,
+              padding: isMobile ? "12px 16px" : "12px 22px", borderBottom: "1px solid var(--border)",
             }}>
-              {["", "Company · Role", "Location", "Applied", "Status"].map((h, i) => (
+              {(isMobile ? ["", "Company · Role", "Status"] : ["", "Company · Role", "Location", "Applied", "Status"]).map((h, i) => (
                 <div key={i} className="eyebrow">{h}</div>
               ))}
             </div>
@@ -376,8 +378,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 key={p.id}
                 onClick={() => go("job_postings")}
                 style={{
-                  display: "grid", gridTemplateColumns: "44px 1.6fr 1fr 1fr 148px", gap: 16,
-                  padding: "16px 22px", alignItems: "center", cursor: "pointer",
+                  display: "grid", gridTemplateColumns: isMobile ? "36px 1fr auto" : "44px 1.6fr 1fr 1fr 148px", gap: isMobile ? 12 : 16,
+                  padding: isMobile ? "14px 16px" : "16px 22px", alignItems: "center", cursor: "pointer",
                   borderBottom: i < shown.length - 1 ? "1px solid var(--border)" : "none",
                 }}
               >
@@ -399,10 +401,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>{p.company ?? "—"}</div>
                 </div>
 
-                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{p.location ?? "—"}</div>
-                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-                  {new Date(p.appliedAt ?? p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </div>
+                {!isMobile && <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{p.location ?? "—"}</div>}
+                {!isMobile && <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{new Date(p.appliedAt ?? p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>}
                 <div><StatusPill kind={p.status}>{STATUS_MAP[p.status].label}</StatusPill></div>
               </div>
             ))}
@@ -414,7 +414,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: "0 0 14px" }}>
             Things you can do
           </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)", gap: 16 }}>
             {actions.map((tool) => {
               const Icon = tool.icon;
               return (
@@ -608,6 +608,7 @@ function CareerPath({
   onBuildPlan: () => void;
   onSetTarget: () => void;
 }) {
+  const isMobile = useIsMobile();
   return (
     <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
@@ -625,7 +626,7 @@ function CareerPath({
       </div>
 
       {!targetRole ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "8px 0" }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", gap: 16, padding: "8px 0" }}>
           <div style={{ width: 44, height: 44, borderRadius: 14, background: "rgba(217,119,87,0.10)", border: "1px solid rgba(217,119,87,0.25)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Target className="w-5 h-5" />
           </div>
@@ -641,7 +642,7 @@ function CareerPath({
           </button>
         </div>
       ) : (
-        <div style={{ display: "flex", alignItems: "stretch", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "stretch", gap: 12 }}>
           <PathNode
             kind="now"
             title={currentRole || "Where you are now"}
@@ -692,9 +693,10 @@ function PathNode({ kind, title, sub, onClick }: { kind: "now" | "target" | "pla
 }
 
 function PathConnector() {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ display: "flex", alignItems: "center", color: "var(--muted-foreground)", flexShrink: 0 }}>
-      <ArrowRight className="w-4 h-4" style={{ opacity: 0.5 }} />
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", flexShrink: 0 }}>
+      <ArrowRight className="w-4 h-4" style={{ opacity: 0.5, transform: isMobile ? "rotate(90deg)" : "none" }} />
     </div>
   );
 }
