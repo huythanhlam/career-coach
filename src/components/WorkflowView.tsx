@@ -37,7 +37,11 @@ import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
 import { JobDetailsSection, JobDetailsValue } from "@/components/JobDetailsSection";
 import { researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult } from "@/services/geminiService";
 import { CompanyResearchViz } from "@/components/companyResearch";
+import { CompanyProfileViz } from "@/components/companyResearch/CompanyProfileViz";
+import { RequestProfileBanner } from "@/components/companyResearch/RequestProfileBanner";
 import { getCachedCompanyResearch, putCachedCompanyResearch } from "@/config/companyResearchCache";
+import { getCompanyProfile, requestCompanyProfile, type RequestProfileResult } from "@/services/companyProfileService";
+import type { CompanyProfile } from "@/types/companyProfile";
 import type { ViewId } from "@/components/Sidebar";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -136,6 +140,42 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const [isResearching, setIsResearching] = useState(false);   // first load (no cache → full loader)
   const [isRevalidating, setIsRevalidating] = useState(false); // background / explicit refresh
   const [companyCachedAt, setCompanyCachedAt] = useState<string | null>(null);
+  // Deterministic profile (reliable, non-AI). Preferred over the AI path.
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  const [profileMissing, setProfileMissing] = useState(false); // checked, none in DB → offer "request"
+  const [requestState, setRequestState] = useState<RequestProfileResult | "requesting" | null>(null);
+
+  /**
+   * Entry point for the workspace's "Start research" button. Prefers the
+   * deterministic DB profile; only falls back to the AI path when none exists,
+   * and surfaces a "request a profile" affordance so the user can queue it for
+   * the build routine.
+   */
+  const startCompanyResearch = async () => {
+    const company = companyJobDetails.companyName;
+    if (!company.trim() || isResearching || isRevalidating) return;
+    setProfileMissing(false);
+    setRequestState(null);
+    setIsResearching(true);
+    try {
+      const profile = await getCompanyProfile(company);
+      if (profile) {
+        setCompanyProfile(profile);
+        setIsResearching(false);
+        return;
+      }
+    } catch { /* fall through to AI */ }
+    setProfileMissing(true);
+    setIsResearching(false);
+    // No deterministic profile yet → use the existing AI research as a fallback.
+    await runCompanyResearch("auto");
+  };
+
+  const submitProfileRequest = async () => {
+    setRequestState("requesting");
+    const result = await requestCompanyProfile(companyJobDetails.companyName);
+    setRequestState(result);
+  };
 
   // Fetch a fresh tier (one grounded call) and persist it to the cache.
   const fetchProfileFresh = async (company: string) => {
@@ -695,11 +735,11 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         <PageHeader title={config.title} description={config.description} />
         <div className="flex-1 overflow-auto no-scrollbar p-8">
           <div style={{ maxWidth: 760, margin: "0 auto" }}>
-            {!companyResult && !isResearching && (
+            {!companyResult && !companyProfile && !isResearching && (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <JobDetailsSection value={companyJobDetails} onChange={setCompanyJobDetails} jobDescriptionOptional />
                 <button
-                  onClick={() => runCompanyResearch("auto")}
+                  onClick={startCompanyResearch}
                   disabled={!canSubmit}
                   style={{
                     height: 52, background: "var(--primary)", color: "#FFF", border: "1px solid var(--primary)",
@@ -713,26 +753,42 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
               </div>
             )}
 
-            {isResearching && !companyResult && (
+            {isResearching && !companyResult && !companyProfile && (
               <MentorCard style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16 }}>
                 <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--primary)" }} />
                 <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}>
                   Researching {companyJobDetails.companyName || "the company"}
                 </div>
-                <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Searching careers pages, employee ratings, news, and financials…</div>
+                <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Checking our verified company database, then careers pages, news, and financials…</div>
               </MentorCard>
             )}
 
-            {companyResult && (
-              <CompanyResearchViz
-                data={companyResult}
-                companyName={companyJobDetails.companyName}
-                isRevalidating={isRevalidating}
-                cachedAt={companyCachedAt ?? undefined}
-                onRefreshNews={() => runCompanyResearch("news")}
-                onRefreshAll={() => runCompanyResearch("all")}
-                onReset={() => { setCompanyResult(null); setCompanyCachedAt(null); }}
+            {companyProfile && (
+              <CompanyProfileViz
+                profile={companyProfile}
+                onReset={() => { setCompanyProfile(null); setProfileMissing(false); setRequestState(null); }}
               />
+            )}
+
+            {companyResult && !companyProfile && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {profileMissing && (
+                  <RequestProfileBanner
+                    company={companyJobDetails.companyName}
+                    state={requestState}
+                    onRequest={submitProfileRequest}
+                  />
+                )}
+                <CompanyResearchViz
+                  data={companyResult}
+                  companyName={companyJobDetails.companyName}
+                  isRevalidating={isRevalidating}
+                  cachedAt={companyCachedAt ?? undefined}
+                  onRefreshNews={() => runCompanyResearch("news")}
+                  onRefreshAll={() => runCompanyResearch("all")}
+                  onReset={() => { setCompanyResult(null); setCompanyCachedAt(null); setProfileMissing(false); setRequestState(null); }}
+                />
+              </div>
             )}
           </div>
         </div>

@@ -1,0 +1,40 @@
+name: Company Profiles — Sync to DB
+
+# The "push into the DB" step. When a profile PR is merged to main, the changed
+# committed JSON is upserted into the company_profiles table via the service role.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/companyProfiles/**'
+  workflow_dispatch: {}
+
+# Read-only on the repo; all writes go to Supabase, not git.
+permissions:
+  contents: read
+
+concurrency:
+  group: company-profiles-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync profiles into Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx scripts/company-profiles/sync.ts
