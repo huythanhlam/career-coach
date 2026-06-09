@@ -1,10 +1,11 @@
 // Targeted Job Postings — shared types.
 
-export type AtsProvider = "greenhouse" | "lever" | "ashby";
+export type AtsProvider = "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters";
 
 export type JobPostingSource = "ats" | "web" | "manual";
 
 export type JobStatus =
+  | "suggested"
   | "saved"
   | "applied"
   | "interviewing"
@@ -13,6 +14,7 @@ export type JobStatus =
   | "rejected"
   | "archived";
 
+/** Statuses a user can set manually (excludes the system-managed "suggested"). */
 export const JOB_STATUSES: JobStatus[] = [
   "saved",
   "applied",
@@ -28,6 +30,8 @@ export interface TargetRole {
   id: string;
   title: string;
   keywords?: string[];
+  /** career-ops "negative" title_filter — drop postings whose title contains any of these. */
+  exclude?: string[];
   location?: string;
   seniority?: string;
   remote?: boolean;

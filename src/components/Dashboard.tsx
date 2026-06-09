@@ -22,6 +22,7 @@ import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import type { ViewId } from "@/components/Sidebar";
 
 const STATUS_MAP: Record<JobStatus, { bg: string; fg: string; border: string; label: string }> = {
+  suggested:    { bg: "rgba(217,119,87,0.10)",  fg: "#D97757", border: "rgba(217,119,87,0.25)",  label: "Suggested" },
   saved:        { bg: "rgba(113,113,122,0.10)", fg: "#71717A", border: "rgba(113,113,122,0.25)", label: "Saved" },
   applied:      { bg: "rgba(59,130,246,0.10)",  fg: "#3B82F6", border: "rgba(59,130,246,0.25)",  label: "Applied" },
   interviewing: { bg: "rgba(245,158,11,0.10)",  fg: "#F59E0B", border: "rgba(245,158,11,0.25)",  label: "Interviewing" },
@@ -59,7 +60,9 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { postings, addPosting } = useJobPostings();
+  const { postings: allPostings, addPosting } = useJobPostings();
+  // The dashboard pipeline tracks chosen postings, not weekly "suggested" ones.
+  const postings = allPostings.filter((p) => p.status !== "suggested");
   const { profile } = useUserProfile();
   const { analyses } = useSavedAnalyses();
   const [isModalOpen, setIsModalOpen] = useState(false);

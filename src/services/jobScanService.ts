@@ -36,14 +36,15 @@ export async function scanJobs(
   companies: TargetCompany[],
   keywords: string[],
   includeSeed = true,
+  exclude: string[] = [],
 ): Promise<{ results: ScannedJob[]; errors: { company: string; error: string }[] }> {
   const payload = companies.map((c) => ({ ats: c.ats, boardToken: c.boardToken, name: c.name }));
-  return callFunction("scan-jobs", { companies: payload, keywords, includeSeed });
+  return callFunction("scan-jobs", { companies: payload, keywords, exclude, includeSeed });
 }
 
 /** Role-keyword search across keyless aggregators (Remotive/Arbeitnow/RemoteOK). */
-export async function searchAggregators(query: string): Promise<AggregatorJob[]> {
-  const { results } = await callFunction<{ results: AggregatorJob[] }>("job-search", { query });
+export async function searchAggregators(query: string, exclude: string[] = []): Promise<AggregatorJob[]> {
+  const { results } = await callFunction<{ results: AggregatorJob[] }>("job-search", { query, exclude });
   return results;
 }
 
@@ -116,6 +117,14 @@ export function detectAtsFromUrl(rawUrl: string): { ats: AtsProvider; boardToken
   // Ashby: jobs.ashbyhq.com/<token>
   if (host.endsWith("ashbyhq.com")) {
     return seg[0] ? { ats: "ashby", boardToken: seg[0] } : null;
+  }
+  // Workable: apply.workable.com/<slug>
+  if (host.endsWith("workable.com")) {
+    return seg[0] ? { ats: "workable", boardToken: seg[0] } : null;
+  }
+  // SmartRecruiters: careers/jobs.smartrecruiters.com/<slug>
+  if (host.endsWith("smartrecruiters.com")) {
+    return seg[0] ? { ats: "smartrecruiters", boardToken: seg[0] } : null;
   }
   return null;
 }

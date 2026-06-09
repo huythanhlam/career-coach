@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, Plus, X, Star, Building, Link2, Loader2, Sparkles,
   Trash2, ExternalLink, Target, Briefcase, FileText, Mail, ArrowRight,
@@ -19,6 +19,7 @@ import type { ViewId } from "@/components/Sidebar";
 
 /* ── Status presentation ─────────────────────────────────────────────────── */
 const STATUS_META: Record<JobStatus, { label: string; fg: string; bg: string; border: string }> = {
+  suggested:    { label: "Suggested",    fg: "#D97757", bg: "rgba(217,119,87,0.10)",  border: "rgba(217,119,87,0.25)" },
   saved:        { label: "Saved",        fg: "#71717A", bg: "rgba(113,113,122,0.10)", border: "rgba(113,113,122,0.25)" },
   applied:      { label: "Applied",      fg: "#3B82F6", bg: "rgba(59,130,246,0.10)",  border: "rgba(59,130,246,0.25)" },
   interviewing: { label: "Interviewing", fg: "#F59E0B", bg: "rgba(245,158,11,0.10)",  border: "rgba(245,158,11,0.25)" },
@@ -73,8 +74,10 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
   const [favOnly, setFavOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("recent");
 
+  const suggestions = useMemo(() => postings.filter((p) => p.status === "suggested"), [postings]);
+
   const visible = useMemo(() => {
-    let list = [...postings];
+    let list = postings.filter((p) => p.status !== "suggested"); // suggested live in their own lane
     if (statusFilter !== "all") list = list.filter((p) => p.status === statusFilter);
     if (sourceFilter !== "all") list = list.filter((p) => p.source === sourceFilter);
     if (favOnly) list = list.filter((p) => p.favorite);
@@ -132,9 +135,18 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           onConfigure={() => onNavigate?.("profile_settings")}
         />
 
+        {suggestions.length > 0 && (
+          <SuggestedLane
+            suggestions={suggestions}
+            onOpen={setDetailId}
+            onSave={(p) => updatePosting(p.id, { status: "saved" })}
+            onDismiss={(p) => deletePosting(p.id)}
+          />
+        )}
+
         <TrackedBoard
           postings={visible}
-          total={postings.length}
+          total={postings.filter((p) => p.status !== "suggested").length}
           statusFilter={statusFilter} setStatusFilter={setStatusFilter}
           sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
           favOnly={favOnly} setFavOnly={setFavOnly}
@@ -154,6 +166,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           onDelete={() => { deletePosting(detail.id); setDetailId(null); }}
           onNavigate={onNavigate}
           onSaveCoverLetter={(cl) => updateProfile({ savedCoverLetters: [...(profile.savedCoverLetters ?? []), cl] })}
+          onSaveResume={(r) => updateProfile({ savedResumes: [...(profile.savedResumes ?? []), r] })}
         />
       )}
     </div>
@@ -173,6 +186,7 @@ function TargetsPanel({
 }) {
   const [roleTitle, setRoleTitle] = useState("");
   const [roleKeywords, setRoleKeywords] = useState("");
+  const [roleExclude, setRoleExclude] = useState("");
   const [roleLocation, setRoleLocation] = useState("");
   const [companyUrl, setCompanyUrl] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -186,10 +200,11 @@ function TargetsPanel({
       id: generateId(),
       title,
       keywords: roleKeywords.split(",").map((k) => k.trim()).filter(Boolean),
+      exclude: roleExclude.split(",").map((k) => k.trim()).filter(Boolean),
       location: roleLocation.trim() || undefined,
     };
     onSaveRoles([...roles, role]);
-    setRoleTitle(""); setRoleKeywords(""); setRoleLocation("");
+    setRoleTitle(""); setRoleKeywords(""); setRoleExclude(""); setRoleLocation("");
   };
 
   const addCompany = () => {
@@ -217,6 +232,9 @@ function TargetsPanel({
               {r.keywords && r.keywords.length > 0 && (
                 <span style={{ color: "var(--muted-foreground)", fontSize: 12 }}> · {r.keywords.join(", ")}</span>
               )}
+              {r.exclude && r.exclude.length > 0 && (
+                <span style={{ color: "var(--primary)", fontSize: 12 }}> · not: {r.exclude.join(", ")}</span>
+              )}
               {r.location && <span style={{ color: "var(--muted-foreground)", fontSize: 12 }}> · {r.location}</span>}
             </Chip>
           ))}
@@ -224,8 +242,10 @@ function TargetsPanel({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input style={{ ...inputStyle, flex: "2 1 220px" }} placeholder="Role title (e.g. Senior Product Manager)" value={roleTitle}
             onChange={(e) => setRoleTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addRole()} />
-          <input style={{ ...inputStyle, flex: "2 1 180px" }} placeholder="Keywords, comma-separated (optional)" value={roleKeywords}
+          <input style={{ ...inputStyle, flex: "2 1 180px" }} placeholder="Include keywords, comma-separated (optional)" value={roleKeywords}
             onChange={(e) => setRoleKeywords(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addRole()} />
+          <input style={{ ...inputStyle, flex: "2 1 180px" }} placeholder="Exclude, comma-separated (e.g. intern, senior)" value={roleExclude}
+            onChange={(e) => setRoleExclude(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addRole()} />
           <input style={{ ...inputStyle, flex: "1 1 120px" }} placeholder="Location (optional)" value={roleLocation}
             onChange={(e) => setRoleLocation(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addRole()} />
           <button style={{ ...primaryBtn, flexShrink: 0 }} onClick={addRole}><Plus className="w-3.5 h-3.5" /> Add</button>
@@ -307,7 +327,7 @@ function DiscoverPanel({
     setError(""); setLoading(true); setScanResults([]);
     try {
       // includeSeed defaults true → scans the built-in board list + any of your companies.
-      const { results, errors } = await scanJobs(companies, keywords);
+      const { results, errors } = await scanJobs(companies, keywords, true, selectedRole?.exclude ?? []);
       setScanResults(results);
       if (results.length === 0) {
         setError(errors.length ? `No matches. ${errors.slice(0, 3).map((e) => `${e.company}: ${e.error}`).join("; ")}` : "No roles matched your keywords.");
@@ -324,7 +344,7 @@ function DiscoverPanel({
     if (!query) { setError("Add a target role first."); return; }
     setError(""); setLoading(true); setAggResults([]);
     try {
-      const r = await searchAggregators(query);
+      const r = await searchAggregators(query, selectedRole?.exclude ?? []);
       setAggResults(r);
       if (r.length === 0) setError("No matching postings found — try a broader role title.");
     } catch (e) {
@@ -348,6 +368,18 @@ function DiscoverPanel({
   });
 
   const aggKey = (j: AggregatorJob) => j.url ?? j.externalId ?? j.title;
+
+  // Auto-populate relevant postings: search once per selected role when in search
+  // mode, so the board fills with jobs the user cares about without a manual click.
+  const autoRanRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = selectedRole?.id;
+    if (mode === "search" && id && selectedRole?.title && autoRanRef.current !== id && !loading) {
+      autoRanRef.current = id;
+      runSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRole?.id, mode]);
 
   const saveAllScan = async () => {
     const n = await onAddMany(scanResults.map(scannedToNew));
@@ -557,6 +589,54 @@ function ImportDraftModal({
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Suggested this week — auto-fetched by the weekly cron, reviewable
+   ───────────────────────────────────────────────────────────────────────── */
+function SuggestedLane({
+  suggestions, onOpen, onSave, onDismiss,
+}: {
+  suggestions: JobPosting[];
+  onOpen: (id: string) => void;
+  onSave: (p: JobPosting) => void;
+  onDismiss: (p: JobPosting) => void;
+}) {
+  return (
+    <div style={{ ...cardStyle, border: "1px solid rgba(217,119,87,0.30)", background: "rgba(217,119,87,0.04)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <SectionHeading icon={Sparkles} title="Suggested this week" sub="Fresh matches for your target roles — Save the good ones" noMargin />
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>{suggestions.length}</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {suggestions.map((p) => (
+          <div key={p.id}
+            style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer" }}
+            onClick={() => onOpen(p.id)}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {[p.company, p.location].filter(Boolean).join(" · ") || "—"}
+              </div>
+            </div>
+            {p.url && (
+              <a href={p.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "var(--muted-foreground)", display: "flex", flexShrink: 0 }}>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+            <button onClick={(e) => { e.stopPropagation(); onSave(p); }}
+              style={{ height: 32, padding: "0 12px", borderRadius: 9, flexShrink: 0, border: "1px solid var(--primary)", background: "var(--primary)", color: "#FFF", fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Plus className="w-3.5 h-3.5" /> Save
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDismiss(p); }} title="Dismiss"
+              style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, border: "1px solid var(--border)", background: "var(--muted)", color: "var(--muted-foreground)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Tracked board — sort / filter / favorite / status
    ───────────────────────────────────────────────────────────────────────── */
 function TrackedBoard({
@@ -659,7 +739,7 @@ function TrackedBoard({
    Detail drawer — description + tailor & apply
    ───────────────────────────────────────────────────────────────────────── */
 function DetailDrawer({
-  posting, profile, onClose, onUpdate, onDelete, onNavigate, onSaveCoverLetter,
+  posting, profile, onClose, onUpdate, onDelete, onNavigate, onSaveCoverLetter, onSaveResume,
 }: {
   posting: JobPosting;
   profile: ReturnType<typeof useUserProfile>["profile"];
@@ -668,12 +748,16 @@ function DetailDrawer({
   onDelete: () => void;
   onNavigate?: (view: ViewId) => void;
   onSaveCoverLetter: (cl: NonNullable<typeof profile.savedCoverLetters>[number]) => void;
+  onSaveResume: (r: NonNullable<typeof profile.savedResumes>[number]) => void;
 }) {
   const [notes, setNotes] = useState(posting.notes ?? "");
   const [scoring, setScoring] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [coverDraft, setCoverDraft] = useState("");
   const [coverSaved, setCoverSaved] = useState(false);
+  const [resumeGenerating, setResumeGenerating] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState("");
+  const [resumeSaved, setResumeSaved] = useState(false);
 
   const resumeText = profile.resumeText
     ?? profile.savedResumes?.find((r) => r.text)?.text
@@ -705,8 +789,9 @@ function DetailDrawer({
   };
 
   const saveCover = () => {
+    const id = generateId();
     onSaveCoverLetter({
-      id: generateId(),
+      id,
       name: `${posting.title} — ${posting.company ?? "cover letter"}`,
       storagePath: "",
       text: coverDraft,
@@ -714,7 +799,33 @@ function DetailDrawer({
       company: posting.company ?? "",
       createdAt: new Date().toISOString(),
     });
+    onUpdate({ appliedCoverLetterId: id }); // link it to this application
     setCoverSaved(true);
+  };
+
+  const generateResume = async () => {
+    setResumeGenerating(true); setResumeSaved(false);
+    try {
+      const system = "You are an expert resume writer. Tailor the candidate's resume to THIS job using ONLY their real experience — never invent employers, titles, dates, or metrics. Surface the most relevant experience and weave in keywords from the job description. Output a clean, ATS-friendly resume in Markdown. No commentary.";
+      const name = profile.fullName || profile.preferredName || "";
+      const prompt = `Tailor a resume for this job.\n\nJOB:\n${posting.title} at ${posting.company ?? ""}\n${posting.description ?? ""}\n\nCANDIDATE:\nName: ${name}\nTarget role: ${profile.targetRole ?? ""}\nSkills: ${(profile.skills ?? []).join(", ")}\nExisting resume / background:\n${resumeText.slice(0, 6000)}`;
+      setResumeDraft(await generateWorkflowData(system, prompt, "claude-sonnet-4-6"));
+    } finally {
+      setResumeGenerating(false);
+    }
+  };
+
+  const saveResume = () => {
+    const id = generateId();
+    onSaveResume({
+      id,
+      name: `${posting.title} — ${posting.company ?? "resume"}`,
+      storagePath: "",
+      text: resumeDraft,
+      createdAt: new Date().toISOString(),
+    });
+    onUpdate({ appliedResumeId: id }); // link it to this application
+    setResumeSaved(true);
   };
 
   const savedResumes = profile.savedResumes ?? [];
@@ -776,16 +887,28 @@ function DetailDrawer({
               {/* Resume */}
               <div>
                 <Label icon={FileText} text="Resume" />
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <select style={{ ...inputStyle, cursor: "pointer" }} value={posting.appliedResumeId ?? ""}
                     onChange={(e) => onUpdate({ appliedResumeId: e.target.value || undefined })}>
                     <option value="">Attach a resume…</option>
                     {savedResumes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                   <button style={{ ...ghostBtn, flexShrink: 0 }} onClick={() => onNavigate?.("resume_generation")}>
-                    Tailor <ArrowRight className="w-3.5 h-3.5" />
+                    Builder <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
+                <button style={{ ...ghostBtn, width: "100%", justifyContent: "center" }} onClick={generateResume} disabled={resumeGenerating}>
+                  {resumeGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Generate a tailored resume
+                </button>
+                {resumeDraft && (
+                  <div style={{ marginTop: 8 }}>
+                    <textarea value={resumeDraft} onChange={(e) => { setResumeDraft(e.target.value); setResumeSaved(false); }}
+                      style={{ ...inputStyle, height: 220, padding: 14, resize: "vertical" as const, lineHeight: 1.5, fontFamily: "var(--font-mono, monospace)", fontSize: 12 }} />
+                    <button style={{ ...primaryBtn, marginTop: 8 }} onClick={saveResume} disabled={resumeSaved}>
+                      {resumeSaved ? "Saved & attached" : "Save resume"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Cover letter */}

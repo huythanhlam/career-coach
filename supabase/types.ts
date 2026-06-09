@@ -37,6 +37,7 @@ export interface DbTargetRole {
   id: string;
   title: string;
   keywords?: string[];
+  exclude?: string[];
   location?: string;
   seniority?: string;
   remote?: boolean;
@@ -45,7 +46,7 @@ export interface DbTargetRole {
 export interface DbTargetCompany {
   id: string;
   name: string;
-  ats: "greenhouse" | "lever" | "ashby";
+  ats: "greenhouse" | "lever" | "ashby" | "workable" | "smartrecruiters";
   boardToken: string;
 }
 
