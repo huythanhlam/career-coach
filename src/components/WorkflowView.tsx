@@ -36,7 +36,7 @@ import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterFo
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
 import { JobDetailsSection, JobDetailsValue } from "@/components/JobDetailsSection";
 import { researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult } from "@/services/geminiService";
-import { CompanyResearchViz } from "@/components/CompanyResearchViz";
+import { CompanyResearchViz } from "@/components/companyResearch";
 import { getCachedCompanyResearch, putCachedCompanyResearch } from "@/config/companyResearchCache";
 import type { ViewId } from "@/components/Sidebar";
 
@@ -719,7 +719,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
                 <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}>
                   Researching {companyJobDetails.companyName || "the company"}
                 </div>
-                <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Searching careers pages, news, and financials…</div>
+                <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Searching careers pages, employee ratings, news, and financials…</div>
               </MentorCard>
             )}
 

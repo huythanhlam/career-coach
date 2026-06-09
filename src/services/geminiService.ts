@@ -371,6 +371,19 @@ export interface CompanyResearchSection {
   sources: SourceLink[];
 }
 
+/**
+ * A single employer rating retrieved from a review site (Glassdoor, Indeed,
+ * Blind, Comparably, AmbitionBox, …). Always search-grounded — never invented.
+ */
+export interface CompanyRating {
+  source: string;        // "Glassdoor" | "Indeed" | "Blind" | "Comparably" | "AmbitionBox" | …
+  score: number;         // e.g. 4.1
+  scale: number;         // e.g. 5
+  reviewCount?: number;  // e.g. 18432
+  url: string;           // real source URL
+  asOf?: string;         // free-text date stamp when known
+}
+
 /** Combined shape the UI renders (assembled from the two cached tiers). */
 export interface CompanyResearchResult {
   overview: string;
@@ -378,6 +391,8 @@ export interface CompanyResearchResult {
   benefits: CompanyResearchSection;
   news: CompanyResearchSection;
   financials: CompanyResearchSection;
+  ratings: CompanyRating[];
+  ratingsSummary?: string;
   sources: SourceLink[];
 }
 
@@ -387,6 +402,8 @@ export interface CompanyProfileData {
   hiringValues: CompanyResearchSection;
   benefits: CompanyResearchSection;
   financials: CompanyResearchSection;
+  ratings: CompanyRating[];
+  ratingsSummary?: string;
   sources: SourceLink[];
 }
 
@@ -403,9 +420,10 @@ Produce, searching where needed:
 - hiringValues: what the company values when hiring (careers/jobs/culture pages — traits, principles, competencies).
 - benefits: key benefits & perks (comp philosophy, health/leave, equity, remote/flexibility, learning budget).
 - financials: most recent quarterly earnings, revenue/growth, guidance, stock; private → latest funding/valuation. Date-stamp every figure. If unknown, say so in the summary and leave bullets sparse.
+- ratings: current employer ratings from review sites. Search each of Glassdoor, Indeed, Blind, Comparably, and AmbitionBox; include an entry ONLY when you retrieve a real score and its URL. Never invent a score, count, or URL — omit any source you can't verify. Use each site's native scale (usually 5).
 
 Output ONLY a compact JSON object, no markdown fences:
-{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"sources":[{"label":"...","url":"..."}]}
+{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"ratingsSummary":"1 sentence on how employees rate the company (or empty if unknown)","ratings":[{"source":"Glassdoor","score":4.1,"scale":5,"reviewCount":18432,"url":"https://...","asOf":"2026"}],"sources":[{"label":"...","url":"..."}]}
 At most 4 bullets/section (≤25 words each) and 3 sources/section. Begin with "{" and end with "}".`;
 
 const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news. Date-stamp each item.
@@ -434,6 +452,39 @@ function normalizeSection(raw: any, fallbackSources: SourceLink[]): CompanyResea
     bullets: Array.isArray(raw?.bullets) ? raw.bullets.filter((b: any) => typeof b === "string") : [],
     sources: sources.length ? sources : fallbackSources,
   };
+}
+
+/**
+ * Defensive parse of the `ratings` array. Keeps only entries with a finite
+ * positive score on a finite positive scale and a non-empty URL; clamps score
+ * into [0, scale]; coerces reviewCount to a non-negative int (else drops it).
+ * Dedupes by source (case-insensitive), keeping the first. Never throws.
+ */
+export function normalizeRatings(raw: any): CompanyRating[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CompanyRating[] = [];
+  const seen = new Set<string>();
+  for (const r of raw) {
+    const score = Number(r?.score);
+    const scale = Number(r?.scale);
+    const url = typeof r?.url === "string" ? r.url.trim() : "";
+    const source = typeof r?.source === "string" ? r.source.trim() : "";
+    if (!source || !url || !Number.isFinite(score) || !Number.isFinite(scale) || scale <= 0) continue;
+    const key = source.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const count = Number(r?.reviewCount);
+    const rating: CompanyRating = {
+      source,
+      score: Math.max(0, Math.min(score, scale)),
+      scale,
+      url,
+    };
+    if (Number.isFinite(count) && count >= 0) rating.reviewCount = Math.round(count);
+    if (typeof r?.asOf === "string" && r.asOf.trim()) rating.asOf = r.asOf.trim();
+    out.push(rating);
+  }
+  return out;
 }
 
 // Bound how much of the (free, user-provided) JD we feed each grounded call, so
@@ -489,6 +540,8 @@ Return only the JSON object.`;
       hiringValues: normalizeSection(parsed.hiringValues, [fallback.careers]),
       benefits: normalizeSection(parsed.benefits, [fallback.careers]),
       financials: normalizeSection(parsed.financials, [fallback.financials]),
+      ratings: normalizeRatings(parsed.ratings),
+      ratingsSummary: typeof parsed.ratingsSummary === "string" ? parsed.ratingsSummary : "",
       sources: collectSources(parsed, grounding, [fallback.careers, fallback.financials]),
     };
   } catch {
@@ -498,6 +551,8 @@ Return only the JSON object.`;
       hiringValues: EMPTY_SECTION(""),
       benefits: EMPTY_SECTION(""),
       financials: EMPTY_SECTION(""),
+      ratings: [],
+      ratingsSummary: "",
       sources: [fallback.careers, fallback.financials],
     };
   }
@@ -540,6 +595,8 @@ export function assembleCompanyResearch(profile: CompanyProfileData, news: Compa
     benefits: profile.benefits,
     news: news.news,
     financials: profile.financials,
+    ratings: profile.ratings ?? [],
+    ratingsSummary: profile.ratingsSummary ?? "",
     sources,
   };
 }

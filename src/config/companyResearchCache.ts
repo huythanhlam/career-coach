@@ -15,6 +15,7 @@
  * the background (stale-while-revalidate).
  */
 import { supabase } from "@/lib/supabaseClient";
+import { canonicalCompanyName } from "@/data/popularCompanies";
 import type { CompanyProfileData, CompanyNewsData } from "@/services/geminiService";
 
 export type CompanyResearchKind = "profile" | "news";
@@ -34,7 +35,11 @@ export interface CachedEntry<T> {
   fresh: boolean;   // within TTL?
 }
 
-const normCompany = (s: string | undefined) => (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+// Resolve aliases to a canonical name first ("Google" → "Alphabet (Google)") so
+// popular companies share one cache entry across spellings AND users, then
+// normalize casing/whitespace for the key.
+const normCompany = (s: string | undefined) =>
+  canonicalCompanyName(s).toLowerCase().replace(/\s+/g, " ");
 
 export function companyResearchCacheKey(company: string, kind: CompanyResearchKind): string {
   return `${kind}:${normCompany(company)}`;
