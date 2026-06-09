@@ -1,6 +1,5 @@
 import type { UserProfile } from "@/types/userProfile";
 import { supabase } from "@/lib/supabaseClient";
-import { basePersona } from "@/config/workflows";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 
 const GATEWAY_URL =
@@ -396,6 +395,7 @@ export interface CompanyResearchSection {
   sources: SourceLink[];
 }
 
+/** Combined shape the UI renders (assembled from the two cached tiers). */
 export interface CompanyResearchResult {
   overview: string;
   hiringValues: CompanyResearchSection;
@@ -405,29 +405,38 @@ export interface CompanyResearchResult {
   sources: SourceLink[];
 }
 
-const COMPANY_RESEARCH_SYSTEM = `${basePersona}
-
-Workflow: Research Company
-A web search tool IS available for this task — use it. Research the specific company and return a structured briefing that helps the candidate interview well. Cover, using live web search:
-- What the company VALUES WHEN HIRING — study its careers/jobs pages, culture/values pages, and team/engineering blog. What traits, principles, or competencies does it emphasize for candidates?
-- KEY BENEFITS & PERKS — compensation philosophy, health/leave, equity, remote/flexibility, learning budgets, etc., from the careers/benefits pages.
-- NEWS — prioritize news connected to the candidate's ROLE, team, or department (product launches, org changes, hiring in that area); if little role-specific news exists, FALL BACK to the most important recent company news.
-- FINANCIALS — the most recent quarterly earnings, revenue/growth, guidance, and stock movement where the company is public; for private companies use the latest funding/valuation. Date-stamp every figure.
-
-Ground the role context in the provided JOB DESCRIPTION. For EVERY section, cite the real source URLs you actually retrieved (each source as { "label": "...", "url": "https://..." }). Never invent URLs or figures — if you couldn't find something, say so in that section's summary and leave its bullets sparse.
-
-Keep the output compact so it is never truncated: at most 4 concise bullets per section (each ≤ 25 words) and at most 3 sources per section. Do NOT wrap the response in markdown code fences (no \`\`\`).
-
-Return ONLY a valid JSON object — no markdown fences, no prose — with EXACTLY this shape:
-{
-  "overview": "<2-3 sentences framing the company + a recency note>",
-  "hiringValues": { "summary": "<1-2 sentences>", "bullets": ["..."], "sources": [{ "label": "...", "url": "..." }] },
-  "benefits":     { "summary": "<1-2 sentences>", "bullets": ["..."], "sources": [{ "label": "...", "url": "..." }] },
-  "news":         { "summary": "<1-2 sentences>", "bullets": ["<headline — date — why it matters>"], "sources": [{ "label": "...", "url": "..." }] },
-  "financials":   { "summary": "<1-2 sentences>", "bullets": ["<metric — value — period>"], "sources": [{ "label": "...", "url": "..." }] },
-  "sources": [{ "label": "...", "url": "..." }]
+/** Slow-moving tier — cached for weeks. */
+export interface CompanyProfileData {
+  overview: string;
+  hiringValues: CompanyResearchSection;
+  benefits: CompanyResearchSection;
+  financials: CompanyResearchSection;
+  sources: SourceLink[];
 }
-Begin with "{" and end with "}".`;
+
+/** Fast-moving tier — cached briefly. */
+export interface CompanyNewsData {
+  news: CompanyResearchSection;
+  sources: SourceLink[];
+}
+
+// Lean, purpose-built system prompts (no basePersona) to minimize input tokens.
+const COMPANY_PROFILE_SYSTEM = `You research a company to help a candidate interview well. A live web search tool IS available — use it for anything time-sensitive and cite the real URLs you retrieve; never invent URLs or figures. You are given JOB POSTING TEXT — use it directly for benefits/values where present and only search for what it doesn't cover.
+
+Produce, searching where needed:
+- hiringValues: what the company values when hiring (careers/jobs/culture pages — traits, principles, competencies).
+- benefits: key benefits & perks (comp philosophy, health/leave, equity, remote/flexibility, learning budget).
+- financials: most recent quarterly earnings, revenue/growth, guidance, stock; private → latest funding/valuation. Date-stamp every figure. If unknown, say so in the summary and leave bullets sparse.
+
+Output ONLY a compact JSON object, no markdown fences:
+{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"sources":[{"label":"...","url":"..."}]}
+At most 4 bullets/section (≤25 words each) and 3 sources/section. Begin with "{" and end with "}".`;
+
+const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news. Date-stamp each item.
+
+Output ONLY a compact JSON object, no markdown fences:
+{"news":{"summary":"1-2 sentences","bullets":["headline — date — why it matters"],"sources":[{"label":"...","url":"https://..."}]},"sources":[{"label":"...","url":"..."}]}
+At most 5 bullets (≤25 words each) and 4 sources. Begin with "{" and end with "}".`;
 
 /**
  * Parse a JSON object from an LLM response that may be fenced (```json) and/or
@@ -482,62 +491,112 @@ function normalizeSection(raw: any, fallbackSources: SourceLink[]): CompanyResea
   };
 }
 
+// Bound how much of the (free, user-provided) JD we feed each grounded call, so
+// inputs stay small. The profile call gets more — it mines benefits/values from
+// the posting; the news call only needs light role context.
+const JD_PROFILE_EXCERPT = 1500;
+const JD_ROLE_SNIPPET = 400;
+
+function roleLine(jobTitle: string, jobDescription: string, snippetLen: number): string {
+  const title = jobTitle?.trim() ? jobTitle.trim() : "(role described in the posting excerpt)";
+  const snippet = (jobDescription ?? "").trim().slice(0, snippetLen);
+  return `TARGET ROLE: ${title}${snippet ? `\nROLE CONTEXT (excerpt): ${snippet}` : ""}`;
+}
+
+/** Model-declared sources + gateway grounding URLs, deduped; fallback if none. */
+function collectSources(parsed: any, grounding: SourceLink[], fallback: SourceLink[]): SourceLink[] {
+  const declared: SourceLink[] = Array.isArray(parsed?.sources)
+    ? parsed.sources.filter((s: any) => s && typeof s.url === "string").map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
+    : [];
+  const merged = [...declared, ...grounding];
+  const dedup = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
+  return dedup.length ? dedup : fallback;
+}
+
 /**
- * Research a company with live web search. Returns structured, source-cited
- * sections (hiring values, benefits, news, financials). Falls back to curated
- * verification links per section when grounding returns none.
+ * Slow-moving tier: hiring values, benefits, financials (+overview). Mines the
+ * provided JD excerpt for benefits/values before searching. Cached for weeks.
  */
-export async function researchCompany(input: {
+export async function researchCompanyProfile(input: {
   jobTitle: string;
   companyName: string;
   jobDescription: string;
-}): Promise<CompanyResearchResult> {
+}): Promise<CompanyProfileData> {
   const { jobTitle, companyName, jobDescription } = input;
-  const prompt = `Research this company for my interview prep.
-
-COMPANY: ${companyName}
-TARGET ROLE: ${jobTitle || "(not specified — infer from the job description)"}
-
-JOB DESCRIPTION (ground the role/team context in this; do not search it):
-${jobDescription || "(none provided)"}
-
-Use live web search for the company's careers/values pages, role-relevant news (fallback: recent company news), and most recent financials. Return only the JSON object.`;
-
   const fallback = buildCompanyResearchSources(companyName);
+  const prompt = `COMPANY: ${companyName}
+${roleLine(jobTitle, jobDescription, JD_PROFILE_EXCERPT)}
+
+JOB POSTING TEXT (use for benefits/values where present; don't search for what's already here):
+${(jobDescription || "(none provided)").slice(0, JD_PROFILE_EXCERPT)}
+
+Return only the JSON object.`;
   const { text, sources: grounding } = await postToGatewayRaw({
-    systemInstruction: COMPANY_RESEARCH_SYSTEM,
+    systemInstruction: COMPANY_PROFILE_SYSTEM,
     prompt,
     model: COMPANY_RESEARCH_MODEL,
     enableSearch: true,
   });
-
   try {
     const parsed = parseLooseJsonObject(text);
-    const allSources: SourceLink[] = Array.isArray(parsed.sources)
-      ? parsed.sources.filter((s: any) => s && typeof s.url === "string").map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
-      : [];
-    // Grounding URLs from the gateway are a real-source backstop for the "all sources" list.
-    const merged = [...allSources, ...grounding];
-    const dedup = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
     return {
       overview: typeof parsed.overview === "string" ? parsed.overview : "",
       hiringValues: normalizeSection(parsed.hiringValues, [fallback.careers]),
       benefits: normalizeSection(parsed.benefits, [fallback.careers]),
-      news: normalizeSection(parsed.news, [fallback.news]),
       financials: normalizeSection(parsed.financials, [fallback.financials]),
-      sources: dedup.length ? dedup : Object.values(fallback),
+      sources: collectSources(parsed, grounding, [fallback.careers, fallback.financials]),
     };
-  } catch (e) {
-    console.error("Failed to parse company research JSON. Raw preview:", text.slice(0, 500));
+  } catch {
+    console.error("Failed to parse company profile JSON. Raw preview:", text.slice(0, 500));
     return {
-      overview: "We couldn't complete the research this time — please try again.",
+      overview: "",
       hiringValues: EMPTY_SECTION(""),
       benefits: EMPTY_SECTION(""),
-      news: EMPTY_SECTION(""),
       financials: EMPTY_SECTION(""),
-      sources: Object.values(fallback),
+      sources: [fallback.careers, fallback.financials],
     };
   }
+}
+
+/** Fast-moving tier: role-relevant news (fallback: recent company news). Cached briefly. */
+export async function researchCompanyNews(input: {
+  jobTitle: string;
+  companyName: string;
+  jobDescription: string;
+}): Promise<CompanyNewsData> {
+  const { jobTitle, companyName, jobDescription } = input;
+  const fallback = buildCompanyResearchSources(companyName);
+  const prompt = `COMPANY: ${companyName}
+${roleLine(jobTitle, jobDescription, JD_ROLE_SNIPPET)}
+
+Find recent news (role/team-relevant first, else important recent company news). Return only the JSON object.`;
+  const { text, sources: grounding } = await postToGatewayRaw({
+    systemInstruction: COMPANY_NEWS_SYSTEM,
+    prompt,
+    model: COMPANY_RESEARCH_MODEL,
+    enableSearch: true,
+  });
+  try {
+    const parsed = parseLooseJsonObject(text);
+    return { news: normalizeSection(parsed.news, [fallback.news]), sources: collectSources(parsed, grounding, [fallback.news]) };
+  } catch {
+    console.error("Failed to parse company news JSON. Raw preview:", text.slice(0, 500));
+    return { news: EMPTY_SECTION(""), sources: [fallback.news] };
+  }
+}
+
+/** Merge the two cached tiers into the shape the UI renders. */
+export function assembleCompanyResearch(profile: CompanyProfileData, news: CompanyNewsData): CompanyResearchResult {
+  const merged = [...profile.sources, ...news.sources];
+  const sources = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
+  return {
+    overview: profile.overview,
+    hiringValues: profile.hiringValues,
+    benefits: profile.benefits,
+    news: news.news,
+    financials: profile.financials,
+    sources,
+  };
 }
 
 export async function rewriteResumeSelection(selectedText: string, instruction: string, fullResumeText: string) {

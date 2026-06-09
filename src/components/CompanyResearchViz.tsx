@@ -8,9 +8,13 @@ import type { CompanyResearchResult, CompanyResearchSection, SourceLink } from "
 interface CompanyResearchVizProps {
   data: CompanyResearchResult;
   companyName: string;
-  isLoading?: boolean;
+  /** A stale tier is being refreshed in the background (or an explicit refresh is running). */
+  isRevalidating?: boolean;
   cachedAt?: string;
-  onRefresh: () => void;
+  /** Re-ground only the fast-moving news tier (cheap). */
+  onRefreshNews: () => void;
+  /** Re-ground every tier. */
+  onRefreshAll: () => void;
   onReset: () => void;
 }
 
@@ -101,7 +105,7 @@ function toMarkdown(data: CompanyResearchResult, company: string): string {
   ].filter(Boolean).join("\n\n");
 }
 
-export function CompanyResearchViz({ data, companyName, isLoading, cachedAt, onRefresh, onReset }: CompanyResearchVizProps) {
+export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt, onRefreshNews, onRefreshAll, onReset }: CompanyResearchVizProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -131,9 +135,16 @@ export function CompanyResearchViz({ data, companyName, isLoading, cachedAt, onR
             {data.overview && (
               <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: 0, lineHeight: 1.6 }}>{data.overview}</p>
             )}
-            {cachedLabel && (
-              <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 8 }}>{cachedLabel} · click Refresh for the latest</div>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+              {cachedLabel && (
+                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{cachedLabel}</span>
+              )}
+              {isRevalidating && (
+                <span style={{ fontSize: 12, color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <Loader2 className="w-3 h-3 animate-spin" /> Updating…
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </MentorCard>
@@ -143,8 +154,11 @@ export function CompanyResearchViz({ data, companyName, isLoading, cachedAt, onR
       ))}
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <button onClick={onRefresh} disabled={isLoading} style={btnStyle(isLoading)}>
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh
+        <button onClick={onRefreshNews} disabled={isRevalidating} style={btnStyle(!!isRevalidating)} title="Re-check the news only (cheapest)">
+          {isRevalidating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh news
+        </button>
+        <button onClick={onRefreshAll} disabled={isRevalidating} style={btnStyle(!!isRevalidating)} title="Re-research everything">
+          <RefreshCw className="w-4 h-4" /> Refresh all
         </button>
         <button onClick={handleCopy} style={btnStyle(false)}>
           {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy summary"}

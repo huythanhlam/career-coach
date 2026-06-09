@@ -16,6 +16,8 @@ interface JobDetailsSectionProps {
   onChange: (value: JobDetailsValue) => void;
   /** Hide the title/company row when only the job description is needed. Defaults to false. */
   hideTitleCompany?: boolean;
+  /** Mark the job description as optional (no required `*`). Defaults to false (required). */
+  jobDescriptionOptional?: boolean;
 }
 
 const fieldStyle: React.CSSProperties = {
@@ -43,7 +45,7 @@ const labelStyle: React.CSSProperties = {
  * job description (with paste/URL import). Controlled via `value`/`onChange`;
  * the paste⇄URL toggle, fetch state, and suggestion lists are internal.
  */
-export function JobDetailsSection({ value, onChange, hideTitleCompany = false }: JobDetailsSectionProps) {
+export function JobDetailsSection({ value, onChange, hideTitleCompany = false, jobDescriptionOptional = false }: JobDetailsSectionProps) {
   const { profile } = useUserProfile();
 
   const [jdInputMode, setJdInputMode] = useState<"paste" | "url">("paste");
@@ -127,7 +129,9 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false }:
         {/* Label row with paste/URL toggle */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <label style={{ ...labelStyle, marginBottom: 0 }}>
-            Job Description <span style={{ color: "var(--primary)" }}>*</span>
+            Job Description{jobDescriptionOptional
+              ? <span style={{ fontWeight: 400, color: "var(--muted-foreground)" }}> (optional)</span>
+              : <span style={{ color: "var(--primary)" }}> *</span>}
           </label>
           <div style={{ display: "flex", gap: 4, background: "var(--muted)", borderRadius: 8, padding: 3 }}>
             {(["paste", "url"] as const).map((mode) => (
