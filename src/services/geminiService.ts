@@ -416,6 +416,8 @@ A web search tool IS available for this task — use it. Research the specific c
 
 Ground the role context in the provided JOB DESCRIPTION. For EVERY section, cite the real source URLs you actually retrieved (each source as { "label": "...", "url": "https://..." }). Never invent URLs or figures — if you couldn't find something, say so in that section's summary and leave its bullets sparse.
 
+Keep the output compact so it is never truncated: at most 4 concise bullets per section (each ≤ 25 words) and at most 3 sources per section. Do NOT wrap the response in markdown code fences (no \`\`\`).
+
 Return ONLY a valid JSON object — no markdown fences, no prose — with EXACTLY this shape:
 {
   "overview": "<2-3 sentences framing the company + a recency note>",
@@ -426,6 +428,45 @@ Return ONLY a valid JSON object — no markdown fences, no prose — with EXACTL
   "sources": [{ "label": "...", "url": "..." }]
 }
 Begin with "{" and end with "}".`;
+
+/**
+ * Parse a JSON object from an LLM response that may be fenced (```json) and/or
+ * TRUNCATED (e.g. cut off at the token limit mid-string). Strips fences, then
+ * if a clean parse fails, walks the text tracking string/escape state and
+ * closes any unterminated string and open braces/brackets to recover the
+ * largest valid object. Returns a best-effort object; throws only if there is
+ * no `{` at all.
+ */
+function parseLooseJsonObject(raw: string): any {
+  let t = (raw ?? "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  const start = t.indexOf("{");
+  if (start < 0) throw new Error("No JSON object found in response");
+  t = t.slice(start);
+
+  // Fast paths: as-is, and with a dangling trailing comma removed.
+  for (const cand of [t, t.replace(/,\s*$/, "")]) {
+    try { return JSON.parse(cand); } catch { /* fall through to repair */ }
+  }
+
+  // Repair: rebuild a balanced object, ignoring braces inside strings.
+  let inStr = false, esc = false;
+  const stack: string[] = [];
+  let out = "";
+  for (const ch of t) {
+    out += ch;
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  if (inStr) out += '"';                 // close an unterminated string value
+  out = out.replace(/,\s*$/, "");        // drop a dangling comma at the cut point
+  while (stack.length) out += stack.pop() === "{" ? "}" : "]";
+  out = out.replace(/,\s*([}\]])/g, "$1"); // strip trailing commas before closers
+  return JSON.parse(out);                 // may still throw → caller handles
+}
 
 const EMPTY_SECTION = (summary: string): CompanyResearchSection => ({ summary, bullets: [], sources: [] });
 
@@ -471,7 +512,7 @@ Use live web search for the company's careers/values pages, role-relevant news (
   });
 
   try {
-    const parsed = parseResumeAnalysisResponse(text);
+    const parsed = parseLooseJsonObject(text);
     const allSources: SourceLink[] = Array.isArray(parsed.sources)
       ? parsed.sources.filter((s: any) => s && typeof s.url === "string").map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
       : [];

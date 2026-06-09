@@ -87,6 +87,10 @@ Deno.serve(async (req) => {
         systemInstruction: systemInstruction || undefined,
         maxOutputTokens: 8096,
         ...(tools ? { tools } : {}),
+        // 2.5/3.x-flash "thinking" tokens count against maxOutputTokens and can
+        // truncate a structured JSON answer mid-string. Disable thinking for the
+        // search-grounded structured call so the full budget goes to the output.
+        ...(enableSearch ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
       },
     });
 
