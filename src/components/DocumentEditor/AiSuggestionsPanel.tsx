@@ -3,7 +3,7 @@ import { Loader2, Send, Sparkles, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import Markdown from "react-markdown";
 import { maskDocumentForDisplay, DOC_START, DOC_END } from "@/lib/aiDocFormat";
-import { DocMessage } from "./index";
+import { DocMessage } from "./types";
 
 export interface AiSuggestionsPanelProps {
   aiMessages: DocMessage[];

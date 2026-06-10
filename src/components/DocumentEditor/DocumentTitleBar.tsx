@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { Loader2, Download, Save, Bookmark, PanelRightClose, PanelRightOpen, Palette } from "lucide-react";
-import type { DocStyle } from "./index";
+import type { DocStyle } from "./types";
 
 interface DocumentTitleBarProps {
   title: string;

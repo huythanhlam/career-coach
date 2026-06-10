@@ -1,7 +1,7 @@
 import { markdownToHtml } from "@/lib/documentMarkdown";
 import { exportHtmlToDocx } from "@/lib/htmlToDocx";
 import { TEMPLATE_FONTS } from "./useDocumentStyle";
-import type { DocStyle } from "./index";
+import type { DocStyle } from "./types";
 
 interface ExportOptions {
   title: string;
