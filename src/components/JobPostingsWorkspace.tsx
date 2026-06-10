@@ -3,9 +3,15 @@ import { createPortal } from "react-dom";
 import {
   Search, Plus, X, Star, Link2, Loader2, Sparkles, MapPin,
   Trash2, ExternalLink, Briefcase, FileText, Mail, ArrowRight,
+  Scissors, Bell, Clock,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 import { useJobPostings, type NewPosting } from "@/hooks/useJobPostings";
+import { TailorResumeWorkspace } from "@/components/TailorResumeWorkspace";
+import type { StoredDocumentPayload } from "@/components/DocumentEditor";
+import { STALE_AFTER_DAYS } from "@/lib/pipelineStats";
 import {
   searchAggregators, scanJobs, importJobFromUrl, type ImportedJobDraft,
 } from "@/services/jobScanService";
@@ -87,6 +93,8 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [savedOnly, setSavedOnly] = useState(false);
+  const [tailorPosting, setTailorPosting] = useState<JobPosting | null>(null);
+  const [showAllSuggested, setShowAllSuggested] = useState(false);
 
   /* ── Search + filters ─────────────────────────────────────────────────── */
   const defaults = useMemo(() => buildDefaultQuery(profile), [profile]);
@@ -178,6 +186,17 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
   // Only show fit scores when the profile has enough to personalize against.
   const personalized = useMemo(() => canScoreProfile(profile), [profile]);
 
+  // "Suggested this week" lane — system-managed rows from the weekly refresh,
+  // ranked by profile fit. Kept out of the unified list below so they read as
+  // fresh deliveries the user triages (save or dismiss), not board clutter.
+  const suggested = useMemo(() => {
+    const lane = postings
+      .filter((p) => p.status === "suggested")
+      .map((p) => ({ posting: p, fit: personalized ? scoreJobFit(p, profile) : { score: 0, factors: [] as FitFactor[] } }));
+    if (personalized) lane.sort((a, b) => b.fit.score - a.fit.score);
+    return lane;
+  }, [postings, profile, personalized]);
+
   /* ── Unified list — profile-scored only when the profile can be personalized ── */
   const items = useMemo<ListItem[]>(() => {
     const saved = new Set(postings.filter((p) => p.externalId).map((p) => `${p.source}:${p.externalId}`));
@@ -194,6 +213,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
       personalized ? scoreJobFit(j, profile) : { score: 0, factors: [] as FitFactor[] };
 
     const fromPostings: ListItem[] = postings
+      .filter((p) => p.status !== "suggested") // shown in their own lane above
       .filter((p) => passesFacets({ title: p.title, location: p.location, description: p.description, remote: p.remote }))
       .map((p) => {
         const { score, factors } = fit(p);
@@ -238,13 +258,13 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
     else if (item.result) setPreview(item);
   };
 
-  // Save an unsaved result; optionally jump straight into its tailor-&-apply drawer.
-  const saveItem = async (item: ListItem, openDrawer = false) => {
+  // Save an unsaved result; optionally jump straight into the tailor workspace.
+  const saveItem = async (item: ListItem, then?: "tailor") => {
     if (!item.result) return;
     setSavingKey(item.key);
     const p = await addPosting(item.result);
     setSavingKey(null);
-    if (openDrawer && p) { setPreview(null); setDetailId(p.id); }
+    if (then === "tailor" && p) { setPreview(null); setTailorPosting(p); }
   };
 
   return (
@@ -342,6 +362,73 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           </div>
         )}
 
+        {/* Suggested this week — fresh matches delivered by the weekly scan */}
+        {suggested.length > 0 && !savedOnly && (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Bell className="w-4.5 h-4.5" style={{ width: 18, height: 18, color: "var(--primary)" }} />
+                Suggested this week
+                <span style={{ fontSize: 14, color: "var(--muted-foreground)", fontWeight: 500 }}>· {suggested.length}</span>
+              </h3>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                New matches for your target roles — refreshed every Monday
+              </span>
+            </div>
+            <div style={{ ...cardStyle, padding: 0, overflow: "hidden", border: "1px solid rgba(217,119,87,0.30)" }}>
+              {(showAllSuggested ? suggested : suggested.slice(0, 6)).map(({ posting: p, fit }, i, shown) => (
+                <div key={p.id} onClick={() => setDetailId(p.id)} className="hover:bg-muted/40 transition-colors"
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: i === shown.length - 1 ? "none" : "1px solid var(--border)", cursor: "pointer" }}>
+                  <CompanyLogo company={p.company} url={p.url} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="font-display" style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {[p.company, p.location].filter(Boolean).join(" · ") || "—"}
+                    </div>
+                  </div>
+                  {personalized && <FitScoreCell score={fit.score} factors={fit.factors} />}
+                  <button onClick={(e) => { e.stopPropagation(); updatePosting(p.id, { status: "saved" }); }}
+                    style={{
+                      height: 34, padding: "0 14px", borderRadius: 9, flexShrink: 0, border: "1px solid var(--primary)",
+                      background: "var(--primary)", color: "#FFF", fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+                      cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5,
+                    }}>
+                    <Plus className="w-3.5 h-3.5" /> Save
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deletePosting(p.id); }} title="Dismiss suggestion"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)", display: "flex", padding: 4, flexShrink: 0 }}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {suggested.length > 6 && (
+                <button onClick={() => setShowAllSuggested((s) => !s)}
+                  style={{ width: "100%", padding: "12px 20px", background: "var(--muted)", border: "none", borderTop: "1px solid var(--border)", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>
+                  {showAllSuggested ? "Show fewer" : `Show all ${suggested.length} suggestions`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Job-alerts prompt — the weekly scan needs target roles to run */}
+        {suggested.length === 0 && !savedOnly && (profile.targetRoles?.length ?? 0) === 0 && (
+          <div style={{ ...cardStyle, padding: 18, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 12, background: "rgba(217,119,87,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Bell className="w-5 h-5" style={{ color: "var(--primary)" }} />
+            </div>
+            <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Get new matches every Monday</div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>
+                Set your target roles and followed companies, and we'll scan their job boards weekly and deliver fresh matches here.
+              </div>
+            </div>
+            <button style={{ ...ghostBtn, flexShrink: 0 }} onClick={() => onNavigate?.("profile_settings")}>
+              Set up job alerts <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Unified list */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
@@ -401,11 +488,11 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           saving={savingKey === preview.key}
           onClose={() => setPreview(null)}
           onSave={() => { saveItem(preview); setPreview(null); }}
-          onSaveAndTailor={() => saveItem(preview, true)}
+          onSaveAndTailor={() => saveItem(preview, "tailor")}
         />
       )}
 
-      {detail && (
+      {detail && !tailorPosting && (
         <DetailDrawer
           posting={detail}
           profile={profile}
@@ -414,8 +501,24 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           onDelete={() => { deletePosting(detail.id); setDetailId(null); }}
           onNavigate={onNavigate}
           onSaveCoverLetter={(cl) => updateProfile({ savedCoverLetters: [...(profile.savedCoverLetters ?? []), cl] })}
-          onSaveResume={(r) => updateProfile({ savedResumes: [...(profile.savedResumes ?? []), r] })}
+          onTailor={() => setTailorPosting(detail)}
         />
+      )}
+
+      {/* Tailor workspace — full-screen, pre-filled with this posting's details.
+          The saved variant is linked back to the posting via appliedResumeId. */}
+      {tailorPosting && (
+        <div className="fixed inset-0 z-[120] flex" style={{ background: "var(--background)" }}>
+          <TailorResumeWorkspace
+            onBack={() => setTailorPosting(null)}
+            initialJobDetails={{
+              jobTitle: tailorPosting.title,
+              companyName: tailorPosting.company ?? "",
+              jobDescription: tailorPosting.description ?? "",
+            }}
+            onVariantSaved={(variant) => updatePosting(tailorPosting.id, { appliedResumeId: variant.id })}
+          />
+        </div>
       )}
     </div>
   );
@@ -796,8 +899,21 @@ function PreviewDrawer({
 /* ─────────────────────────────────────────────────────────────────────────
    Detail drawer — description + tailor & apply
    ───────────────────────────────────────────────────────────────────────── */
+/** Escape text for embedding into the stored cover-letter HTML payload. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Plain text → the paragraph HTML the DocumentEditor payload format expects. */
+function textToPayloadHtml(text: string): string {
+  return text
+    .split(/\n{2,}/)
+    .map((p) => `<p>${escapeHtml(p.trim()).replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+}
+
 function DetailDrawer({
-  posting, profile, onClose, onUpdate, onDelete, onNavigate, onSaveCoverLetter, onSaveResume,
+  posting, profile, onClose, onUpdate, onDelete, onNavigate, onSaveCoverLetter, onTailor,
 }: {
   posting: JobPosting;
   profile: ReturnType<typeof useUserProfile>["profile"];
@@ -806,16 +922,17 @@ function DetailDrawer({
   onDelete: () => void;
   onNavigate?: (view: ViewId) => void;
   onSaveCoverLetter: (cl: NonNullable<typeof profile.savedCoverLetters>[number]) => void;
-  onSaveResume: (r: NonNullable<typeof profile.savedResumes>[number]) => void;
+  onTailor: () => void;
 }) {
+  const { session } = useAuth();
   const [notes, setNotes] = useState(posting.notes ?? "");
   const [scoring, setScoring] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [coverDraft, setCoverDraft] = useState("");
   const [coverSaved, setCoverSaved] = useState(false);
-  const [resumeGenerating, setResumeGenerating] = useState(false);
-  const [resumeDraft, setResumeDraft] = useState("");
-  const [resumeSaved, setResumeSaved] = useState(false);
+  const [coverSaving, setCoverSaving] = useState(false);
+  const [followUpGenerating, setFollowUpGenerating] = useState(false);
+  const [followUpDraft, setFollowUpDraft] = useState("");
 
   const resumeText = profile.resumeText
     ?? profile.savedResumes?.find((r) => r.text)?.text
@@ -846,44 +963,57 @@ function DetailDrawer({
     }
   };
 
-  const saveCover = () => {
-    const id = generateId();
-    onSaveCoverLetter({
-      id,
-      name: `${posting.title} — ${posting.company ?? "cover letter"}`,
-      storagePath: "",
-      text: coverDraft,
-      jobTitle: posting.title,
-      company: posting.company ?? "",
-      createdAt: new Date().toISOString(),
-    });
-    onUpdate({ appliedCoverLetterId: id }); // link it to this application
-    setCoverSaved(true);
-  };
-
-  const generateResume = async () => {
-    setResumeGenerating(true); setResumeSaved(false);
+  // Persist the draft to Storage as a DocumentEditor payload — same format the
+  // Cover Letter builder writes — so it can be reopened/edited there later.
+  // (Previously saved with storagePath:"" + transient text, which couldn't be reopened.)
+  const saveCover = async () => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    setCoverSaving(true);
     try {
-      const system = "You are an expert resume writer. Tailor the candidate's resume to THIS job using ONLY their real experience — never invent employers, titles, dates, or metrics. Surface the most relevant experience and weave in keywords from the job description. Output a clean, ATS-friendly resume in Markdown. No commentary.";
-      const name = profile.fullName || profile.preferredName || "";
-      const prompt = `Tailor a resume for this job.\n\nJOB:\n${posting.title} at ${posting.company ?? ""}\n${posting.description ?? ""}\n\nCANDIDATE:\nName: ${name}\nTarget role: ${profile.targetRole ?? ""}\nSkills: ${(profile.skills ?? []).join(", ")}\nExisting resume / background:\n${resumeText.slice(0, 6000)}`;
-      setResumeDraft(await generateWorkflowData(system, prompt, "claude-sonnet-4-6"));
+      const id = generateId();
+      const storagePath = `${userId}/cover-letters/${id}.json`;
+      const payload: StoredDocumentPayload = {
+        version: 1,
+        html: textToPayloadHtml(coverDraft),
+        style: { templateId: "modern-clean", accentColor: "#D97757", accentStyle: "line", paperBg: "#ffffff" },
+      };
+      const { error } = await supabase.storage
+        .from("user-documents")
+        .upload(storagePath, new Blob([JSON.stringify(payload)], { type: "application/json" }), { upsert: true });
+      if (error) throw error;
+      onSaveCoverLetter({
+        id,
+        name: `${posting.title} — ${posting.company ?? "cover letter"}`,
+        storagePath,
+        jobTitle: posting.title,
+        company: posting.company ?? "",
+        createdAt: new Date().toISOString(),
+      });
+      onUpdate({ appliedCoverLetterId: id }); // link it to this application
+      setCoverSaved(true);
+    } catch (err) {
+      console.error("Failed to save cover letter:", err);
     } finally {
-      setResumeGenerating(false);
+      setCoverSaving(false);
     }
   };
 
-  const saveResume = () => {
-    const id = generateId();
-    onSaveResume({
-      id,
-      name: `${posting.title} — ${posting.company ?? "resume"}`,
-      storagePath: "",
-      text: resumeDraft,
-      createdAt: new Date().toISOString(),
-    });
-    onUpdate({ appliedResumeId: id }); // link it to this application
-    setResumeSaved(true);
+  const daysSinceApplied = posting.appliedAt
+    ? Math.floor((Date.now() - new Date(posting.appliedAt).getTime()) / 86_400_000)
+    : null;
+  const needsFollowUp = posting.status === "applied" && daysSinceApplied != null && daysSinceApplied > STALE_AFTER_DAYS;
+
+  const generateFollowUp = async () => {
+    setFollowUpGenerating(true);
+    try {
+      const system = "You are an expert career writer. Write a short, warm, professional follow-up email about a job application — 3 short paragraphs max, restating interest and one concrete qualification. No placeholders like [Your Name]; use the provided name. Output plain text only: a Subject: line, then the body.";
+      const name = profile.fullName || profile.preferredName || "";
+      const prompt = `Write a follow-up email for this application.\n\nJOB:\n${posting.title} at ${posting.company ?? ""}\n${(posting.description ?? "").slice(0, 2000)}\n\nApplied ${daysSinceApplied != null ? `${daysSinceApplied} days ago` : "recently"}.\n\nCANDIDATE:\nName: ${name}\nTarget role: ${profile.targetRole ?? ""}\nSkills: ${(profile.skills ?? []).join(", ")}\nBackground:\n${resumeText.slice(0, 3000)}`;
+      setFollowUpDraft(await generateWorkflowData(system, prompt, "claude-sonnet-4-6"));
+    } finally {
+      setFollowUpGenerating(false);
+    }
   };
 
   const savedResumes = profile.savedResumes ?? [];
@@ -973,18 +1103,12 @@ function DetailDrawer({
                     Builder <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <button style={{ ...ghostBtn, width: "100%", justifyContent: "center" }} onClick={generateResume} disabled={resumeGenerating}>
-                  {resumeGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Generate a tailored resume
+                <button style={{ ...primaryBtn, width: "100%", justifyContent: "center" }} onClick={onTailor}>
+                  <Scissors className="w-3.5 h-3.5" /> Tailor my resume for this job
                 </button>
-                {resumeDraft && (
-                  <div style={{ marginTop: 8 }}>
-                    <textarea value={resumeDraft} onChange={(e) => { setResumeDraft(e.target.value); setResumeSaved(false); }}
-                      style={{ ...inputStyle, height: 220, padding: 14, resize: "vertical" as const, lineHeight: 1.5, fontFamily: "var(--font-mono, monospace)", fontSize: 12 }} />
-                    <button style={{ ...primaryBtn, marginTop: 8 }} onClick={saveResume} disabled={resumeSaved}>
-                      {resumeSaved ? "Saved & attached" : "Save resume"}
-                    </button>
-                  </div>
-                )}
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 6, lineHeight: 1.5 }}>
+                  Get inline before/after suggestions against this job description — the saved variant attaches to this application automatically.
+                </div>
               </div>
 
               {/* Cover letter */}
@@ -1007,12 +1131,37 @@ function DetailDrawer({
                   <div style={{ marginTop: 8 }}>
                     <textarea value={coverDraft} onChange={(e) => { setCoverDraft(e.target.value); setCoverSaved(false); }}
                       style={{ ...inputStyle, height: 200, padding: 14, resize: "vertical" as const, lineHeight: 1.5 }} />
-                    <button style={{ ...primaryBtn, marginTop: 8 }} onClick={saveCover} disabled={coverSaved}>
+                    <button style={{ ...primaryBtn, marginTop: 8 }} onClick={saveCover} disabled={coverSaved || coverSaving}>
+                      {coverSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                       {coverSaved ? "Saved to your cover letters" : "Save cover letter"}
                     </button>
                   </div>
                 )}
               </div>
+
+              {/* Follow-up — nudged once an application has sat unanswered */}
+              {(posting.status === "applied" || posting.status === "interviewing") && (
+                <div>
+                  <Label icon={Clock} text="Follow up" />
+                  {needsFollowUp && (
+                    <div style={{ fontSize: 12, color: "#B45309", background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "8px 12px", marginBottom: 8, lineHeight: 1.5 }}>
+                      Applied {daysSinceApplied} days ago with no movement — a short follow-up keeps you on the recruiter's radar.
+                    </div>
+                  )}
+                  <button style={{ ...ghostBtn, width: "100%", justifyContent: "center" }} onClick={generateFollowUp} disabled={followUpGenerating}>
+                    {followUpGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} Draft a follow-up email
+                  </button>
+                  {followUpDraft && (
+                    <div style={{ marginTop: 8 }}>
+                      <textarea value={followUpDraft} onChange={(e) => setFollowUpDraft(e.target.value)}
+                        style={{ ...inputStyle, height: 180, padding: 14, resize: "vertical" as const, lineHeight: 1.5 }} />
+                      <button style={{ ...ghostBtn, marginTop: 8 }} onClick={() => navigator.clipboard?.writeText(followUpDraft)}>
+                        Copy to clipboard
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 

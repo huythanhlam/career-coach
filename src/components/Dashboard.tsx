@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Plus,
   ArrowRight,
@@ -14,12 +14,15 @@ import {
   Briefcase,
   Mail,
   Lock,
+  Sparkles,
+  Clock,
 } from "lucide-react";
 import { useJobPostings } from "@/hooks/useJobPostings";
 import type { JobStatus } from "@/types/jobPosting";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
+import { computePipelineStats, STALE_AFTER_DAYS } from "@/lib/pipelineStats";
 import type { ViewId } from "@/components/Sidebar";
 
 const STATUS_MAP: Record<JobStatus, { bg: string; fg: string; border: string; label: string }> = {
@@ -64,6 +67,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const { postings: allPostings, addPosting } = useJobPostings();
   // The dashboard pipeline tracks chosen postings, not weekly "suggested" ones.
   const postings = allPostings.filter((p) => p.status !== "suggested");
+  const suggestedCount = allPostings.length - postings.length;
+  const pipelineStats = useMemo(() => computePipelineStats(postings), [postings]);
   const { profile } = useUserProfile();
   const isMobile = useIsMobile();
   const { analyses } = useSavedAnalyses();
@@ -223,6 +228,71 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         </div>
 
+        {/* ── This week's job matches ────────────────────────────── */}
+        {suggestedCount > 0 && (
+          <button
+            onClick={() => go("job_postings")}
+            className="group hover:border-primary/40 transition-colors"
+            style={{
+              display: "flex", alignItems: "center", gap: 16, textAlign: "left", fontFamily: "inherit",
+              background: "rgba(217,119,87,0.06)", border: "1px solid rgba(217,119,87,0.30)",
+              borderRadius: 24, padding: "18px 24px", cursor: "pointer",
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 14, background: "rgba(217,119,87,0.12)",
+              border: "1px solid rgba(217,119,87,0.25)", color: "var(--primary)",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="font-display" style={{ fontSize: 17, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
+                {suggestedCount} new job {suggestedCount === 1 ? "match" : "matches"} this week
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
+                Fresh postings matched to your target roles — refreshed every Monday.
+              </div>
+            </div>
+            <div style={{ color: "var(--primary)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              Review matches <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        )}
+
+        {/* ── Follow-up nudge ────────────────────────────────────── */}
+        {pipelineStats.staleApplications.length > 0 && (
+          <button
+            onClick={() => go("job_postings")}
+            className="group transition-colors"
+            style={{
+              display: "flex", alignItems: "center", gap: 16, textAlign: "left", fontFamily: "inherit",
+              background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)",
+              borderRadius: 24, padding: "18px 24px", cursor: "pointer",
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 14, background: "rgba(245,158,11,0.12)",
+              border: "1px solid rgba(245,158,11,0.25)", color: "#B45309",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Clock className="w-5 h-5" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="font-display" style={{ fontSize: 17, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
+                {pipelineStats.staleApplications.length} application{pipelineStats.staleApplications.length === 1 ? "" : "s"} could use a follow-up
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                No movement in over {STALE_AFTER_DAYS} days: {pipelineStats.staleApplications.slice(0, 3).map((p) => p.company ?? p.title).join(", ")}
+                {pipelineStats.staleApplications.length > 3 ? "…" : ""} — we'll draft the email for you.
+              </div>
+            </div>
+            <div style={{ color: "#B45309", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              Follow up <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        )}
+
         {/* ── Career path ────────────────────────────────────────── */}
         <CareerPath
           currentRole={currentRole}
@@ -351,6 +421,25 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
             </div>
           </div>
+
+          {/* Funnel stats — how the search is converting, derived locally */}
+          {pipelineStats.applied > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12 }}>
+                <FunnelStat label="Applications" value={`${pipelineStats.applied}`} hint={`${pipelineStats.responses} got a response`} />
+                <FunnelStat label="Response rate" value={pipelineStats.responseRate != null ? `${Math.round(pipelineStats.responseRate * 100)}%` : "—"} hint="interviews + rejections" />
+                <FunnelStat label="Interview rate" value={pipelineStats.interviewRate != null ? `${Math.round(pipelineStats.interviewRate * 100)}%` : "—"} hint={`${pipelineStats.interviews} reached interviews`} />
+                <FunnelStat label="Offers" value={`${pipelineStats.offers}`} hint={pipelineStats.offers > 0 ? "nice work 🎉" : "keep going"} />
+              </div>
+              {pipelineStats.tailoredEdge && pipelineStats.tailoredEdge.tailoredRate > pipelineStats.tailoredEdge.untailoredRate && (
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--primary)", flexShrink: 0 }} />
+                  Applications with a tailored resume hear back {Math.round(pipelineStats.tailoredEdge.tailoredRate * 100)}% of the time,
+                  vs {Math.round(pipelineStats.tailoredEdge.untailoredRate * 100)}% without — tailoring is working for you.
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", overflow: "hidden" }}>
             {/* Table header */}
@@ -532,6 +621,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Funnel stat (pipeline analytics) ─────────────────────────────── */
+function FunnelStat({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: "14px 18px", boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+      <div className="eyebrow">{label}</div>
+      <div className="font-display" style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--foreground)", marginTop: 4, lineHeight: 1.1 }}>
+        {value}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>{hint}</div>
     </div>
   );
 }

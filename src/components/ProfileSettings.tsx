@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Plus, Trash2, Save, Pencil, Check, X,
   Linkedin, Github, Globe, MapPin, Briefcase,
-  GraduationCap, Sparkles,
+  GraduationCap, Sparkles, Bell, Building2,
 } from "lucide-react";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
@@ -13,6 +13,8 @@ import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS,
 import type { WorkExperience, Education } from "@/types/userProfile";
 import { generateId } from "@/types/userProfile";
 import { useUserProfile } from "@/context/UserProfileContext";
+import type { TargetRole, TargetCompany } from "@/types/jobPosting";
+import { detectAtsFromUrl } from "@/services/jobScanService";
 
 /* ── gradient cover ──────────────────────────────────────────── */
 const COVER_GRADIENT =
@@ -118,6 +120,21 @@ export function ProfileSettings() {
   const [newSkill, setNewSkill] = useState("");
   const [saved, setSaved] = useState(false);
 
+  /* job alerts state — target roles drive the weekly suggested-postings scan,
+     so seed from the free-text target role when no structured roles exist yet */
+  const [alertRoles, setAlertRoles] = useState<TargetRole[]>(
+    profile.targetRoles?.length
+      ? profile.targetRoles
+      : profile.targetRole?.trim()
+        ? [{ id: generateId(), title: profile.targetRole.trim() }]
+        : []
+  );
+  const [newAlertRole, setNewAlertRole] = useState("");
+  const [followedCompanies, setFollowedCompanies] = useState<TargetCompany[]>(profile.targetCompanies ?? []);
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [newCompanyUrl, setNewCompanyUrl] = useState("");
+  const [companyError, setCompanyError] = useState("");
+
   /* experience state */
   const [workHistory, setWorkHistory] = useState<WorkExperience[]>(profile.workHistory?.length ? profile.workHistory : []);
   const [editingWorkId, setEditingWorkId] = useState<string | null>(null);
@@ -147,6 +164,8 @@ export function ProfileSettings() {
       workHistory: workHistory.filter((w) => w.company || w.role),
       education: education.filter((e) => e.university || e.degree),
       skills: skillsList.filter(Boolean),
+      targetRoles: alertRoles,
+      targetCompanies: followedCompanies,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
@@ -155,6 +174,30 @@ export function ProfileSettings() {
   function addSkill() {
     const s = newSkill.trim();
     if (s && !skillsList.includes(s)) { setSkillsList((p) => [...p, s]); setNewSkill(""); }
+  }
+
+  function addAlertRole() {
+    const title = newAlertRole.trim();
+    if (!title || alertRoles.some((r) => r.title.toLowerCase() === title.toLowerCase())) return;
+    setAlertRoles((p) => [...p, { id: generateId(), title }]);
+    setNewAlertRole("");
+  }
+
+  function addFollowedCompany() {
+    const name = newCompanyName.trim();
+    const url = newCompanyUrl.trim();
+    if (!name || !url) { setCompanyError("Enter the company name and its careers-page URL."); return; }
+    const detected = detectAtsFromUrl(url);
+    if (!detected) {
+      setCompanyError("Couldn't recognize that careers page — paste a Greenhouse, Lever, Ashby, Workable, or SmartRecruiters board URL.");
+      return;
+    }
+    if (followedCompanies.some((c) => c.ats === detected.ats && c.boardToken === detected.boardToken)) {
+      setCompanyError("You're already following this company's board.");
+      return;
+    }
+    setFollowedCompanies((p) => [...p, { id: generateId(), name, ...detected }]);
+    setNewCompanyName(""); setNewCompanyUrl(""); setCompanyError("");
   }
 
   /* work helpers */
@@ -334,6 +377,76 @@ export function ProfileSettings() {
               <button onClick={addSkill} className="px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "var(--primary)", color: "#fff" }}>
                 <Plus className="w-3.5 h-3.5" />
               </button>
+            </div>
+          </section>
+
+          {/* Job alerts — feeds the weekly suggested-postings refresh */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold tracking-widest uppercase" style={{ color: "var(--muted-foreground)" }}>Job alerts</h3>
+              <Bell className="w-3.5 h-3.5" style={{ color: "var(--primary)" }} />
+            </div>
+            <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
+              Every Monday we scan job boards for these roles and drop new matches into your Suggested lane.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {alertRoles.map((r) => (
+                <SkillPill key={r.id} skill={r.title} onRemove={() => setAlertRoles((p) => p.filter((x) => x.id !== r.id))} />
+              ))}
+              {alertRoles.length === 0 && (
+                <p className="text-xs italic" style={{ color: "var(--muted-foreground)" }}>No alert roles yet — add one below.</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <ComboInput
+                style={{ ...iStyle, height: "auto", fontSize: 12, padding: "8px 12px" }}
+                value={newAlertRole} onChange={setNewAlertRole} options={JOB_TITLES}
+                placeholder="Add a role to watch…"
+              />
+              <button onClick={addAlertRole} className="px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "var(--primary)", color: "#fff" }}>
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 mt-5 mb-2">
+              <Building2 className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
+              <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: "var(--muted-foreground)" }}>Followed companies</span>
+            </div>
+            <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
+              Follow a company's careers page (Greenhouse, Lever, Ashby, Workable, or SmartRecruiters) and we'll scan its board directly.
+            </p>
+            <div className="flex flex-col gap-2 mb-3">
+              {followedCompanies.map((c) => (
+                <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs group"
+                  style={{ background: "var(--muted)", border: "1px solid var(--border)" }}>
+                  <span className="font-semibold truncate" style={{ color: "var(--foreground)" }}>{c.name}</span>
+                  <span className="uppercase tracking-wide text-[10px] flex-shrink-0" style={{ color: "var(--muted-foreground)" }}>{c.ats}</span>
+                  <button onClick={() => setFollowedCompanies((p) => p.filter((x) => x.id !== c.id))}
+                    className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ color: "var(--muted-foreground)" }}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2">
+              <ComboInput
+                style={{ ...iStyle, height: "auto", fontSize: 12, padding: "8px 12px" }}
+                value={newCompanyName} onChange={(v) => { setNewCompanyName(v); setCompanyError(""); }}
+                options={SP500_COMPANIES} placeholder="Company name"
+              />
+              <div className="flex gap-2">
+                <input type="text" value={newCompanyUrl}
+                  onChange={(e) => { setNewCompanyUrl(e.target.value); setCompanyError(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && addFollowedCompany()}
+                  placeholder="Careers page URL"
+                  className="flex-1 text-xs px-3 py-2 rounded-xl outline-none"
+                  style={{ background: "var(--muted)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit" }}
+                />
+                <button onClick={addFollowedCompany} className="px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: "var(--primary)", color: "#fff" }}>
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {companyError && <p className="text-xs" style={{ color: "var(--primary)" }}>{companyError}</p>}
             </div>
           </section>
         </div>
