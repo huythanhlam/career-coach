@@ -14,6 +14,7 @@ import {
   Undo2, Redo2, Smile,
 } from "lucide-react";
 import { sendMessageStream } from "@/services/geminiService";
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { extractDocument, maskDocumentForDisplay, DOC_START, DOC_END } from "@/lib/aiDocFormat";
 import { TEMPLATES } from "@/components/TemplateGallery";
 import { getScopedStyles, loadGoogleFont } from "@/components/ResumeRenderer";
@@ -868,6 +869,9 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
     const t = setTimeout(() => { setSaveStatus("saved"); setTimeout(() => setSaveStatus(""), 2000); }, 800);
     return () => clearTimeout(t);
   }, [content]);
+
+  // Don't let the tab close while a debounced autosave may not have flushed.
+  useUnsavedChangesWarning(saveStatus === "saving");
 
   useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages]);
 

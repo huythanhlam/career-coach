@@ -235,7 +235,7 @@ export function CompanyProfileViz({ profile, onReset }: Props) {
         <MentorCard style={{ overflow: "hidden", background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--card)), var(--card))" }}>
           <div style={{ padding: "20px 22px", display: "flex", gap: 14, alignItems: "flex-start" }}>
             {profile.logoUrl ? (
-              <img src={profile.logoUrl} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", flexShrink: 0 }} />
+              <img src={profile.logoUrl} alt="" loading="lazy" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", flexShrink: 0 }} />
             ) : (
               <span style={{ width: 48, height: 48, borderRadius: 12, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "color-mix(in srgb, var(--primary) 16%, transparent)" }}>
                 <Building2 className="w-6 h-6" style={{ color: "var(--primary)" }} />

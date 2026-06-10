@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, X, MessageSquare, Loader2, Sparkles } from "lucide-react";
+import { Bot, User, Send, X, MessageSquare, Loader2, Sparkles, Trash2 } from "lucide-react";
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
@@ -24,13 +24,49 @@ interface GlobalChatPanelProps {
   activeView: ViewId;
 }
 
+const CHAT_STORAGE_KEY = "coachChatHistory";
+const CHAT_HISTORY_LIMIT = 40; // turns kept across reloads
+
+function restoreMessages(): Message[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (m): m is Message =>
+        m && (m.role === "user" || m.role === "model") && typeof m.text === "string" && m.text !== ""
+    );
+  } catch {
+    return [];
+  }
+}
+
 export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanelProps) {
   const { profile } = useUserProfile();
   const { postings } = useJobPostings();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(restoreMessages);
+  const [chatInstance, setChatInstance] = useState<ReturnType<typeof createCoachingChat> | null>(null);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Persist the conversation so a refresh doesn't lose it. Skipped while
+  // streaming to avoid a write per chunk.
+  useEffect(() => {
+    if (isGenerating) return;
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-CHAT_HISTORY_LIMIT)));
+    } catch {
+      // storage full/unavailable — losing chat persistence is acceptable
+    }
+  }, [messages, isGenerating]);
+
+  const clearConversation = () => {
+    setMessages([]);
+    setChatInstance(null);
+    try {
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch {}
+  };
 
   const workflowConfig = workflowsConfig[activeView as any];
   const systemInstruction = workflowConfig?.systemInstruction || basePersona;
@@ -71,9 +107,12 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
     setMessages([...newMessages, { role: "model", text: "" }]);
 
     try {
-      // A fresh chat per turn, seeded with the visible transcript, gives the
-      // coach genuine multi-turn memory plus always-current view context.
-      const currentChat = createCoachingChat(buildContextualInstruction(), messages);
+      let currentChat = chatInstance;
+      if (!currentChat) {
+        // Create once, seeded with transcript + profile/pipeline context.
+        currentChat = createCoachingChat(buildContextualInstruction(), messages);
+        setChatInstance(currentChat);
+      }
 
       await sendMessageStream(currentChat, text, (chunk) => {
         setMessages((prev) => {
@@ -116,9 +155,24 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
             </div>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-muted w-8 h-8">
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearConversation}
+              disabled={isGenerating}
+              aria-label="Clear conversation"
+              title="Clear conversation"
+              className="rounded-full hover:bg-muted w-8 h-8"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close coach panel" className="rounded-full hover:bg-muted w-8 h-8">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}

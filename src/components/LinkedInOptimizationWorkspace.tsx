@@ -20,10 +20,9 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { LinkedInAnalysisResult, Improvement, DesignRecommendation } from "@/services/geminiService";
 import type { ScreenshotResult, ProfileRegion } from "@/services/linkedinScreenshotService";
+import { configurePdfWorker } from "@/lib/pdfWorker";
 
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-}
+configurePdfWorker(pdfjs);
 
 const priorityStyles: Record<'high' | 'medium' | 'low', React.CSSProperties> = {
   high:   { background: 'rgba(217,119,87,0.15)', border: '1px solid rgba(217,119,87,0.40)', color: 'var(--primary)' },

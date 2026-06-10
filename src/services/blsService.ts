@@ -13,6 +13,7 @@
  * specific YoE. London/non-US and custom roles fall back to the AI estimate.
  */
 import type { MarketCompData, LocationCompData } from "@/components/MarketCompensationViz";
+import { supabase } from "@/lib/supabaseClient";
 
 // BLS OEWS publishes ~annually, so its bands get a much longer TTL than the AI
 // estimate's 30-day cache: reuse recent BLS bands across AI regenerations and
@@ -95,12 +96,16 @@ export async function fetchBlsBands(role: string, locationName: string): Promise
 
   const ids = Object.values(DATATYPES).map((dt) => seriesId(area.areaType, area.code, soc, dt));
   try {
+    // Authenticate as the signed-in user (mirrors the AI gateway) so requests
+    // are attributable per-user; fall back to the anon key for local dev.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token ?? SUPABASE_ANON_KEY;
     const res = await fetch(BLS_PROXY_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ seriesIds: ids }),
     });

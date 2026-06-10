@@ -4,19 +4,36 @@
 // e.g. "https://app.example.com,https://www.example.com". The request's Origin is
 // echoed back only if it is on the list; otherwise the first allowed origin is
 // returned (so unknown origins are not granted access). If the secret is unset we
-// fall back to "*" for local/dev convenience — set it in production.
+// fail closed in production; the "*" fallback applies only when running against a
+// local Supabase stack, for dev convenience.
 
-const ALLOW_LIST = (Deno.env.get("ALLOWED_ORIGIN") ?? "*")
+const CONFIGURED = (Deno.env.get("ALLOWED_ORIGIN") ?? "")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
 
-const ALLOW_ALL = ALLOW_LIST.length === 0 || ALLOW_LIST.includes("*");
+// Local `supabase functions serve` exposes the stack on localhost/kong.
+const IS_LOCAL_STACK = /localhost|127\.0\.0\.1|\/\/kong\b/.test(
+  Deno.env.get("SUPABASE_URL") ?? "",
+);
+
+const ALLOW_LIST = CONFIGURED.length > 0 ? CONFIGURED : IS_LOCAL_STACK ? ["*"] : [];
+
+if (ALLOW_LIST.length === 0) {
+  console.warn(
+    "ALLOWED_ORIGIN is not set — all cross-origin browser requests will be blocked. " +
+      "Set the ALLOWED_ORIGIN secret to your app's origin(s).",
+  );
+}
+
+const ALLOW_ALL = ALLOW_LIST.includes("*");
 
 function resolveOrigin(requestOrigin: string | null): string {
   if (ALLOW_ALL) return "*";
   if (requestOrigin && ALLOW_LIST.includes(requestOrigin)) return requestOrigin;
-  return ALLOW_LIST[0];
+  // Unknown origin: echo an origin the browser's Origin header can never
+  // match, so the response is unreadable cross-origin.
+  return ALLOW_LIST[0] ?? "null";
 }
 
 /** Build CORS headers for a given request (honors the Origin allowlist). */

@@ -44,11 +44,11 @@ export async function parseDocumentToText(file: File): Promise<string> {
   const type = detectFileType(file);
 
   if (type === "pdf") {
-    const pdfjs = await import("pdfjs-dist");
-    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-      pdfjs.GlobalWorkerOptions.workerSrc =
-        `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-    }
+    const [pdfjs, { configurePdfWorker }] = await Promise.all([
+      import("pdfjs-dist"),
+      import("@/lib/pdfWorker"),
+    ]);
+    configurePdfWorker(pdfjs);
     const buf = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument({ data: buf }).promise;
     const pages = await Promise.all(

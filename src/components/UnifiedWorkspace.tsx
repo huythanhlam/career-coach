@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import {
   Building,
@@ -20,6 +20,7 @@ import { enrichWithBls } from "@/services/blsService";
 import { MarketCompensationViz } from "./MarketCompensationViz";
 import Markdown from "react-markdown";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { toast } from "@/components/ui/toast";
 
 export function UnifiedWorkspace() {
   const isMobile = useIsMobile();
@@ -28,6 +29,12 @@ export function UnifiedWorkspace() {
   const [yoe, setYoe] = useState("");
   const [level, setLevel] = useState("");
   const [resumeData, setResumeData] = useState<{data: string, mimeType: string, name: string} | null>(null);
+
+  // The processing→results transition timer must not fire after unmount.
+  const resultsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (resultsTimerRef.current) clearTimeout(resultsTimerRef.current);
+  }, []);
 
   // Auto-Pilot Output States
   const [marketData, setMarketData] = useState<any>(null);
@@ -154,21 +161,26 @@ export function UnifiedWorkspace() {
     }
 
     // Move to results when market is done (or after an arbitrary wait to ensure user sees progress)
-    setTimeout(() => setStep("results"), 8000);
+    resultsTimerRef.current = setTimeout(() => setStep("results"), 8000);
   };
 
   const saveAnalysis = async () => {
-    await persistAnalysis({
-      jobInput,
-      yoe,
-      level,
-      marketData,
-      companyIntel,
-      resumeFit,
-      interviewStrategy,
-      resumeFileName: resumeData?.name ?? null,
-    });
-    alert("Analysis saved successfully!");
+    try {
+      await persistAnalysis({
+        jobInput,
+        yoe,
+        level,
+        marketData,
+        companyIntel,
+        resumeFit,
+        interviewStrategy,
+        resumeFileName: resumeData?.name ?? null,
+      });
+      toast("Analysis saved", "success");
+    } catch (err) {
+      console.error("Failed to save analysis:", err);
+      toast("Couldn't save the analysis. Please try again.", "error");
+    }
   };
 
   if (step === "results") {
