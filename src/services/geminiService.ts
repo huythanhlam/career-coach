@@ -87,35 +87,65 @@ export interface SourceLink { label: string; url: string }
 
 const GATEWAY_DOWN_MESSAGE =
   "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal.";
+const GATEWAY_TIMEOUT_MESSAGE =
+  "The AI request timed out. Please try again.";
+
+// Generations with web search can legitimately take a while, but a request
+// should never hang the UI forever.
+const GATEWAY_TIMEOUT_MS = 120_000;
+const GATEWAY_MAX_ATTEMPTS = 3;
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 
 /**
  * Low-level gateway call that surfaces both the generated text AND any grounding
  * sources the gateway returns (production Gemini search grounding populates
  * `sources`; the local Claude-CLI gateway returns `[]` and embeds citations in
  * the text instead). Most callers want only the text — use `postToGateway`.
+ *
+ * Times out after GATEWAY_TIMEOUT_MS and retries transient failures (network
+ * errors, 408/429/5xx) with exponential backoff. Timeouts are not retried —
+ * the user has already waited long enough.
  */
 async function postToGatewayRaw(body: object): Promise<{ text: string; sources: SourceLink[] }> {
   console.log("🚀 Sending to gateway:", GATEWAY_URL);
+  let timedOut = false;
   try {
     const authHeader = await getAuthHeader();
-    const response = await fetch(GATEWAY_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": authHeader,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => "(no body)");
-      throw new Error(`Gateway ${response.status}: ${errBody}`);
+    let lastError: unknown;
+    for (let attempt = 0; attempt < GATEWAY_MAX_ATTEMPTS; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
+      try {
+        const response = await fetch(GATEWAY_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": authHeader,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+          const errBody = await response.text().catch(() => "(no body)");
+          lastError = new Error(`Gateway ${response.status}: ${errBody}`);
+          if (RETRYABLE_STATUS.has(response.status)) continue;
+          throw lastError;
+        }
+        const data = await response.json();
+        return { text: data.text, sources: Array.isArray(data.sources) ? data.sources : [] };
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "TimeoutError") {
+          timedOut = true;
+          throw error;
+        }
+        if (error === lastError) throw error; // non-retryable HTTP status
+        lastError = error; // network hiccup — retry
+      }
     }
-    const data = await response.json();
-    return { text: data.text, sources: Array.isArray(data.sources) ? data.sources : [] };
+    throw lastError;
   } catch (error) {
     console.error("❌ Gateway Error:", error);
-    return { text: GATEWAY_DOWN_MESSAGE, sources: [] };
+    return { text: timedOut ? GATEWAY_TIMEOUT_MESSAGE : GATEWAY_DOWN_MESSAGE, sources: [] };
   }
 }
 

@@ -44,8 +44,9 @@ import { getCachedCompanyResearch, putCachedCompanyResearch } from "@/config/com
 import { getCompanyProfile, requestCompanyProfile, type RequestProfileResult } from "@/services/companyProfileService";
 import type { CompanyProfile } from "@/types/companyProfile";
 import type { ViewId } from "@/components/Sidebar";
+import { configurePdfWorker } from "@/lib/pdfWorker";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+configurePdfWorker(pdfjs);
 
 async function extractPDFText(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
