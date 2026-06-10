@@ -35,13 +35,16 @@ interface SetupScreenProps {
   onBack?: () => void;
   initialResumeText?: string;
   initialResumeName?: string;
+  initialJobDetails?: JobDetailsValue;
 }
 
-function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName }: SetupScreenProps) {
+function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName, initialJobDetails }: SetupScreenProps) {
   const { profile } = useUserProfile();
   const { session } = useAuth();
   const [selectedId, setSelectedId] = useState<string>("");
-  const [jobDetails, setJobDetails] = useState<JobDetailsValue>({ jobTitle: "", companyName: "", jobDescription: "" });
+  const [jobDetails, setJobDetails] = useState<JobDetailsValue>(
+    initialJobDetails ?? { jobTitle: "", companyName: "", jobDescription: "" }
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -189,14 +192,22 @@ function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName }: 
 
 // ─── Suggestions screen ────────────────────────────────────────────────────────
 
+export interface SavedTailoredVariant {
+  id: string;
+  name: string;
+  storagePath: string;
+  createdAt: string;
+}
+
 interface SuggestionsScreenProps {
   resumeName: string;
   resumeText: string;
   suggestions: TailorSuggestion[];
   onReset: () => void;
+  onVariantSaved?: (variant: SavedTailoredVariant) => void;
 }
 
-function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: SuggestionsScreenProps) {
+function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVariantSaved }: SuggestionsScreenProps) {
   const { profile, updateProfile } = useUserProfile();
   const { session } = useAuth();
   const [workingText, setWorkingText] = useState(resumeText);
@@ -252,13 +263,10 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset }: Sug
     try {
       const id = generateId();
       const storagePath = await uploadResume(userId, id, workingText);
+      const variant = { id, name: `${resumeName} (Tailored)`, storagePath, createdAt: new Date().toISOString() };
       const existing = profile.savedResumes ?? [];
-      await updateProfile({
-        savedResumes: [
-          ...existing,
-          { id, name: `${resumeName} (Tailored)`, storagePath, createdAt: new Date().toISOString() },
-        ],
-      });
+      await updateProfile({ savedResumes: [...existing, variant] });
+      onVariantSaved?.(variant);
       setSavedVariant(true);
     } catch (err) {
       console.error("Failed to save tailored variant:", err);
@@ -465,9 +473,13 @@ interface TailorResumeWorkspaceProps {
   onBack?: () => void;
   initialResumeText?: string;
   initialResumeName?: string;
+  /** Pre-fill the job details (e.g. when launched from a saved job posting). */
+  initialJobDetails?: JobDetailsValue;
+  /** Called when the user saves the tailored result as a new resume variant. */
+  onVariantSaved?: (variant: SavedTailoredVariant) => void;
 }
 
-export function TailorResumeWorkspace({ onBack, initialResumeText, initialResumeName }: TailorResumeWorkspaceProps) {
+export function TailorResumeWorkspace({ onBack, initialResumeText, initialResumeName, initialJobDetails, onVariantSaved }: TailorResumeWorkspaceProps) {
   const [state, setState] = useState<
     | { phase: 'setup' }
     | { phase: 'results'; resumeName: string; resumeText: string; suggestions: TailorSuggestion[] }
@@ -488,6 +500,7 @@ export function TailorResumeWorkspace({ onBack, initialResumeText, initialResume
         onBack={onBack}
         initialResumeText={initialResumeText}
         initialResumeName={initialResumeName}
+        initialJobDetails={initialJobDetails}
       />
     );
   }
@@ -498,6 +511,7 @@ export function TailorResumeWorkspace({ onBack, initialResumeText, initialResume
       resumeText={state.resumeText}
       suggestions={state.suggestions}
       onReset={() => setState({ phase: 'setup' })}
+      onVariantSaved={onVariantSaved}
     />
   );
 }

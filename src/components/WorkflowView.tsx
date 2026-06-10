@@ -34,6 +34,7 @@ import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { CoverLetterWorkspace, SavedCoverLetterPayload } from "@/components/CoverLetterWorkspace";
 import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterForm";
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
+import { MockInterviewWorkspace } from "@/components/MockInterviewWorkspace";
 import { type JobDetailsValue } from "@/components/JobDetailsSection";
 import { researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult } from "@/services/geminiService";
 import { CompanyResearchViz } from "@/components/companyResearch";
@@ -429,6 +430,15 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     return (
       <div className="flex-1 flex flex-col h-full relative">
         <GoalPlanningWorkspace onNavigate={onNavigate} />
+      </div>
+    );
+  }
+
+  /* ── Mock interviews — stateful sessions with scored, persisted history ── */
+  if (workflowId === "mock_behavioral" || workflowId === "mock_case_study" || workflowId === "mock_tech") {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <MockInterviewWorkspace workflowId={workflowId} />
       </div>
     );
   }

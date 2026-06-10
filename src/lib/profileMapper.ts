@@ -69,8 +69,10 @@ export function profileToRow(
       })
     ),
     saved_career_plans: (profile.savedCareerPlans ?? []).map(
-      ({ id, name, storagePath, goalType, goalSummary, createdAt }) => ({
+      ({ id, name, storagePath, goalType, goalSummary, createdAt, milestones, lastCheckInAt }) => ({
         id, name, storagePath, goalType, goalSummary, createdAt,
+        ...(milestones?.length ? { milestones } : {}),
+        ...(lastCheckInAt ? { lastCheckInAt } : {}),
       })
     ),
     target_roles: profile.targetRoles ?? [],

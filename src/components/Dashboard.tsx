@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Plus,
   ArrowRight,
@@ -14,12 +14,17 @@ import {
   Briefcase,
   Mail,
   Lock,
+  Sparkles,
+  Clock,
 } from "lucide-react";
 import { useJobPostings } from "@/hooks/useJobPostings";
 import type { JobStatus } from "@/types/jobPosting";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
+import { useInterviewSessions } from "@/hooks/useInterviewSessions";
+import { computePipelineStats, STALE_AFTER_DAYS } from "@/lib/pipelineStats";
+import { MOCK_WORKFLOW_LABELS, MOCK_WORKFLOW_IDS, type MockWorkflowId } from "@/types/interviewSession";
 import type { ViewId } from "@/components/Sidebar";
 import { toast } from "@/components/ui/toast";
 
@@ -65,6 +70,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const { postings: allPostings, addPosting } = useJobPostings();
   // The dashboard pipeline tracks chosen postings, not weekly "suggested" ones.
   const postings = allPostings.filter((p) => p.status !== "suggested");
+  const suggestedCount = allPostings.length - postings.length;
+  const pipelineStats = useMemo(() => computePipelineStats(postings), [postings]);
   const { profile } = useUserProfile();
   const isMobile = useIsMobile();
   const { analyses } = useSavedAnalyses();
@@ -131,9 +138,34 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       .slice(0, 6);
   }, [postings, analyses, profile.savedResumes, profile.savedCoverLetters, profile.savedCareerPlans]);
 
-  /* ── Career path ────────────────────────────────────────────────── */
+  /* ── Career path + plan progress ────────────────────────────────── */
   const currentRole = profile.currentRole?.trim() || profile.workHistory[0]?.role || "";
   const targetRole = profile.targetRole?.trim() || "";
+
+  // Most recent plan with a milestone checklist drives the roadmap node.
+  const planProgress = useMemo(() => {
+    const withMilestones = (profile.savedCareerPlans ?? []).filter((p) => p.milestones?.length);
+    if (withMilestones.length === 0) return null;
+    const plan = [...withMilestones].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )[0];
+    const milestones = plan.milestones!;
+    const done = milestones.filter((m) => m.done).length;
+    const lastActivity =
+      [plan.lastCheckInAt, ...milestones.map((m) => m.completedAt)]
+        .filter((d): d is string => Boolean(d))
+        .sort()
+        .pop() ?? plan.createdAt;
+    const quietDays = Math.floor((Date.now() - new Date(lastActivity).getTime()) / 86_400_000);
+    return { done, total: milestones.length, next: milestones.find((m) => !m.done), quietDays };
+  }, [profile.savedCareerPlans]);
+
+  /* ── Interview practice progress ────────────────────────────────── */
+  const { sessions: interviewSessions } = useInterviewSessions();
+  const scoredSessions = useMemo(
+    () => interviewSessions.filter((s) => s.overallScore != null),
+    [interviewSessions],
+  );
 
   /* ── Suggested next actions ─────────────────────────────────────── */
   const actions: { icon: typeof Compass; label: string; note: string; view: ViewId }[] = [
@@ -236,14 +268,85 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         </div>
 
+        {/* ── This week's job matches ────────────────────────────── */}
+        {suggestedCount > 0 && (
+          <button
+            onClick={() => go("job_postings")}
+            className="group hover:border-primary/40 transition-colors"
+            style={{
+              display: "flex", alignItems: "center", gap: 16, textAlign: "left", fontFamily: "inherit",
+              background: "rgba(217,119,87,0.06)", border: "1px solid rgba(217,119,87,0.30)",
+              borderRadius: 24, padding: "18px 24px", cursor: "pointer",
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 14, background: "rgba(217,119,87,0.12)",
+              border: "1px solid rgba(217,119,87,0.25)", color: "var(--primary)",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="font-display" style={{ fontSize: 17, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
+                {suggestedCount} new job {suggestedCount === 1 ? "match" : "matches"} this week
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2 }}>
+                Fresh postings matched to your target roles — refreshed every Monday.
+              </div>
+            </div>
+            <div style={{ color: "var(--primary)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              Review matches <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        )}
+
+        {/* ── Follow-up nudge ────────────────────────────────────── */}
+        {pipelineStats.staleApplications.length > 0 && (
+          <button
+            onClick={() => go("job_postings")}
+            className="group transition-colors"
+            style={{
+              display: "flex", alignItems: "center", gap: 16, textAlign: "left", fontFamily: "inherit",
+              background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)",
+              borderRadius: 24, padding: "18px 24px", cursor: "pointer",
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 14, background: "rgba(245,158,11,0.12)",
+              border: "1px solid rgba(245,158,11,0.25)", color: "#B45309",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Clock className="w-5 h-5" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="font-display" style={{ fontSize: 17, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em" }}>
+                {pipelineStats.staleApplications.length} application{pipelineStats.staleApplications.length === 1 ? "" : "s"} could use a follow-up
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                No movement in over {STALE_AFTER_DAYS} days: {pipelineStats.staleApplications.slice(0, 3).map((p) => p.company ?? p.title).join(", ")}
+                {pipelineStats.staleApplications.length > 3 ? "…" : ""} — we'll draft the email for you.
+              </div>
+            </div>
+            <div style={{ color: "#B45309", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              Follow up <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        )}
+
         {/* ── Career path ────────────────────────────────────────── */}
         <CareerPath
           currentRole={currentRole}
           targetRole={targetRole}
           yoe={profile.yearsOfExperience}
+          planProgress={planProgress}
           onBuildPlan={() => go("goal_planning")}
           onSetTarget={() => go("profile_settings")}
         />
+
+        {/* ── Interview practice progress ────────────────────────── */}
+        {scoredSessions.length > 0 && (
+          <InterviewProgress sessions={scoredSessions} onPractice={(w) => go(w)} />
+        )}
 
         {/* ── Checklist + Recent activity ────────────────────────── */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 20 }}>
@@ -364,6 +467,25 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
             </div>
           </div>
+
+          {/* Funnel stats — how the search is converting, derived locally */}
+          {pipelineStats.applied > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12 }}>
+                <FunnelStat label="Applications" value={`${pipelineStats.applied}`} hint={`${pipelineStats.responses} got a response`} />
+                <FunnelStat label="Response rate" value={pipelineStats.responseRate != null ? `${Math.round(pipelineStats.responseRate * 100)}%` : "—"} hint="interviews + rejections" />
+                <FunnelStat label="Interview rate" value={pipelineStats.interviewRate != null ? `${Math.round(pipelineStats.interviewRate * 100)}%` : "—"} hint={`${pipelineStats.interviews} reached interviews`} />
+                <FunnelStat label="Offers" value={`${pipelineStats.offers}`} hint={pipelineStats.offers > 0 ? "nice work 🎉" : "keep going"} />
+              </div>
+              {pipelineStats.tailoredEdge && pipelineStats.tailoredEdge.tailoredRate > pipelineStats.tailoredEdge.untailoredRate && (
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--primary)", flexShrink: 0 }} />
+                  Applications with a tailored resume hear back {Math.round(pipelineStats.tailoredEdge.tailoredRate * 100)}% of the time,
+                  vs {Math.round(pipelineStats.tailoredEdge.untailoredRate * 100)}% without — tailoring is working for you.
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)", overflow: "hidden" }}>
             {/* Table header */}
@@ -559,6 +681,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   );
 }
 
+/* ── Funnel stat (pipeline analytics) ─────────────────────────────── */
+function FunnelStat({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: "14px 18px", boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+      <div className="eyebrow">{label}</div>
+      <div className="font-display" style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--foreground)", marginTop: 4, lineHeight: 1.1 }}>
+        {value}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4 }}>{hint}</div>
+    </div>
+  );
+}
+
 /* ── Score card (Resume / LinkedIn) ───────────────────────────────── */
 function ScoreCard({
   label, icon: Icon, accent, score, updatedAt, emptyHint, ctaLabel, onRun,
@@ -622,12 +757,20 @@ function ScoreCard({
 }
 
 /* ── Career path strip ────────────────────────────────────────────── */
+interface PlanProgress {
+  done: number;
+  total: number;
+  next?: { title: string };
+  quietDays: number;
+}
+
 function CareerPath({
-  currentRole, targetRole, yoe, onBuildPlan, onSetTarget,
+  currentRole, targetRole, yoe, planProgress, onBuildPlan, onSetTarget,
 }: {
   currentRole: string;
   targetRole: string;
   yoe?: number;
+  planProgress: PlanProgress | null;
   onBuildPlan: () => void;
   onSetTarget: () => void;
 }) {
@@ -678,19 +821,35 @@ function CareerPath({
             sub="Your target role"
           />
           <PathConnector />
-          <PathNode
-            kind="plan"
-            title="Your roadmap"
-            sub="Get AI-tailored milestones"
-            onClick={onBuildPlan}
-          />
+          {planProgress ? (
+            <PathNode
+              kind="plan"
+              title={`${planProgress.done}/${planProgress.total} milestones done`}
+              sub={
+                planProgress.quietDays > 14
+                  ? `Quiet for ${planProgress.quietDays} days — time for a check-in`
+                  : planProgress.next
+                    ? `Next: ${planProgress.next.title}`
+                    : "All milestones complete 🎉"
+              }
+              progress={planProgress.total > 0 ? planProgress.done / planProgress.total : 0}
+              onClick={onBuildPlan}
+            />
+          ) : (
+            <PathNode
+              kind="plan"
+              title="Your roadmap"
+              sub="Get AI-tailored milestones"
+              onClick={onBuildPlan}
+            />
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function PathNode({ kind, title, sub, onClick }: { kind: "now" | "target" | "plan"; title: string; sub: string; onClick?: () => void }) {
+function PathNode({ kind, title, sub, progress, onClick }: { kind: "now" | "target" | "plan"; title: string; sub: string; progress?: number; onClick?: () => void }) {
   const styles = {
     now:    { bg: "var(--muted)",                border: "1px solid var(--border)",            fg: "var(--foreground)",  dot: "var(--muted-foreground)" },
     target: { bg: "rgba(47,107,79,0.08)",        border: "1px solid rgba(47,107,79,0.25)",     fg: "var(--foreground)",  dot: "var(--forest)" },
@@ -710,8 +869,81 @@ function PathNode({ kind, title, sub, onClick }: { kind: "now" | "target" | "pla
       <div className="font-display" style={{ fontSize: 16, fontWeight: 600, color: styles.fg, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {title}
       </div>
-      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{sub}</div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
+      {progress != null && (
+        <div style={{ height: 5, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
+          <div style={{ width: `${Math.round(progress * 100)}%`, height: "100%", background: "var(--forest)", borderRadius: 9999 }} />
+        </div>
+      )}
     </Tag>
+  );
+}
+
+/* ── Interview practice progress strip ────────────────────────────── */
+function InterviewProgress({
+  sessions, onPractice,
+}: {
+  sessions: ReturnType<typeof useInterviewSessions>["sessions"];
+  onPractice: (workflow: MockWorkflowId) => void;
+}) {
+  const isMobile = useIsMobile();
+  // Per-workflow latest score + delta vs the session before it.
+  const byWorkflow = MOCK_WORKFLOW_IDS
+    .map((w) => {
+      const list = sessions.filter((s) => s.workflow === w); // newest first
+      if (list.length === 0) return null;
+      const latest = list[0].overallScore!;
+      const prev = list[1]?.overallScore;
+      return { workflow: w, latest, delta: prev != null ? latest - prev : null, count: list.length };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const chronological = [...sessions].reverse().slice(-14); // oldest → newest
+  const barColor = (s: number) => (s >= 80 ? "var(--forest)" : s >= 60 ? "var(--marigold, #E8B948)" : "var(--primary)");
+
+  return (
+    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 24, padding: 24, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+        <h3 className="font-display" style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0 }}>
+          Interview practice
+        </h3>
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{sessions.length} scored session{sessions.length === 1 ? "" : "s"}</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: isMobile ? "stretch" : "flex-end" }}>
+        {/* Score history bars (all workflows, chronological) */}
+        <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: 5, height: 64 }}>
+          {chronological.map((s) => (
+            <div
+              key={s.id}
+              title={`${MOCK_WORKFLOW_LABELS[s.workflow]} · ${s.overallScore}/100 · ${new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+              style={{ flex: 1, maxWidth: 30, height: `${Math.max(8, s.overallScore ?? 0)}%`, background: barColor(s.overallScore ?? 0), borderRadius: 5 }}
+            />
+          ))}
+        </div>
+
+        {/* Per-track latest + delta */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: isMobile ? undefined : 240 }}>
+          {byWorkflow.map(({ workflow, latest, delta, count }) => (
+            <button
+              key={workflow}
+              onClick={() => onPractice(workflow)}
+              style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12, padding: "8px 12px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)", flex: 1 }}>{MOCK_WORKFLOW_LABELS[workflow]}</span>
+              <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{count}×</span>
+              <span className="font-display" style={{ fontSize: 16, fontWeight: 700, color: barColor(latest) }}>{latest}</span>
+              {delta != null && delta !== 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: delta > 0 ? "var(--forest)" : "var(--primary)" }}>
+                  {delta > 0 ? `+${delta}` : delta}
+                </span>
+              )}
+              <ArrowRight className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
