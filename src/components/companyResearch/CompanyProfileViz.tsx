@@ -225,7 +225,7 @@ export function CompanyProfileViz({ profile, onReset }: Props) {
     hasFacts ? <KeyFactsCard key="facts" profile={profile} /> : null,
     profile.financials.length ? <FinancialsCard key="fin" financials={profile.financials} /> : null,
     profile.news.length ? <NewsCard key="news" profile={profile} /> : null,
-    <ReviewLinksCard key="ratings" company={profile.name} />,
+    <ReviewLinksCard key="ratings" company={profile.name} ratings={profile.ratings} />,
   ].filter((n): n is React.ReactElement => n !== null);
 
   return (

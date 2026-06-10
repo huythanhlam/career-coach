@@ -11,7 +11,20 @@ sources, with a review-gated path into the database.
 | Key facts (founded, HQ, industry, employees, CEO, website, ticker, country) | Wikidata | CEO = current officeholder (rank `preferred`, no future-dated holders) |
 | Financials (revenue, net income, total assets) | SEC EDGAR XBRL | latest 10-K, USD; public US companies only |
 | Recent news | Google News RSS | last ~90 days |
-| Employee reviews | Glassdoor / Indeed / Blind / Comparably | **links only** — no free score API exists |
+| Employee ratings | **Blind** (real score scraped) + links | see below |
+
+### Employee ratings
+
+We scrape the real score **directly from sites that serve it openly** — no AI, no
+bot-detection bypass. Blind embeds a schema.org `EmployerAggregateRating` in its
+company page, so `sources/ratings.ts` fetches and parses it (e.g. 3M = 3.3/5, 98
+reviews). The parser is generic, so any site exposing an `AggregateRating` is
+picked up automatically.
+
+Glassdoor, Indeed, and Comparably gate behind a human-verification/CAPTCHA wall
+(they return a "prove you're human" page, not the rating). We do **not** scrape
+those — getting past the wall would mean defeating bot-detection. They remain
+links only. Ratings refresh on the same weekly cadence as everything else.
 
 Every section is isolated: a source that fails or returns nothing degrades only
 that section (recorded in `notes`), never the whole profile.

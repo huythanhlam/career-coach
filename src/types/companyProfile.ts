@@ -35,6 +35,21 @@ export interface FinancialMetric {
   form?: string;
 }
 
+/**
+ * A real employer rating SCRAPED from a review site that serves it openly (e.g.
+ * Blind's schema.org EmployerAggregateRating). Never AI-generated. Sites that
+ * gate behind a human-verification/CAPTCHA wall are not scraped — they appear as
+ * links only (`ratingLinks`).
+ */
+export interface CompanyRating {
+  source: string;        // "Blind", …
+  score: number;         // e.g. 3.3
+  scale: number;         // e.g. 5
+  reviewCount?: number;  // e.g. 98
+  url: string;           // the page the score was read from
+  fetchedAt?: string;    // ISO timestamp it was scraped
+}
+
 /** One recent news item. */
 export interface NewsItem {
   title: string;
@@ -73,7 +88,10 @@ export interface CompanyProfile {
   keyFacts: KeyFacts;
   financials: FinancialMetric[];
   news: NewsItem[];
-  /** Deterministic rating *links* (no scores — no free rating API exists). */
+  /** Real scores scraped from sites that serve them openly (e.g. Blind). */
+  ratings: CompanyRating[];
+  /** Review-site links (used for every site, and the only thing shown for the
+   *  CAPTCHA-walled ones we can't scrape). */
   ratingLinks: ProfileSource[];
   /** All sources used, deduped, for a global "sources" list. */
   sources: ProfileSource[];

@@ -13,6 +13,7 @@ const profile: CompanyProfile = {
   keyFacts: { ticker: "AAPL" },
   financials: [{ label: "Revenue", value: 1, unit: "USD", periodEnd: "2023-09-30" }],
   news: [],
+  ratings: [{ source: "Blind", score: 3.3, scale: 5, reviewCount: 98, url: "https://b" }],
   ratingLinks: [{ label: "Glassdoor", url: "https://g", provider: "links" }],
   sources: [{ label: "Wikipedia", url: "https://w", provider: "wikipedia" }],
   fetchedAt: "2026-06-09T00:00:00.000Z",

@@ -5,6 +5,7 @@ import { fetchWikipedia } from "./sources/wikipedia.ts";
 import { fetchWikidata, currentEntityId } from "./sources/wikidata.ts";
 import { fetchSecFinancials, loadTickerMap, resolveCik, normalizeCompanyName } from "./sources/sec.ts";
 import { fetchNews } from "./sources/news.ts";
+import { parseAggregateRating, fetchBlindRating, fetchRatings } from "./sources/ratings.ts";
 import { buildProfile } from "./buildProfile.ts";
 
 /** Build an HttpGet that returns canned responses keyed by URL substring. */
@@ -231,6 +232,63 @@ describe("fetchNews", () => {
     expect(r.news[0].source).toBe("TechCrunch");
     expect(r.news[0].publishedAt).toBe("2026-06-02T10:00:00.000Z");
     expect(r.source?.provider).toBe("news");
+  });
+});
+
+describe("parseAggregateRating", () => {
+  it("reads a top-level EmployerAggregateRating JSON-LD (Blind shape)", () => {
+    const html = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"EmployerAggregateRating","ratingValue":3.3,"bestRating":5,"worstRating":1,"ratingCount":98,"itemReviewed":{"@type":"Organization","name":"3M"}}</script></head></html>`;
+    expect(parseAggregateRating(html)).toEqual({ score: 3.3, scale: 5, count: 98, itemName: "3M" });
+  });
+
+  it("reads a nested aggregateRating with string numbers", () => {
+    const html = `<script type="application/ld+json">{"@type":"Organization","name":"Apple","aggregateRating":{"@type":"AggregateRating","ratingValue":"3.9","bestRating":"5","reviewCount":"3926"}}</script>`;
+    const r = parseAggregateRating(html)!;
+    expect(r.score).toBe(3.9); expect(r.scale).toBe(5); expect(r.count).toBe(3926);
+  });
+
+  it("walks an @graph array", () => {
+    const html = `<script type="application/ld+json">{"@context":"x","@graph":[{"@type":"WebSite"},{"@type":"AggregateRating","ratingValue":4.2,"ratingCount":10}]}</script>`;
+    expect(parseAggregateRating(html)).toMatchObject({ score: 4.2, scale: 5, count: 10 });
+  });
+
+  it("falls back to loose inline JSON", () => {
+    const html = `<div>...</div><script>var x={"ratingValue":4.1,"bestRating":5,"ratingCount":1200}</script>`;
+    expect(parseAggregateRating(html)).toMatchObject({ score: 4.1, scale: 5, count: 1200 });
+  });
+
+  it("returns null when there is no rating", () => {
+    expect(parseAggregateRating("<html><body>no rating here</body></html>")).toBeNull();
+  });
+});
+
+describe("fetchBlindRating", () => {
+  const blindHtml = (name: string, val: number, count: number) =>
+    `<script type="application/ld+json">{"@type":"EmployerAggregateRating","ratingValue":${val},"bestRating":5,"ratingCount":${count},"itemReviewed":{"@type":"Organization","name":"${name}"}}</script>`;
+
+  it("returns a CompanyRating from Blind's JSON-LD", async () => {
+    const http = mockHttp([{ match: "teamblind.com/company/3M", body: blindHtml("3M", 3.3, 98) }]);
+    const r = await fetchBlindRating("3M", http);
+    expect(r).toMatchObject({ source: "Blind", score: 3.3, scale: 5, reviewCount: 98 });
+    expect(r?.url).toContain("teamblind.com/company/3M");
+    expect(typeof r?.fetchedAt).toBe("string");
+  });
+
+  it("rejects a page for a different company (name mismatch)", async () => {
+    const http = mockHttp([{ match: "teamblind.com", body: blindHtml("Some Other Co", 4.5, 10) }]);
+    expect(await fetchBlindRating("3M", http)).toBeNull();
+  });
+
+  it("returns null on HTTP error", async () => {
+    const http = mockHttp([{ match: "teamblind.com", body: "", ok: false, status: 403 }]);
+    expect(await fetchBlindRating("3M", http)).toBeNull();
+  });
+
+  it("fetchRatings collects successful scrapes and fails soft", async () => {
+    const http = mockHttp([{ match: "teamblind.com", body: blindHtml("Apple", 3.9, 3926) }]);
+    const ratings = await fetchRatings("Apple", http);
+    expect(ratings).toHaveLength(1);
+    expect(ratings[0].source).toBe("Blind");
   });
 });
 

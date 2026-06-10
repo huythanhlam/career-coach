@@ -9,6 +9,7 @@ import { fetchWikipedia } from "./sources/wikipedia.ts";
 import { fetchWikidata } from "./sources/wikidata.ts";
 import { fetchSecFinancials, resolveCik, type TickerMaps } from "./sources/sec.ts";
 import { fetchNews } from "./sources/news.ts";
+import { fetchRatings } from "./sources/ratings.ts";
 import { buildReviewLinks } from "../../src/config/reviewSites.ts";
 import type { CompanyProfile, CompanyListEntry, ProfileSource } from "../../src/types/companyProfile.ts";
 
@@ -35,6 +36,7 @@ export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Pr
     keyFacts: {},
     financials: [],
     news: [],
+    ratings: [],
     ratingLinks: ratingLinks(entry.name),
     sources: [],
     fetchedAt: new Date().toISOString(),
@@ -92,6 +94,16 @@ export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Pr
     if (!news.news.length) notes.push("No recent news found.");
   } catch (e) {
     notes.push(`News fetch failed: ${errMsg(e)}`);
+  }
+
+  // Ratings — scraped directly from sites that serve them openly (Blind). The
+  // CAPTCHA-walled sites (Glassdoor/Indeed/Comparably) are not scraped; they
+  // remain links only.
+  try {
+    profile.ratings = await fetchRatings(entry.name, httpGet);
+    if (!profile.ratings.length) notes.push("No openly-scrapable employee ratings found (others are CAPTCHA-walled).");
+  } catch (e) {
+    notes.push(`Ratings fetch failed: ${errMsg(e)}`);
   }
 
   profile.sources = dedupeByUrl([...sources, ...profile.ratingLinks]);
