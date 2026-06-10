@@ -4,6 +4,8 @@ import { TEMPLATES } from "@/components/TemplateGallery";
 
 // ─── constants ─────────────────────────────────────────────────────────────────
 
+export const DENSITY = { lineHeight: "1.6", fontSize: "11pt" };
+
 export const FONT_FAMILIES = [
   "Inter", "Georgia", "Arial", "Times New Roman", "Helvetica",
   "Lato", "Montserrat", "Merriweather", "Playfair Display", "Verdana",
@@ -132,7 +134,7 @@ export const ICON_TABS = [
   },
 ];
 
-// ─── color picker ──────────────────────────────────────────────────────────────
+// ─── color picker / icon picker / insert menu ─────────────────────────────────
 
 interface ColorPickerPopoverProps {
   value: string;
@@ -187,8 +189,6 @@ export function ColorPickerPopover({ value, onChange, onClose, recentColors, lab
     </div>
   );
 }
-
-// ─── icon picker ───────────────────────────────────────────────────────────────
 
 interface IconPickerProps {
   onInsert: (html: string) => void;
@@ -247,11 +247,8 @@ export function IconPicker({ onInsert, onClose }: IconPickerProps) {
   );
 }
 
-// ─── insert menu ───────────────────────────────────────────────────────────────
-
 export interface InsertItem { label: string; hint: string; action: () => void; }
 interface InsertMenuProps { items: InsertItem[]; onClose: () => void; }
-
 export function InsertMenu({ items, onClose }: InsertMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -276,13 +273,8 @@ export function InsertMenu({ items, onClose }: InsertMenuProps) {
 
 // ─── style panel ───────────────────────────────────────────────────────────────
 
-// Matches DocStyle in index.tsx — kept in sync to avoid circular import.
-interface DocStyle {
-  templateId: string;
-  accentColor: string;
-  accentStyle: "line" | "filled" | "minimal";
-  paperBg: string;
-}
+// DocStyle mirrors the type in index.tsx — local to avoid circular import.
+interface DocStyle { templateId: string; accentColor: string; accentStyle: "line" | "filled" | "minimal"; paperBg: string; }
 
 interface StylePanelInlineProps {
   style: DocStyle;
