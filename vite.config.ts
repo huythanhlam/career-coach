@@ -16,5 +16,23 @@ export default defineConfig(() => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
+    build: {
+      rollupOptions: {
+        output: {
+          // Keep the heaviest vendors in their own cacheable chunks; combined
+          // with the lazy-loaded views they only download when a view needs them.
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return;
+            if (id.includes('pdfjs-dist') || id.includes('react-pdf')) return 'pdf';
+            if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory-vendor')) return 'charts';
+            if (
+              /node_modules\/(react-markdown|rehype-|remark-|micromark|mdast-|hast-|unified|unist-|vfile|property-information|space-separated-tokens|comma-separated-tokens|character-entities|trim-lines|bail|trough|devlop|html-url-attributes|estree-util|style-to-(js|object)|zwitch|longest-streak|ccount|escape-string-regexp|markdown-table)/.test(id)
+            )
+              return 'markdown';
+            if (/node_modules\/(docx|mammoth)\//.test(id)) return 'docs';
+          },
+        },
+      },
+    },
   };
 });

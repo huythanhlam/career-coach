@@ -2,6 +2,7 @@ import type { UserProfile } from "@/types/userProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 import { parseJsonObject, parseJsonArray, parseLooseJsonObject } from "@/lib/looseJson";
+import { MODELS } from "@/config/models";
 
 const GATEWAY_URL =
   (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
@@ -46,7 +47,7 @@ export async function parseProfileFromImport(
   }
 
   try {
-    const raw = await generateWorkflowData(PROFILE_EXTRACTION_SYSTEM, prompt, "gemini-3.1-flash-lite");
+    const raw = await generateWorkflowData(PROFILE_EXTRACTION_SYSTEM, prompt, MODELS.EXTRACTION);
     const clean = raw.replace(/^```json\s*/m, "").replace(/\s*```$/m, "").trim();
     const firstBrace = clean.indexOf("{");
     const lastBrace = clean.lastIndexOf("}");
@@ -85,37 +86,82 @@ async function getAuthHeader(): Promise<string> {
 
 export interface SourceLink { label: string; url: string }
 
-const GATEWAY_DOWN_MESSAGE =
-  "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal.";
+const GATEWAY_DOWN_MESSAGE = import.meta.env.DEV
+  ? "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal."
+  : "Could not reach the AI service. Check your connection and try again.";
+const GATEWAY_TIMEOUT_MESSAGE =
+  "The AI request timed out. Please try again.";
+
+/** Map a failed gateway call to a message a user can act on. */
+function describeGatewayError(error: unknown, timedOut: boolean): string {
+  if (timedOut) return GATEWAY_TIMEOUT_MESSAGE;
+  const msg = error instanceof Error ? error.message : "";
+  const status = Number(/^Gateway (\d{3})/.exec(msg)?.[1] ?? NaN);
+  if (status === 401 || status === 403)
+    return "Your session has expired. Please refresh the page and sign in again.";
+  if (status === 429)
+    return "The AI service is handling too many requests right now. Please wait a minute and try again.";
+  if (status >= 500) return "The AI service hit a temporary error. Please try again.";
+  if (Number.isFinite(status)) return `The AI request failed (HTTP ${status}). Please try again.`;
+  return GATEWAY_DOWN_MESSAGE;
+}
+
+// Generations with web search can legitimately take a while, but a request
+// should never hang the UI forever.
+const GATEWAY_TIMEOUT_MS = 120_000;
+const GATEWAY_MAX_ATTEMPTS = 3;
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 
 /**
  * Low-level gateway call that surfaces both the generated text AND any grounding
  * sources the gateway returns (production Gemini search grounding populates
  * `sources`; the local Claude-CLI gateway returns `[]` and embeds citations in
  * the text instead). Most callers want only the text — use `postToGateway`.
+ *
+ * Times out after GATEWAY_TIMEOUT_MS and retries transient failures (network
+ * errors, 408/429/5xx) with exponential backoff. Timeouts are not retried —
+ * the user has already waited long enough.
  */
 async function postToGatewayRaw(body: object): Promise<{ text: string; sources: SourceLink[] }> {
   console.log("🚀 Sending to gateway:", GATEWAY_URL);
+  let timedOut = false;
   try {
     const authHeader = await getAuthHeader();
-    const response = await fetch(GATEWAY_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": authHeader,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => "(no body)");
-      throw new Error(`Gateway ${response.status}: ${errBody}`);
+    let lastError: unknown;
+    for (let attempt = 0; attempt < GATEWAY_MAX_ATTEMPTS; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
+      try {
+        const response = await fetch(GATEWAY_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": authHeader,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+          const errBody = await response.text().catch(() => "(no body)");
+          lastError = new Error(`Gateway ${response.status}: ${errBody}`);
+          if (RETRYABLE_STATUS.has(response.status)) continue;
+          throw lastError;
+        }
+        const data = await response.json();
+        return { text: data.text, sources: Array.isArray(data.sources) ? data.sources : [] };
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "TimeoutError") {
+          timedOut = true;
+          throw error;
+        }
+        if (error === lastError) throw error; // non-retryable HTTP status
+        lastError = error; // network hiccup — retry
+      }
     }
-    const data = await response.json();
-    return { text: data.text, sources: Array.isArray(data.sources) ? data.sources : [] };
+    throw lastError;
   } catch (error) {
     console.error("❌ Gateway Error:", error);
-    return { text: GATEWAY_DOWN_MESSAGE, sources: [] };
+    return { text: describeGatewayError(error, timedOut), sources: [] };
   }
 }
 
@@ -126,7 +172,7 @@ async function postToGateway(body: object): Promise<string> {
 export async function generateWorkflowData(
   systemInstruction: string,
   prompt: string,
-  model: string = "claude-haiku-4-5-20251001",
+  model: string = MODELS.FAST,
   enableSearch: boolean = false
 ) {
   return postToGateway({ systemInstruction, prompt, model, enableSearch });
@@ -178,7 +224,7 @@ export async function analyzeResume(
 ): Promise<ResumeAnalysisResult> {
   const jd = jdText || jdUrl;
   const prompt = buildResumeAnalysisPrompt(resumeText, jd);
-  const response = await generateWorkflowData(RESUME_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
+  const response = await generateWorkflowData(RESUME_ANALYSIS_SYSTEM, prompt, MODELS.QUALITY);
 
   try {
     const parsed = parseJsonObject(response);
@@ -190,7 +236,18 @@ export async function analyzeResume(
     };
   } catch (e) {
     console.error('Failed to parse resume analysis JSON. Raw response preview:', response.slice(0, 500));
-    return { resumeText, overallScore: null, summary: '', improvements: [] };
+    // A non-JSON response is usually a classified gateway error ("timed out",
+    // "rate limited", …) — surface it instead of looking like a clean analysis
+    // with nothing to improve.
+    const looksLikeMessage = !response.trimStart().startsWith('{');
+    return {
+      resumeText,
+      overallScore: null,
+      summary: looksLikeMessage
+        ? response.slice(0, 300)
+        : "The analysis response couldn't be read. Please try again.",
+      improvements: [],
+    };
   }
 }
 
@@ -265,7 +322,7 @@ export async function analyzeLinkedInProfile(
   targetRole: string = ""
 ): Promise<LinkedInAnalysisResult> {
   const prompt = buildLinkedInAnalysisPrompt(profileText, targetRole);
-  const response = await generateWorkflowData(LINKEDIN_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
+  const response = await generateWorkflowData(LINKEDIN_ANALYSIS_SYSTEM, prompt, MODELS.QUALITY);
 
   try {
     const parsed = parseJsonObject(response);
@@ -342,7 +399,7 @@ ${jobDescription}
 RESUME:
 ${resumeText}`;
 
-  const response = await generateWorkflowData(TAILOR_RESUME_SYSTEM, prompt, 'claude-sonnet-4-6');
+  const response = await generateWorkflowData(TAILOR_RESUME_SYSTEM, prompt, MODELS.QUALITY);
   try {
     return parseJsonArray<TailorSuggestion>(response);
   } catch (e) {
@@ -363,7 +420,7 @@ ${resumeText}`;
  * "quota exceeded" on this plan — swap this constant to one of them once that
  * model is enabled/has grounding quota on the project's billing tier.
  */
-export const COMPANY_RESEARCH_MODEL = "gemini-2.5-flash";
+export const COMPANY_RESEARCH_MODEL = MODELS.RESEARCH;
 
 export interface CompanyResearchSection {
   summary: string;
@@ -457,7 +514,11 @@ function collectSources(parsed: any, grounding: SourceLink[], fallback: SourceLi
     ? parsed.sources.filter((s: any) => s && typeof s.url === "string").map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
     : [];
   const merged = [...declared, ...grounding];
-  const dedup = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
+  // Normalize so http/https and trailing-slash variants of the same page dedupe.
+  const normalize = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+  const dedup = merged.filter(
+    (s, i) => s.url && merged.findIndex((o) => normalize(o.url) === normalize(s.url)) === i
+  );
   return dedup.length ? dedup : fallback;
 }
 
@@ -551,7 +612,7 @@ export async function rewriteResumeSelection(selectedText: string, instruction: 
   const systemInstruction = `You are an elite resume writer. The user has selected a specific passage from their resume and wants it improved.
 Return ONLY the rewritten text — no explanation, no preamble, no quotes. Preserve the original's markdown structure (any leading bullet marker like "- ", heading level, bold, etc.) so it drops in cleanly, and keep it close to the original length (within roughly ±15%). Improve wording, impact, and clarity, but never invent achievements, metrics, employers, titles, or dates that aren't in the original or clearly supported by the resume context — if a metric would help, leave a placeholder like "[X%]" for the user to fill in.`;
   const prompt = `Full resume context:\n${fullResumeText}\n\n---\nSelected text to rewrite:\n${selectedText}\n\nInstruction: ${instruction}`;
-  return await generateWorkflowData(systemInstruction, prompt, "claude-haiku-4-5-20251001");
+  return await generateWorkflowData(systemInstruction, prompt, MODELS.FAST);
 }
 
 export async function suggestWorkExperienceBullets(role: string, company: string, currentBullets: string = "") {
@@ -611,7 +672,7 @@ export async function improveSurveyAnswer(
   const system = mode === "refine" ? REFINE_SYSTEM : SUGGEST_SYSTEM;
   const verb = mode === "refine" ? "Correct" : "Improve and complete";
   const prompt = `Question: ${question}\n\nMy draft answer:\n${answer}\n\n${verb} my answer per the rules.`;
-  const raw = await generateWorkflowData(system, prompt, "claude-haiku-4-5-20251001");
+  const raw = await generateWorkflowData(system, prompt, MODELS.FAST);
   return cleanAnswerText(raw) || answer;
 }
 
@@ -646,7 +707,7 @@ export function createCoachingChat(
       const prompt = transcript
         ? `Conversation so far:\n${transcript}\n\nUser: ${message}\n\nCoach:`
         : message;
-      const response = await generateWorkflowData(systemInstruction, prompt, "claude-sonnet-4-6");
+      const response = await generateWorkflowData(systemInstruction, prompt, MODELS.QUALITY);
       turns.push({ role: "user", text: message });
       turns.push({ role: "model", text: response });
       return [{ text: response }];
