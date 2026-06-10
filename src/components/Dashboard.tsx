@@ -21,6 +21,7 @@ import { useUserProfile } from "@/context/UserProfileContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import type { ViewId } from "@/components/Sidebar";
+import { toast } from "@/components/ui/toast";
 
 const STATUS_MAP: Record<JobStatus, { bg: string; fg: string; border: string; label: string }> = {
   suggested:    { bg: "rgba(217,119,87,0.10)",  fg: "#D97757", border: "rgba(217,119,87,0.25)",  label: "Suggested" },
@@ -74,18 +75,28 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   const go = (view: ViewId) => onNavigate?.(view);
 
+  const [isAddingApp, setIsAddingApp] = useState(false);
   const handleAddApplication = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newApp.company || !newApp.role) return;
-    await addPosting({
-      title: newApp.role,
-      company: newApp.company,
-      location: newApp.location || "Remote",
-      source: "manual",
-      status: newApp.status,
-    });
-    setIsModalOpen(false);
-    setNewApp({ company: "", role: "", status: "applied", location: "" });
+    if (!newApp.company || !newApp.role || isAddingApp) return;
+    setIsAddingApp(true);
+    try {
+      await addPosting({
+        title: newApp.role,
+        company: newApp.company,
+        location: newApp.location || "Remote",
+        source: "manual",
+        status: newApp.status,
+      });
+      toast(`Added ${newApp.role} at ${newApp.company} to your pipeline`, "success");
+      setIsModalOpen(false);
+      setNewApp({ company: "", role: "", status: "applied", location: "" });
+    } catch (err) {
+      console.error("Failed to add application:", err);
+      toast("Couldn't add the application. Please try again.", "error");
+    } finally {
+      setIsAddingApp(false);
+    }
   };
 
   /* ── Profile completion checklist ───────────────────────────────── */
@@ -519,14 +530,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </select>
               <button
                 type="submit"
+                disabled={isAddingApp}
                 style={{
                   height: 52, background: "var(--primary)", color: "#FFF",
                   border: "1px solid var(--primary)", borderRadius: 14,
-                  fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+                  cursor: isAddingApp ? "default" : "pointer",
+                  opacity: isAddingApp ? 0.6 : 1,
                   marginTop: 4, boxShadow: "0 4px 14px rgba(217,119,87,0.25)",
                 }}
               >
-                Add to pipeline
+                {isAddingApp ? "Adding…" : "Add to pipeline"}
               </button>
             </form>
           </div>

@@ -5,6 +5,7 @@ import { workflowsConfig } from "@/config/workflows";
 import { MessageCircle, Menu, Compass } from "lucide-react";
 import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { Toaster } from "@/components/ui/toast";
 
 // Every view is lazy-loaded so first paint only ships the shell + the view the
 // user lands on; heavy deps (recharts, pdf.js, markdown, docx) stay out of the
@@ -20,6 +21,20 @@ const JobPostingsWorkspace = lazy(() => import("@/components/JobPostingsWorkspac
 const SecuritySettings = lazy(() => import("@/components/SecuritySettings").then((m) => ({ default: m.SecuritySettings })));
 const LandingPage = lazy(() => import("@/components/LandingPage").then((m) => ({ default: m.LandingPage })));
 const MFAChallengePage = lazy(() => import("@/components/MFAChallengePage").then((m) => ({ default: m.MFAChallengePage })));
+
+/* ── URL hash <-> view sync ──────────────────────────────────────────
+ * The hash (e.g. #/resume_generator) is the source of truth for navigation, so
+ * refresh restores the view, links are shareable, and back/forward work. */
+const STATIC_VIEWS = ["dashboard", "unified", "job_postings", "profile_settings", "security_settings"] as const;
+
+function isValidView(v: string): v is ViewId {
+  return v in workflowsConfig || (STATIC_VIEWS as readonly string[]).includes(v);
+}
+
+function viewFromHash(): ViewId | null {
+  const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
+  return isValidView(h) ? h : null;
+}
 
 function Spinner() {
   return (
@@ -45,12 +60,12 @@ function AppInner() {
   const [chatMounted, setChatMounted] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const pendingTab = localStorage.getItem("pendingTab") as ViewId | null;
-  const [activeView, setActiveView] = useState<ViewId>(
-    pendingTab && (pendingTab in workflowsConfig || ["dashboard", "unified"].includes(pendingTab))
-      ? pendingTab
-      : "dashboard"
-  );
+  const [activeView, setActiveView] = useState<ViewId>(() => {
+    const fromHash = viewFromHash();
+    if (fromHash) return fromHash;
+    const pendingTab = localStorage.getItem("pendingTab");
+    return pendingTab && isValidView(pendingTab) ? pendingTab : "dashboard";
+  });
 
   // Workflows keep in-progress state by staying mounted, but only once visited —
   // mounting all of them up front made first load initialize every workspace.
@@ -58,15 +73,28 @@ function AppInner() {
     () => new Set(activeView in workflowsConfig ? [activeView] : [])
   );
 
+  // Navigation writes the hash; the hashchange listener below updates state.
+  // Back/forward and manually edited URLs flow through the same path.
   const handleSelectView = (v: ViewId) => {
-    if (v in workflowsConfig) {
-      setVisitedWorkflows((prev) => (prev.has(v) ? prev : new Set(prev).add(v)));
-    }
-    setActiveView(v);
+    if (v === activeView) return;
+    window.location.hash = `/${v}`;
   };
 
   useEffect(() => {
     localStorage.removeItem("pendingTab");
+    // Canonicalize the initial URL without adding a history entry.
+    history.replaceState(null, "", `#/${activeView}`);
+
+    const applyHash = () => {
+      const v = viewFromHash() ?? "dashboard";
+      if (v in workflowsConfig) {
+        setVisitedWorkflows((prev) => (prev.has(v) ? prev : new Set(prev).add(v)));
+      }
+      setActiveView(v);
+    };
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -226,6 +254,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AuthGate />
+      <Toaster />
     </AuthProvider>
   );
 }

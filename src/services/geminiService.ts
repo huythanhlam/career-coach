@@ -85,10 +85,25 @@ async function getAuthHeader(): Promise<string> {
 
 export interface SourceLink { label: string; url: string }
 
-const GATEWAY_DOWN_MESSAGE =
-  "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal.";
+const GATEWAY_DOWN_MESSAGE = import.meta.env.DEV
+  ? "The local Privacy Gateway is not running. Please run 'npx tsx server.ts' in your terminal."
+  : "Could not reach the AI service. Check your connection and try again.";
 const GATEWAY_TIMEOUT_MESSAGE =
   "The AI request timed out. Please try again.";
+
+/** Map a failed gateway call to a message a user can act on. */
+function describeGatewayError(error: unknown, timedOut: boolean): string {
+  if (timedOut) return GATEWAY_TIMEOUT_MESSAGE;
+  const msg = error instanceof Error ? error.message : "";
+  const status = Number(/^Gateway (\d{3})/.exec(msg)?.[1] ?? NaN);
+  if (status === 401 || status === 403)
+    return "Your session has expired. Please refresh the page and sign in again.";
+  if (status === 429)
+    return "The AI service is handling too many requests right now. Please wait a minute and try again.";
+  if (status >= 500) return "The AI service hit a temporary error. Please try again.";
+  if (Number.isFinite(status)) return `The AI request failed (HTTP ${status}). Please try again.`;
+  return GATEWAY_DOWN_MESSAGE;
+}
 
 // Generations with web search can legitimately take a while, but a request
 // should never hang the UI forever.
@@ -145,7 +160,7 @@ async function postToGatewayRaw(body: object): Promise<{ text: string; sources: 
     throw lastError;
   } catch (error) {
     console.error("❌ Gateway Error:", error);
-    return { text: timedOut ? GATEWAY_TIMEOUT_MESSAGE : GATEWAY_DOWN_MESSAGE, sources: [] };
+    return { text: describeGatewayError(error, timedOut), sources: [] };
   }
 }
 

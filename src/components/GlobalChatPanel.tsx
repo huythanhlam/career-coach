@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, User, Send, X, MessageSquare, Loader2, Sparkles } from "lucide-react";
+import { Bot, User, Send, X, MessageSquare, Loader2, Sparkles, Trash2 } from "lucide-react";
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
-import { createTechCoachChat, sendMessageStream } from "@/services/geminiService";
+import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
 import { workflowsConfig, basePersona } from "@/config/workflows";
 import { ViewId } from "@/components/Sidebar";
 
@@ -20,12 +20,47 @@ interface GlobalChatPanelProps {
   activeView: ViewId;
 }
 
+const CHAT_STORAGE_KEY = "coachChatHistory";
+const CHAT_HISTORY_LIMIT = 40; // turns kept across reloads
+
+function restoreMessages(): Message[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (m): m is Message =>
+        m && (m.role === "user" || m.role === "model") && typeof m.text === "string" && m.text !== ""
+    );
+  } catch {
+    return [];
+  }
+}
+
 export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(restoreMessages);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [chatInstance, setChatInstance] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Persist the conversation so a refresh doesn't lose it. Skipped while
+  // streaming to avoid a write per chunk.
+  useEffect(() => {
+    if (isGenerating) return;
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-CHAT_HISTORY_LIMIT)));
+    } catch {
+      // storage full/unavailable — losing chat persistence is acceptable
+    }
+  }, [messages, isGenerating]);
+
+  const clearConversation = () => {
+    setMessages([]);
+    setChatInstance(null);
+    try {
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch {}
+  };
 
   const workflowConfig = workflowsConfig[activeView as any];
   const systemInstruction = workflowConfig?.systemInstruction || basePersona;
@@ -50,7 +85,9 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
     try {
       let currentChat = chatInstance;
       if (!currentChat) {
-        currentChat = createTechCoachChat(systemInstruction, true);
+        // Seed with the prior conversation (including any restored from a
+        // previous session) so the coach has real multi-turn memory.
+        currentChat = createCoachingChat(systemInstruction, messages);
         setChatInstance(currentChat);
       }
 
@@ -95,9 +132,24 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
             </div>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-muted w-8 h-8">
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearConversation}
+              disabled={isGenerating}
+              aria-label="Clear conversation"
+              title="Clear conversation"
+              className="rounded-full hover:bg-muted w-8 h-8"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close coach panel" className="rounded-full hover:bg-muted w-8 h-8">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}
