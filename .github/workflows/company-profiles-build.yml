@@ -49,11 +49,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set up Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - name: Build company profiles
         env:
           # Optional: lets the routine pull pending company_profile_requests.
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
           ARGS=""
           # repository_dispatch (from a user request) → only process requests.

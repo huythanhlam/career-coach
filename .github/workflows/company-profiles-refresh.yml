@@ -40,11 +40,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Chrome for the render-only rating sources (e.g. RepVue). Without it the
+      # pipeline simply skips them and still scrapes the fetch-only ones (Blind).
+      - name: Set up Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - name: Fetch + store company research
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PROFILES_CONTACT_EMAIL: ${{ secrets.PROFILES_CONTACT_EMAIL }}
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
           ARGS=""
           if [ -n "${{ github.event.inputs.only }}" ]; then ARGS="$ARGS --only ${{ github.event.inputs.only }}"; fi

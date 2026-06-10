@@ -15,16 +15,25 @@ sources, with a review-gated path into the database.
 
 ### Employee ratings
 
-We scrape the real score **directly from sites that serve it openly** — no AI, no
-bot-detection bypass. Blind embeds a schema.org `EmployerAggregateRating` in its
-company page, so `sources/ratings.ts` fetches and parses it (e.g. 3M = 3.3/5, 98
-reviews). The parser is generic, so any site exposing an `AggregateRating` is
-picked up automatically.
+We scrape real scores **directly from sites that serve them openly** — no AI, no
+bot-detection bypass. `sources/ratings.ts` has a generic schema.org
+`AggregateRating` extractor (JSON-LD + `@graph` + loose fallback), so any site
+exposing one is picked up automatically. Two sources are wired today:
+
+- **Blind** — plain fetch; embeds an `EmployerAggregateRating` (e.g. 3M 3.3/5·98).
+- **RepVue** (sales-org ratings) — rate-limits plain fetches but serves its
+  `AggregateRating` to a real browser, so it goes through the optional headless
+  **renderer** (`sources/render.ts`; e.g. 3M 3.6/5·130).
+
+The renderer uses a system Chrome (`CHROME_PATH`/`PUPPETEER_EXECUTABLE_PATH`, or
+common install paths). If no Chrome is present it returns null and render-only
+sources are skipped — fetch-only sources (Blind) still work. The CI workflows
+install Chrome via `browser-actions/setup-chrome`.
 
 Glassdoor, Indeed, and Comparably gate behind a human-verification/CAPTCHA wall
-(they return a "prove you're human" page, not the rating). We do **not** scrape
-those — getting past the wall would mean defeating bot-detection. They remain
-links only. Ratings refresh on the same weekly cadence as everything else.
+(they return a "prove you're human" page to fetch AND to a browser), so we do
+**not** scrape them — getting past the wall would mean defeating bot-detection.
+They remain links only. Ratings refresh on the same weekly cadence as everything else.
 
 Every section is isolated: a source that fails or returns nothing degrades only
 that section (recorded in `notes`), never the whole profile.

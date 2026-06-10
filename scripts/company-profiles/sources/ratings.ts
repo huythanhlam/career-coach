@@ -118,13 +118,42 @@ export async function fetchBlindRating(company: string, httpGet: HttpGet): Promi
   };
 }
 
+/** A function that returns the fully-rendered HTML of a URL (or null). */
+export type RenderFn = (url: string) => Promise<string | null>;
+
 /**
- * Fetch all real ratings we can read directly. Currently Blind (open JSON-LD);
- * other sites are CAPTCHA-walled and intentionally not scraped. Each fetcher
- * fails soft (returns null) so one site never breaks the rest.
+ * RepVue (sales-org ratings) serves its AggregateRating to a real browser but
+ * rate-limits plain fetches, so it needs a render. Not a CAPTCHA wall — the
+ * renderer returns null if a verification page ever appears.
  */
-export async function fetchRatings(company: string, httpGet: HttpGet): Promise<CompanyRating[]> {
-  const results = await Promise.allSettled([fetchBlindRating(company, httpGet)]);
+export async function fetchRepVueRating(company: string, render: RenderFn): Promise<CompanyRating | null> {
+  const url = `https://www.repvue.com/companies/${encodeURIComponent(company.trim())}`;
+  const html = await render(url);
+  if (!html) return null;
+  const r = parseAggregateRating(html);
+  if (!r) return null;
+  if (r.itemName && !namesMatch(r.itemName, company)) return null;
+  return {
+    source: "RepVue",
+    score: r.score,
+    scale: r.scale,
+    reviewCount: r.count,
+    url,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Fetch all real ratings we can read directly:
+ *   - Blind via plain HTTP (open JSON-LD),
+ *   - RepVue via a headless render (only when a `render` fn is supplied).
+ * CAPTCHA-walled sites (Glassdoor/Indeed/Comparably) are intentionally not
+ * scraped. Each fetcher fails soft so one site never breaks the rest.
+ */
+export async function fetchRatings(company: string, httpGet: HttpGet, render?: RenderFn): Promise<CompanyRating[]> {
+  const tasks: Promise<CompanyRating | null>[] = [fetchBlindRating(company, httpGet)];
+  if (render) tasks.push(fetchRepVueRating(company, render));
+  const results = await Promise.allSettled(tasks);
   return results
     .filter((r): r is PromiseFulfilledResult<CompanyRating | null> => r.status === "fulfilled")
     .map((r) => r.value)

@@ -14,6 +14,7 @@
 import { realHttpGet, sleep } from "./lib.ts";
 import { loadList, filterTargets, parseListArgs } from "./list.ts";
 import { loadTickerMap } from "./sources/sec.ts";
+import { createRenderer } from "./sources/render.ts";
 import { buildProfile } from "./buildProfile.ts";
 import { getAdmin, upsertProfiles } from "./db.ts";
 import type { CompanyProfile } from "../../src/types/companyProfile.ts";
@@ -36,20 +37,26 @@ async function main() {
 
   console.log(`Refreshing ${targets.length} compan${targets.length === 1 ? "y" : "ies"}${dryRun ? " (dry run)" : ""}…`);
   const tickerMap = await loadTickerMap(realHttpGet).catch(() => ({ byTicker: {}, byName: {} }));
+  const renderer = await createRenderer();
+  console.log(renderer ? "• Headless renderer available (render-only sources enabled)." : "• No Chrome found — render-only rating sources skipped.");
 
   const profiles: CompanyProfile[] = [];
   let ok = 0;
-  for (const entry of targets) {
-    try {
-      const profile = await buildProfile(entry, { httpGet: realHttpGet, tickerMap });
-      profiles.push(profile);
-      const facts = [profile.overview && "overview", profile.financials.length && "financials", profile.news.length && "news"].filter(Boolean).join("+") || "links-only";
-      console.log(`  ✓ ${entry.slug} (${facts})`);
-      ok++;
-    } catch (e) {
-      console.error(`  ✗ ${entry.slug}: ${e instanceof Error ? e.message : e}`);
+  try {
+    for (const entry of targets) {
+      try {
+        const profile = await buildProfile(entry, { httpGet: realHttpGet, tickerMap, render: renderer?.render });
+        profiles.push(profile);
+        const facts = [profile.overview && "overview", profile.financials.length && "financials", profile.news.length && "news", profile.ratings.length && `${profile.ratings.length} ratings`].filter(Boolean).join("+") || "links-only";
+        console.log(`  ✓ ${entry.slug} (${facts})`);
+        ok++;
+      } catch (e) {
+        console.error(`  ✗ ${entry.slug}: ${e instanceof Error ? e.message : e}`);
+      }
+      await sleep(DELAY_MS);
     }
-    await sleep(DELAY_MS);
+  } finally {
+    await renderer?.close();
   }
 
   if (dryRun) {

@@ -9,7 +9,7 @@ import { fetchWikipedia } from "./sources/wikipedia.ts";
 import { fetchWikidata } from "./sources/wikidata.ts";
 import { fetchSecFinancials, resolveCik, type TickerMaps } from "./sources/sec.ts";
 import { fetchNews } from "./sources/news.ts";
-import { fetchRatings } from "./sources/ratings.ts";
+import { fetchRatings, type RenderFn } from "./sources/ratings.ts";
 import { buildReviewLinks } from "../../src/config/reviewSites.ts";
 import type { CompanyProfile, CompanyListEntry, ProfileSource } from "../../src/types/companyProfile.ts";
 
@@ -22,10 +22,12 @@ export interface BuildDeps {
   httpGet: HttpGet;
   /** Pre-loaded SEC ticker/name → CIK maps so we fetch the index once per run. */
   tickerMap?: TickerMaps;
+  /** Optional headless renderer for sites that need a browser (e.g. RepVue). */
+  render?: RenderFn;
 }
 
 export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Promise<CompanyProfile> {
-  const { httpGet, tickerMap } = deps;
+  const { httpGet, tickerMap, render } = deps;
   const slug = entry.slug || slugify(entry.name);
   const notes: string[] = [];
   const sources: ProfileSource[] = [];
@@ -100,7 +102,7 @@ export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Pr
   // CAPTCHA-walled sites (Glassdoor/Indeed/Comparably) are not scraped; they
   // remain links only.
   try {
-    profile.ratings = await fetchRatings(entry.name, httpGet);
+    profile.ratings = await fetchRatings(entry.name, httpGet, render);
     if (!profile.ratings.length) notes.push("No openly-scrapable employee ratings found (others are CAPTCHA-walled).");
   } catch (e) {
     notes.push(`Ratings fetch failed: ${errMsg(e)}`);

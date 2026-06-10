@@ -179,7 +179,15 @@
       "scale": 5,
       "reviewCount": 12587,
       "url": "https://www.teamblind.com/company/Microsoft",
-      "fetchedAt": "2026-06-10T00:01:34.370Z"
+      "fetchedAt": "2026-06-10T00:19:08.675Z"
+    },
+    {
+      "source": "RepVue",
+      "score": 3.8,
+      "scale": 5,
+      "reviewCount": 2166,
+      "url": "https://www.repvue.com/companies/Microsoft",
+      "fetchedAt": "2026-06-10T00:19:12.478Z"
     }
   ],
   "ratingLinks": [
@@ -246,7 +254,7 @@
       "provider": "links"
     }
   ],
-  "fetchedAt": "2026-06-10T00:01:32.965Z",
+  "fetchedAt": "2026-06-10T00:19:05.665Z",
   "overview": "Microsoft Corporation is an American multinational technology company headquartered in Redmond, Washington. The company became influential in the rise of personal computers through software like Windows and has since expanded into areas such as Internet services, cloud computing, artificial intelligence, video gaming, and more. A Big Tech company, Microsoft is the largest software company by revenue, one of the most valuable public companies, and one of the most valuable brands globally.",
   "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Aerial_Microsoft_West_Campus_August_2009.jpg/3840px-Aerial_Microsoft_West_Campus_August_2009.jpg"
 }

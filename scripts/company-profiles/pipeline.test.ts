@@ -5,7 +5,7 @@ import { fetchWikipedia } from "./sources/wikipedia.ts";
 import { fetchWikidata, currentEntityId } from "./sources/wikidata.ts";
 import { fetchSecFinancials, loadTickerMap, resolveCik, normalizeCompanyName } from "./sources/sec.ts";
 import { fetchNews } from "./sources/news.ts";
-import { parseAggregateRating, fetchBlindRating, fetchRatings } from "./sources/ratings.ts";
+import { parseAggregateRating, fetchBlindRating, fetchRepVueRating, fetchRatings } from "./sources/ratings.ts";
 import { buildProfile } from "./buildProfile.ts";
 
 /** Build an HttpGet that returns canned responses keyed by URL substring. */
@@ -289,6 +289,27 @@ describe("fetchBlindRating", () => {
     const ratings = await fetchRatings("Apple", http);
     expect(ratings).toHaveLength(1);
     expect(ratings[0].source).toBe("Blind");
+  });
+
+  it("fetchRepVueRating parses a rendered AggregateRating", async () => {
+    const html = `<script type="application/ld+json">{"@type":"AggregateRating","ratingValue":3.6,"bestRating":5,"ratingCount":130,"itemReviewed":{"@type":"Organization","name":"3M"}}</script>`;
+    const render = async () => html;
+    const r = await fetchRepVueRating("3M", render);
+    expect(r).toMatchObject({ source: "RepVue", score: 3.6, scale: 5, reviewCount: 130 });
+    expect(r?.url).toContain("repvue.com/companies/3M");
+  });
+
+  it("fetchRepVueRating returns null when render yields nothing (rate-limited/walled)", async () => {
+    expect(await fetchRepVueRating("3M", async () => null)).toBeNull();
+  });
+
+  it("fetchRatings adds RepVue only when a renderer is supplied", async () => {
+    const http = mockHttp([{ match: "teamblind.com", body: blindHtml("3M", 3.3, 98) }]);
+    const render = async () => `<script type="application/ld+json">{"@type":"AggregateRating","ratingValue":3.6,"ratingCount":130}</script>`;
+    const withRender = await fetchRatings("3M", http, render);
+    expect(withRender.map((r) => r.source).sort()).toEqual(["Blind", "RepVue"]);
+    const withoutRender = await fetchRatings("3M", http);
+    expect(withoutRender.map((r) => r.source)).toEqual(["Blind"]);
   });
 });
 
