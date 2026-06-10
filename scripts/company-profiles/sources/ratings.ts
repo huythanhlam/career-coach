@@ -115,6 +115,7 @@ export async function fetchBlindRating(company: string, httpGet: HttpGet): Promi
     reviewCount: r.count,
     url,
     fetchedAt: new Date().toISOString(),
+    scope: "general",
   };
 }
 
@@ -140,6 +141,7 @@ export async function fetchRepVueRating(company: string, render: RenderFn): Prom
     reviewCount: r.count,
     url,
     fetchedAt: new Date().toISOString(),
+    scope: "sales", // RepVue rates companies from a sales rep's perspective only
   };
 }
 

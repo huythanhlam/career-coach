@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
-import { Star, ExternalLink, Users, ShieldCheck } from "lucide-react";
+import { Star, ExternalLink, Users, ShieldCheck, Briefcase } from "lucide-react";
 import { buildReviewLinks } from "@/config/reviewSites";
 import type { CompanyRating } from "@/types/companyProfile";
 import { MentorCard, SectionHeader } from "./shared";
@@ -59,6 +59,10 @@ function ScoreRow({ rating, index }: { rating: CompanyRating; index: number }) {
 export function ReviewLinksCard({ company, ratings = [] }: { company: string; ratings?: CompanyRating[] }) {
   const links = buildReviewLinks(company);
   const scraped = ratings.filter((r) => Number.isFinite(r?.score) && r?.url);
+  // Keep role-specific scores (e.g. RepVue = sales only) out of the general
+  // "Employee ratings" — they're shown in their own labeled group.
+  const general = scraped.filter((r) => r.scope !== "sales");
+  const sales = scraped.filter((r) => r.scope === "sales");
   const scrapedSources = new Set(scraped.map((r) => r.source.toLowerCase()));
   // Links for the sites we couldn't scrape a score from.
   const otherLinks = links.filter((l) => !scrapedSources.has(l.label.split(" ")[0].toLowerCase()));
@@ -73,9 +77,25 @@ export function ReviewLinksCard({ company, ratings = [] }: { company: string; ra
             <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "#2F6B4F", background: "color-mix(in srgb, #2F6B4F 12%, transparent)", padding: "3px 9px", borderRadius: 999, marginBottom: 14 }}>
               <ShieldCheck className="w-3.5 h-3.5" /> Real scores, read from the source
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
-              {scraped.map((r, i) => <ScoreRow key={r.source} rating={r} index={i} />)}
-            </div>
+            {general.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: sales.length || otherLinks.length ? 16 : 0 }}>
+                {general.map((r, i) => <ScoreRow key={r.source} rating={r} index={i} />)}
+              </div>
+            )}
+            {sales.length > 0 && (
+              <div style={{ marginBottom: otherLinks.length ? 16 : 0, paddingTop: general.length ? 14 : 0, borderTop: general.length ? "1px solid var(--border)" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <Briefcase className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>Sales roles only</span>
+                </div>
+                <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 12px", lineHeight: 1.5 }}>
+                  Rated by sales professionals — not the company's overall rating.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {sales.map((r, i) => <ScoreRow key={r.source} rating={r} index={i} />)}
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "0 0 12px", lineHeight: 1.5 }}>

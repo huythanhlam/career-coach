@@ -295,7 +295,7 @@ describe("fetchBlindRating", () => {
     const html = `<script type="application/ld+json">{"@type":"AggregateRating","ratingValue":3.6,"bestRating":5,"ratingCount":130,"itemReviewed":{"@type":"Organization","name":"3M"}}</script>`;
     const render = async () => html;
     const r = await fetchRepVueRating("3M", render);
-    expect(r).toMatchObject({ source: "RepVue", score: 3.6, scale: 5, reviewCount: 130 });
+    expect(r).toMatchObject({ source: "RepVue", score: 3.6, scale: 5, reviewCount: 130, scope: "sales" });
     expect(r?.url).toContain("repvue.com/companies/3M");
   });
 
