@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Plus,
   ArrowRight,
@@ -117,17 +117,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   /* ── Recent activity (merged, timestamp-sorted) ─────────────────── */
   type Activity = { id: string; icon: typeof Briefcase; title: string; sub: string; ts?: string; view: ViewId };
-  const activity: Activity[] = [
-    ...postings.map(p => ({ id: `job-${p.id}`, icon: Briefcase, title: `${STATUS_MAP[p.status].label} · ${p.title}`, sub: [p.company, p.location].filter(Boolean).join(" · "), ts: p.appliedAt ?? p.createdAt, view: "job_postings" as ViewId })),
-    ...analyses.map(a => ({ id: `an-${a.id}`, icon: Compass, title: "Strategy analysis", sub: a.jobInput || "Job analysis", ts: a.createdAt, view: "unified" as ViewId })),
-    ...(profile.savedResumes ?? []).map(r => ({ id: `r-${r.id}`, icon: FileText, title: "Resume saved", sub: r.name, ts: r.createdAt, view: "resume_generation" as ViewId })),
-    ...(profile.savedCoverLetters ?? []).map(l => ({ id: `cl-${l.id}`, icon: Mail, title: "Cover letter", sub: [l.jobTitle, l.company].filter(Boolean).join(" · ") || l.name, ts: l.createdAt, view: "cover_letter" as ViewId })),
-    ...(profile.savedCareerPlans ?? []).map(p => ({ id: `cp-${p.id}`, icon: Target, title: "Goal plan", sub: p.goalSummary || p.goalType, ts: p.createdAt, view: "goal_planning" as ViewId })),
-  ];
-  const recent = activity
-    .filter(a => a.ts)
-    .sort((a, b) => new Date(b.ts!).getTime() - new Date(a.ts!).getTime())
-    .slice(0, 6);
+  const recent = useMemo<Activity[]>(() => {
+    const activity: Activity[] = [
+      ...postings.map(p => ({ id: `job-${p.id}`, icon: Briefcase, title: `${STATUS_MAP[p.status].label} · ${p.title}`, sub: [p.company, p.location].filter(Boolean).join(" · "), ts: p.appliedAt ?? p.createdAt, view: "job_postings" as ViewId })),
+      ...analyses.map(a => ({ id: `an-${a.id}`, icon: Compass, title: "Strategy analysis", sub: a.jobInput || "Job analysis", ts: a.createdAt, view: "unified" as ViewId })),
+      ...(profile.savedResumes ?? []).map(r => ({ id: `r-${r.id}`, icon: FileText, title: "Resume saved", sub: r.name, ts: r.createdAt, view: "resume_generation" as ViewId })),
+      ...(profile.savedCoverLetters ?? []).map(l => ({ id: `cl-${l.id}`, icon: Mail, title: "Cover letter", sub: [l.jobTitle, l.company].filter(Boolean).join(" · ") || l.name, ts: l.createdAt, view: "cover_letter" as ViewId })),
+      ...(profile.savedCareerPlans ?? []).map(p => ({ id: `cp-${p.id}`, icon: Target, title: "Goal plan", sub: p.goalSummary || p.goalType, ts: p.createdAt, view: "goal_planning" as ViewId })),
+    ];
+    return activity
+      .filter(a => a.ts)
+      .sort((a, b) => new Date(b.ts!).getTime() - new Date(a.ts!).getTime())
+      .slice(0, 6);
+  }, [postings, analyses, profile.savedResumes, profile.savedCoverLetters, profile.savedCareerPlans]);
 
   /* ── Career path ────────────────────────────────────────────────── */
   const currentRole = profile.currentRole?.trim() || profile.workHistory[0]?.role || "";
@@ -466,8 +468,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
           style={{ background: "rgba(31,27,22,0.4)", backdropFilter: "blur(8px)" }}
           onClick={() => setIsModalOpen(false)}
+          onKeyDown={(e) => { if (e.key === "Escape") setIsModalOpen(false); }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add application"
             className="animate-in zoom-in-95 duration-200"
             style={{
               background: "var(--card)", border: "1px solid var(--border)",
@@ -487,6 +493,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
+                aria-label="Close dialog"
                 style={{ width: 32, height: 32, borderRadius: 10, background: "var(--muted)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)" }}
               >
                 <X className="w-4 h-4" />
@@ -502,6 +509,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 <input
                   key={key}
                   required={required}
+                  autoFocus={key === "company"}
+                  aria-label={placeholder}
                   placeholder={placeholder}
                   value={(newApp as any)[key] || ""}
                   onChange={e => setNewApp({ ...newApp, [key]: e.target.value })}

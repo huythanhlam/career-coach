@@ -96,7 +96,9 @@ Deno.serve(async (req) => {
 
     return json({ text: response.text, sources: extractGroundingSources(response) }, 200, cors);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return json({ error: message }, 500, cors);
+    // Log the real error server-side; never echo provider error details
+    // (which can include key/config hints) to the client.
+    console.error("ai-generate error:", err);
+    return json({ error: "AI generation failed. Please try again." }, 500, cors);
   }
 });

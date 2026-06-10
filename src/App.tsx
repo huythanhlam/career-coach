@@ -157,6 +157,7 @@ function AppInner() {
               {!isChatOpen && (
                 <button
                   onClick={() => { setChatMounted(true); setIsChatOpen(true); }}
+                  aria-label="Open coach chat"
                   className="absolute bottom-6 right-7 w-14 h-14 rounded-full flex items-center justify-center z-40 transition-transform hover:scale-105 animate-in zoom-in duration-300"
                   style={{
                     background: "var(--primary)", color: "#FFF",

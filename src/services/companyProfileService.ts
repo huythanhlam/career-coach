@@ -19,6 +19,11 @@ export function slugifyCompany(name: string): string {
     .replace(/-{2,}/g, "-");
 }
 
+// Profiles are rebuilt offline and change rarely, so a short in-memory TTL
+// cache (misses included) avoids a Supabase round-trip per company per render.
+const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
+const profileCache = new Map<string, { data: CompanyProfile | null; ts: number }>();
+
 /**
  * Look up a deterministic profile by company name. Canonicalizes aliases
  * ("Google" → "Alphabet (Google)") before slugifying so we hit the same row
@@ -27,14 +32,17 @@ export function slugifyCompany(name: string): string {
 export async function getCompanyProfile(name: string): Promise<CompanyProfile | null> {
   const slug = slugifyCompany(canonicalCompanyName(name));
   if (!slug) return null;
+  const cached = profileCache.get(slug);
+  if (cached && Date.now() - cached.ts < PROFILE_CACHE_TTL_MS) return cached.data;
   try {
     const { data, error } = await supabase
       .from("company_profiles")
       .select("data")
       .eq("slug", slug)
       .maybeSingle();
-    if (error || !data?.data) return null;
-    return data.data as CompanyProfile;
+    const profile = error || !data?.data ? null : (data.data as CompanyProfile);
+    profileCache.set(slug, { data: profile, ts: Date.now() });
+    return profile;
   } catch {
     return null;
   }

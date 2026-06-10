@@ -117,7 +117,7 @@ export function CompanyBrowser({ onPick }: Props) {
               }}
             >
               {c.logoUrl ? (
-                <img src={c.logoUrl} alt="" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", flexShrink: 0 }} />
+                <img src={c.logoUrl} alt="" loading="lazy" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", flexShrink: 0 }} />
               ) : (
                 <span style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--muted)" }}>
                   <Building2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />

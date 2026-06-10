@@ -2,6 +2,7 @@ import type { UserProfile } from "@/types/userProfile";
 import { supabase } from "@/lib/supabaseClient";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 import { parseJsonObject, parseJsonArray, parseLooseJsonObject } from "@/lib/looseJson";
+import { MODELS } from "@/config/models";
 
 const GATEWAY_URL =
   (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
@@ -46,7 +47,7 @@ export async function parseProfileFromImport(
   }
 
   try {
-    const raw = await generateWorkflowData(PROFILE_EXTRACTION_SYSTEM, prompt, "gemini-3.1-flash-lite");
+    const raw = await generateWorkflowData(PROFILE_EXTRACTION_SYSTEM, prompt, MODELS.EXTRACTION);
     const clean = raw.replace(/^```json\s*/m, "").replace(/\s*```$/m, "").trim();
     const firstBrace = clean.indexOf("{");
     const lastBrace = clean.lastIndexOf("}");
@@ -171,7 +172,7 @@ async function postToGateway(body: object): Promise<string> {
 export async function generateWorkflowData(
   systemInstruction: string,
   prompt: string,
-  model: string = "claude-haiku-4-5-20251001",
+  model: string = MODELS.FAST,
   enableSearch: boolean = false
 ) {
   return postToGateway({ systemInstruction, prompt, model, enableSearch });
@@ -223,7 +224,7 @@ export async function analyzeResume(
 ): Promise<ResumeAnalysisResult> {
   const jd = jdText || jdUrl;
   const prompt = buildResumeAnalysisPrompt(resumeText, jd);
-  const response = await generateWorkflowData(RESUME_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
+  const response = await generateWorkflowData(RESUME_ANALYSIS_SYSTEM, prompt, MODELS.QUALITY);
 
   try {
     const parsed = parseJsonObject(response);
@@ -235,7 +236,18 @@ export async function analyzeResume(
     };
   } catch (e) {
     console.error('Failed to parse resume analysis JSON. Raw response preview:', response.slice(0, 500));
-    return { resumeText, overallScore: null, summary: '', improvements: [] };
+    // A non-JSON response is usually a classified gateway error ("timed out",
+    // "rate limited", …) — surface it instead of looking like a clean analysis
+    // with nothing to improve.
+    const looksLikeMessage = !response.trimStart().startsWith('{');
+    return {
+      resumeText,
+      overallScore: null,
+      summary: looksLikeMessage
+        ? response.slice(0, 300)
+        : "The analysis response couldn't be read. Please try again.",
+      improvements: [],
+    };
   }
 }
 
@@ -310,7 +322,7 @@ export async function analyzeLinkedInProfile(
   targetRole: string = ""
 ): Promise<LinkedInAnalysisResult> {
   const prompt = buildLinkedInAnalysisPrompt(profileText, targetRole);
-  const response = await generateWorkflowData(LINKEDIN_ANALYSIS_SYSTEM, prompt, 'claude-sonnet-4-6');
+  const response = await generateWorkflowData(LINKEDIN_ANALYSIS_SYSTEM, prompt, MODELS.QUALITY);
 
   try {
     const parsed = parseJsonObject(response);
@@ -387,7 +399,7 @@ ${jobDescription}
 RESUME:
 ${resumeText}`;
 
-  const response = await generateWorkflowData(TAILOR_RESUME_SYSTEM, prompt, 'claude-sonnet-4-6');
+  const response = await generateWorkflowData(TAILOR_RESUME_SYSTEM, prompt, MODELS.QUALITY);
   try {
     return parseJsonArray<TailorSuggestion>(response);
   } catch (e) {
@@ -408,7 +420,7 @@ ${resumeText}`;
  * "quota exceeded" on this plan — swap this constant to one of them once that
  * model is enabled/has grounding quota on the project's billing tier.
  */
-export const COMPANY_RESEARCH_MODEL = "gemini-2.5-flash";
+export const COMPANY_RESEARCH_MODEL = MODELS.RESEARCH;
 
 export interface CompanyResearchSection {
   summary: string;
@@ -502,7 +514,11 @@ function collectSources(parsed: any, grounding: SourceLink[], fallback: SourceLi
     ? parsed.sources.filter((s: any) => s && typeof s.url === "string").map((s: any) => ({ label: String(s.label ?? s.url), url: String(s.url) }))
     : [];
   const merged = [...declared, ...grounding];
-  const dedup = merged.filter((s, i) => s.url && merged.findIndex((o) => o.url === s.url) === i);
+  // Normalize so http/https and trailing-slash variants of the same page dedupe.
+  const normalize = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+  const dedup = merged.filter(
+    (s, i) => s.url && merged.findIndex((o) => normalize(o.url) === normalize(s.url)) === i
+  );
   return dedup.length ? dedup : fallback;
 }
 
@@ -596,7 +612,7 @@ export async function rewriteResumeSelection(selectedText: string, instruction: 
   const systemInstruction = `You are an elite resume writer. The user has selected a specific passage from their resume and wants it improved.
 Return ONLY the rewritten text — no explanation, no preamble, no quotes. Preserve the original's markdown structure (any leading bullet marker like "- ", heading level, bold, etc.) so it drops in cleanly, and keep it close to the original length (within roughly ±15%). Improve wording, impact, and clarity, but never invent achievements, metrics, employers, titles, or dates that aren't in the original or clearly supported by the resume context — if a metric would help, leave a placeholder like "[X%]" for the user to fill in.`;
   const prompt = `Full resume context:\n${fullResumeText}\n\n---\nSelected text to rewrite:\n${selectedText}\n\nInstruction: ${instruction}`;
-  return await generateWorkflowData(systemInstruction, prompt, "claude-haiku-4-5-20251001");
+  return await generateWorkflowData(systemInstruction, prompt, MODELS.FAST);
 }
 
 export async function suggestWorkExperienceBullets(role: string, company: string, currentBullets: string = "") {
@@ -656,7 +672,7 @@ export async function improveSurveyAnswer(
   const system = mode === "refine" ? REFINE_SYSTEM : SUGGEST_SYSTEM;
   const verb = mode === "refine" ? "Correct" : "Improve and complete";
   const prompt = `Question: ${question}\n\nMy draft answer:\n${answer}\n\n${verb} my answer per the rules.`;
-  const raw = await generateWorkflowData(system, prompt, "claude-haiku-4-5-20251001");
+  const raw = await generateWorkflowData(system, prompt, MODELS.FAST);
   return cleanAnswerText(raw) || answer;
 }
 
@@ -691,7 +707,7 @@ export function createCoachingChat(
       const prompt = transcript
         ? `Conversation so far:\n${transcript}\n\nUser: ${message}\n\nCoach:`
         : message;
-      const response = await generateWorkflowData(systemInstruction, prompt, "claude-sonnet-4-6");
+      const response = await generateWorkflowData(systemInstruction, prompt, MODELS.QUALITY);
       turns.push({ role: "user", text: message });
       turns.push({ role: "model", text: response });
       return [{ text: response }];

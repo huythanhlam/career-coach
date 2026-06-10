@@ -77,6 +77,13 @@ app.post('/api/ai/generate', async (req, res) => {
     ? `${systemInstruction}\n\n${userContent}`
     : userContent;
 
+  // Generous bound (resume + JD + instructions fit comfortably) that still
+  // stops a runaway client from feeding the CLI an unbounded prompt.
+  if (fullPrompt.length > 200_000) {
+    res.status(400).json({ error: 'Prompt too large' });
+    return;
+  }
+
   console.log('\n--- [Claude Gateway] INCOMING REQUEST ---');
   console.log(`[Claude Gateway] Sending prompt: ${fullPrompt.length} chars${enableSearch ? ' (web search enabled)' : ''}`);
   console.log(`[Claude Gateway] Preview: ${fullPrompt.slice(0, 300).replace(/\n/g, '↵')}`);
@@ -105,9 +112,11 @@ function isPrivateIp(ip: string): boolean {
     const [a, b] = v4.slice(1).map(Number);
     return (
       a === 10 || a === 127 || a === 0 ||
+      a >= 224 || // multicast (224/4) + reserved (240/4) + broadcast
       (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
       (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) || // benchmarking (198.18/15)
       (a === 100 && b >= 64 && b <= 127)
     );
   }

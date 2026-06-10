@@ -18,6 +18,7 @@ import { companyLogoSources, companyMonogram } from "@/lib/companyLogo";
 import { expandRoleQuery, roleSearchTerms } from "@/lib/roleSynonyms";
 import { JobDescription } from "@/components/JobDescription";
 import { generateWorkflowData } from "@/services/geminiService";
+import { MODELS } from "@/config/models";
 import { generateId } from "@/types/userProfile";
 import {
   JOB_STATUSES, type JobPosting, type JobStatus, type AggregatorJob, type ScannedJob,
@@ -826,7 +827,7 @@ function DetailDrawer({
     try {
       const system = "You are an expert recruiter. Score how well a candidate fits a job from 0-100 based only on the evidence. Reply with ONLY the integer.";
       const prompt = `JOB:\n${posting.title} at ${posting.company ?? ""}\n${posting.description ?? ""}\n\nCANDIDATE:\nTarget role: ${profile.targetRole ?? ""}\nSkills: ${(profile.skills ?? []).join(", ")}\nResume/summary:\n${resumeText.slice(0, 4000)}\n\nReturn ONLY an integer 0-100.`;
-      const raw = await generateWorkflowData(system, prompt, "claude-haiku-4-5-20251001");
+      const raw = await generateWorkflowData(system, prompt, MODELS.FAST);
       const n = parseInt((raw.match(/\d{1,3}/)?.[0] ?? ""), 10);
       if (!Number.isNaN(n)) onUpdate({ matchScore: Math.min(100, Math.max(0, n)) });
     } finally {
@@ -840,7 +841,7 @@ function DetailDrawer({
       const system = "You are an expert career writer. Write a concise, specific, one-page cover letter tailored to the job using only the candidate's real background. No placeholders like [Your Name]; use the provided name. Output plain text only.";
       const name = profile.fullName || profile.preferredName || "";
       const prompt = `Write a cover letter for this job.\n\nJOB:\n${posting.title} at ${posting.company ?? ""}\n${posting.description ?? ""}\n\nCANDIDATE:\nName: ${name}\nTarget role: ${profile.targetRole ?? ""}\nSkills: ${(profile.skills ?? []).join(", ")}\nBackground:\n${resumeText.slice(0, 4000)}`;
-      setCoverDraft(await generateWorkflowData(system, prompt, "claude-sonnet-4-6"));
+      setCoverDraft(await generateWorkflowData(system, prompt, MODELS.QUALITY));
     } finally {
       setGenerating(false);
     }
@@ -867,7 +868,7 @@ function DetailDrawer({
       const system = "You are an expert resume writer. Tailor the candidate's resume to THIS job using ONLY their real experience — never invent employers, titles, dates, or metrics. Surface the most relevant experience and weave in keywords from the job description. Output a clean, ATS-friendly resume in Markdown. No commentary.";
       const name = profile.fullName || profile.preferredName || "";
       const prompt = `Tailor a resume for this job.\n\nJOB:\n${posting.title} at ${posting.company ?? ""}\n${posting.description ?? ""}\n\nCANDIDATE:\nName: ${name}\nTarget role: ${profile.targetRole ?? ""}\nSkills: ${(profile.skills ?? []).join(", ")}\nExisting resume / background:\n${resumeText.slice(0, 6000)}`;
-      setResumeDraft(await generateWorkflowData(system, prompt, "claude-sonnet-4-6"));
+      setResumeDraft(await generateWorkflowData(system, prompt, MODELS.QUALITY));
     } finally {
       setResumeGenerating(false);
     }
