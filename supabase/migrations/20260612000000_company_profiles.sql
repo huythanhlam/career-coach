@@ -119,3 +119,13 @@ $$;
 
 revoke execute on function public.request_company_profile(text) from anon;
 grant  execute on function public.request_company_profile(text) to authenticated;
+
+-- ── Grants ─────────────────────────────────────────────────
+-- Explicit table grants so this works even on projects whose default privileges
+-- don't auto-cover new public tables. service_role (sync/refresh) writes; reads
+-- are still gated by RLS, so authenticated only needs SELECT at the grant level.
+grant all privileges on table public.company_profiles        to service_role;
+grant all privileges on table public.company_profile_requests to service_role;
+grant select on table public.company_profiles                to authenticated;
+grant select on table public.company_profile_requests        to authenticated;
+grant usage, select on all sequences in schema public        to service_role;
