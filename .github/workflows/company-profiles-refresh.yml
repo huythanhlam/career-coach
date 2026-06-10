@@ -44,7 +44,7 @@ jobs:
       # pipeline simply skips them and still scrapes the fetch-only ones (Blind).
       - name: Set up Chrome
         id: setup-chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
         with:
           chrome-version: stable
 
