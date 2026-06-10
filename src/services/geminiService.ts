@@ -404,6 +404,8 @@ Produce, searching where needed:
 - benefits: key benefits & perks (comp philosophy, health/leave, equity, remote/flexibility, learning budget).
 - financials: most recent quarterly earnings, revenue/growth, guidance, stock; private → latest funding/valuation. Date-stamp every figure. If unknown, say so in the summary and leave bullets sparse.
 
+Do NOT output employee ratings or review scores — those are shown from verified sources elsewhere, not from you.
+
 Output ONLY a compact JSON object, no markdown fences:
 {"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"sources":[{"label":"...","url":"..."}]}
 At most 4 bullets/section (≤25 words each) and 3 sources/section. Begin with "{" and end with "}".`;
@@ -435,6 +437,7 @@ function normalizeSection(raw: any, fallbackSources: SourceLink[]): CompanyResea
     sources: sources.length ? sources : fallbackSources,
   };
 }
+
 
 // Bound how much of the (free, user-provided) JD we feed each grounded call, so
 // inputs stay small. The profile call gets more — it mines benefits/values from

@@ -1,0 +1,62 @@
+name: Company Profiles — Weekly Refresh
+
+# Automatic weekly refresh of every company already in the app: fetch its
+# research from the structured sources and upsert it straight into the
+# company_profiles table (no PR — these companies are already vetted).
+on:
+  schedule:
+    - cron: '0 7 * * 1' # Mondays 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated slugs to refresh (optional)'
+        required: false
+        default: ''
+      limit:
+        description: 'Max companies to refresh this run (optional)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: company-profiles-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Chrome for the render-only rating sources (e.g. RepVue). Without it the
+      # pipeline simply skips them and still scrapes the fetch-only ones (Blind).
+      - name: Set up Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Fetch + store company research
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PROFILES_CONTACT_EMAIL: ${{ secrets.PROFILES_CONTACT_EMAIL }}
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.only }}" ]; then ARGS="$ARGS --only ${{ github.event.inputs.only }}"; fi
+          if [ -n "${{ github.event.inputs.limit }}" ]; then ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"; fi
+          echo "Running: npx tsx scripts/company-profiles/refresh.ts $ARGS"
+          npx tsx scripts/company-profiles/refresh.ts $ARGS

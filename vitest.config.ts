@@ -12,6 +12,7 @@ export default defineConfig({
     include: [
       'src/**/*.test.ts',
       'supabase/functions/**/*.test.ts',
+      'scripts/**/*.test.ts',
     ],
     // Dummy Supabase env so modules that construct the client at import time
     // (via @/lib/supabaseClient) don't throw during unit tests. No network is

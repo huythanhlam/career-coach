@@ -1,0 +1,262 @@
+{
+  "slug": "apple",
+  "name": "Apple",
+  "keyFacts": {
+    "founded": "1976-04-01",
+    "website": "https://apple.com/at/",
+    "ticker": "AAPL",
+    "employeeCount": 164000,
+    "employeeCountAsOf": "2022",
+    "headquarters": "Cupertino",
+    "industry": "software industry",
+    "ceo": "Tim Cook",
+    "country": "United States"
+  },
+  "financials": [
+    {
+      "label": "Revenue",
+      "value": 365817000000,
+      "unit": "USD",
+      "periodEnd": "2021-09-25",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 394328000000,
+      "unit": "USD",
+      "periodEnd": "2022-09-24",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 383285000000,
+      "unit": "USD",
+      "periodEnd": "2023-09-30",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 391035000000,
+      "unit": "USD",
+      "periodEnd": "2024-09-28",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 416161000000,
+      "unit": "USD",
+      "periodEnd": "2025-09-27",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 94680000000,
+      "unit": "USD",
+      "periodEnd": "2021-09-25",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 99803000000,
+      "unit": "USD",
+      "periodEnd": "2022-09-24",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 96995000000,
+      "unit": "USD",
+      "periodEnd": "2023-09-30",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 93736000000,
+      "unit": "USD",
+      "periodEnd": "2024-09-28",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 112010000000,
+      "unit": "USD",
+      "periodEnd": "2025-09-27",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 351002000000,
+      "unit": "USD",
+      "periodEnd": "2021-09-25",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 352755000000,
+      "unit": "USD",
+      "periodEnd": "2022-09-24",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 352583000000,
+      "unit": "USD",
+      "periodEnd": "2023-09-30",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 364980000000,
+      "unit": "USD",
+      "periodEnd": "2024-09-28",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 359241000000,
+      "unit": "USD",
+      "periodEnd": "2025-09-27",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    }
+  ],
+  "news": [
+    {
+      "title": "Tim Cook to become Apple Executive Chairman John Ternus to become Apple CEO - Apple",
+      "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxQS3lqZXVIaE5GV19MZzJmWTFXRjdGNG9RM29kWVdOSUVLQzdMSzZuX2ZYa0lINmRyUW5oSWVJZ2lzejVHOUU2emwyZlFaT0JRVUFITmYtN0FLTDJuU3poeXFvU3VBQzM3cFhyUzM3N2lNMElLaVltYklrV2pfZC11Q2ZndTBJdjN6c0dMeUlabzA3aGNMcTRjTVBOYjBlQjR4a1RielVJeUNBZHpiZ3pmOE0tcDB0UQ?oc=5",
+      "publishedAt": "2026-04-20T07:00:00.000Z",
+      "source": "Apple"
+    },
+    {
+      "title": "Apple’s 50 Years of Integration - Stratechery by Ben Thompson",
+      "url": "https://news.google.com/rss/articles/CBMibEFVX3lxTE9XMXVrd2Z0Rk1tU09lVmU5T1p1UWwySzNELXJRMTUwTkdfcDRFd29rem03TEZZUWhUcDA1WXM1WUFSd2FvTXZnQ2JOYUsyWTNiNkxWWjJUYnlEanQwUmp0ZUdxdVM1NDhfRWxjSg?oc=5",
+      "publishedAt": "2026-03-31T07:00:00.000Z",
+      "source": "Stratechery by Ben Thompson"
+    },
+    {
+      "title": "Apple Intelligence brings powerful AI capabilities into everyday experiences - Apple",
+      "url": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQaXdfbGlYZjJ5THltOHRXN25yak93TXQ5RHAydHVWMHl6WF9ycFhCVThUVUpJUHFXa0hfU1dycU5VSmlaTFE2R0tLdmM2MndVVDhzY3AtYUZRMjJMTHE4R2cxR19Ic3doOWwyRHNDRHFMS3Z4ZXJ1aEtiVnlGd2p3eElPaldranF0b18wdmI1M05qN2s3SXdyTElZbDZOZWdLeWtyMjlMZkk0dnplZ21BMWJ2UVRPVEE?oc=5",
+      "publishedAt": "2026-06-08T18:22:47.000Z",
+      "source": "Apple"
+    },
+    {
+      "title": "Apple unveils next generation of Apple Intelligence, Siri AI, and more - Apple",
+      "url": "https://news.google.com/rss/articles/CBMirAFBVV95cUxOYXJCVHVtdnRLcWJUbU5yaGZIbnJnaFVfUlFZdUhBYXoxQmRVQTB5a1lTb3lpQktQVHY2TXo3UFRtTFRsSi1Sc3BJcTF6VHhyUlVxNmRESlJFUnMzVkJyMEoxWDAyYndzUXNpbjdHR0ZFMEZJNmp5TTRfSFNGdHlYcEZhaDhiRjFxb0xaaHJKQ0Z0dlZHdHBWdkdvYUpWOGtXem5idjZESElnVkhD?oc=5",
+      "publishedAt": "2026-06-08T18:31:41.000Z",
+      "source": "Apple"
+    },
+    {
+      "title": "Apple introduces Siri AI, a profoundly more capable and personal assistant - Apple",
+      "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxQOHh5ZUJodXpvNGI2Y09yQ25oNUszam5rendnZ2haX2l2dTMxbWcwU1Jlb0xjdnNRckNkMElCZy02aHhlQUFfNmZTeU1faE1vLW1aRzByektzWFJ4MEUycjJtY1dkRi1DVGN0dWNzdFIyQjlPdWJ2RG5LLTVXelN5SU5BUGZFeFZNSU0zMEpUcUFPLWxySlpSWjA2c0FvZDRxRzlZWWdPNU02M0JMVUVsN1Vfbw?oc=5",
+      "publishedAt": "2026-06-09T03:49:47.000Z",
+      "source": "Apple"
+    },
+    {
+      "title": "End-to-end encrypted RCS messaging begins rolling out today in beta - Apple",
+      "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxNMXNGakg4cFhlb3h5a0FNYm0yUFBfb0VReUsxT0dpSjZQRkU2RXh1RHA3cUwzZ0E1WFFqcVAtMWRjZEI3T3A3NjJKSF9wTVdkZ0oxeFI1R2NiQ1JxMC1Fa3ktVjd1T0FFV1Q3dU5yUEo1UXJ4SURUMWItcHo2THZJTkZINWRtMTVLcVNQQ09DdWZzU0x1ZVNVU1V6NXVzQXhITVhvNExFNW9IeEU?oc=5",
+      "publishedAt": "2026-05-11T07:00:00.000Z",
+      "source": "Apple"
+    }
+  ],
+  "ratings": [
+    {
+      "source": "Blind",
+      "score": 3.9,
+      "scale": 5,
+      "reviewCount": 3927,
+      "url": "https://www.teamblind.com/company/Apple",
+      "fetchedAt": "2026-06-10T00:24:59.530Z",
+      "scope": "general"
+    },
+    {
+      "source": "RepVue",
+      "score": 4,
+      "scale": 5,
+      "reviewCount": 623,
+      "url": "https://www.repvue.com/companies/Apple",
+      "fetchedAt": "2026-06-10T00:25:02.759Z",
+      "scope": "sales"
+    }
+  ],
+  "ratingLinks": [
+    {
+      "label": "Glassdoor reviews",
+      "url": "https://www.glassdoor.com/Search/results.htm?keyword=Apple",
+      "provider": "links"
+    },
+    {
+      "label": "Indeed company reviews",
+      "url": "https://www.indeed.com/cmp/Apple/reviews",
+      "provider": "links"
+    },
+    {
+      "label": "Blind",
+      "url": "https://www.teamblind.com/search/Apple",
+      "provider": "links"
+    },
+    {
+      "label": "Comparably",
+      "url": "https://www.comparably.com/companies/apple",
+      "provider": "links"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Wikidata — Q312",
+      "url": "https://www.wikidata.org/wiki/Q312",
+      "provider": "wikidata"
+    },
+    {
+      "label": "Wikipedia — Apple Inc.",
+      "url": "https://en.wikipedia.org/wiki/Apple_Inc.",
+      "provider": "wikipedia"
+    },
+    {
+      "label": "SEC EDGAR",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000320193&type=10-K",
+      "provider": "sec"
+    },
+    {
+      "label": "Google News",
+      "url": "https://news.google.com/search?q=Apple",
+      "provider": "news"
+    },
+    {
+      "label": "Glassdoor reviews",
+      "url": "https://www.glassdoor.com/Search/results.htm?keyword=Apple",
+      "provider": "links"
+    },
+    {
+      "label": "Indeed company reviews",
+      "url": "https://www.indeed.com/cmp/Apple/reviews",
+      "provider": "links"
+    },
+    {
+      "label": "Blind",
+      "url": "https://www.teamblind.com/search/Apple",
+      "provider": "links"
+    },
+    {
+      "label": "Comparably",
+      "url": "https://www.comparably.com/companies/apple",
+      "provider": "links"
+    }
+  ],
+  "fetchedAt": "2026-06-10T00:24:57.374Z",
+  "overview": "Apple Inc. is an American multinational technology company headquartered in Cupertino, California, in Silicon Valley, and known for consumer electronics, software and online services. Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne, the company was incorporated by Jobs and Wozniak as Apple Computer, Inc. the following year. Its current name was adopted in 2007 as the company expanded its focus from computers to consumer electronics. Apple is one of the Big Tech companies.",
+  "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/960px-Apple_logo_black.svg.png"
+}

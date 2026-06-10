@@ -1,0 +1,262 @@
+{
+  "slug": "microsoft",
+  "name": "Microsoft",
+  "keyFacts": {
+    "founded": "1975-04-04",
+    "website": "https://www.microsoft.com/",
+    "ticker": "MSFT",
+    "employeeCount": 228000,
+    "employeeCountAsOf": "2024",
+    "headquarters": "Redmond",
+    "industry": "technology industry",
+    "ceo": "Satya Nadella",
+    "country": "United States"
+  },
+  "financials": [
+    {
+      "label": "Revenue",
+      "value": 168088000000,
+      "unit": "USD",
+      "periodEnd": "2021-06-30",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 198270000000,
+      "unit": "USD",
+      "periodEnd": "2022-06-30",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 211915000000,
+      "unit": "USD",
+      "periodEnd": "2023-06-30",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 245122000000,
+      "unit": "USD",
+      "periodEnd": "2024-06-30",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Revenue",
+      "value": 281724000000,
+      "unit": "USD",
+      "periodEnd": "2025-06-30",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 61271000000,
+      "unit": "USD",
+      "periodEnd": "2021-06-30",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 72738000000,
+      "unit": "USD",
+      "periodEnd": "2022-06-30",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 72361000000,
+      "unit": "USD",
+      "periodEnd": "2023-06-30",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 88136000000,
+      "unit": "USD",
+      "periodEnd": "2024-06-30",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Net income",
+      "value": 101832000000,
+      "unit": "USD",
+      "periodEnd": "2025-06-30",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 333779000000,
+      "unit": "USD",
+      "periodEnd": "2021-06-30",
+      "fiscalYear": 2021,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 364840000000,
+      "unit": "USD",
+      "periodEnd": "2022-06-30",
+      "fiscalYear": 2022,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 411976000000,
+      "unit": "USD",
+      "periodEnd": "2023-06-30",
+      "fiscalYear": 2023,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 512163000000,
+      "unit": "USD",
+      "periodEnd": "2024-06-30",
+      "fiscalYear": 2024,
+      "form": "10-K"
+    },
+    {
+      "label": "Total assets",
+      "value": 619003000000,
+      "unit": "USD",
+      "periodEnd": "2025-06-30",
+      "fiscalYear": 2025,
+      "form": "10-K"
+    }
+  ],
+  "news": [
+    {
+      "title": "Introducing Microsoft Scout: Your always-on personal agent - Microsoft",
+      "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxPV05vaTgybEpsRVBhZGFEai12SHFkYWZiZjRSR1VaMXFJckxYRnU5MHc2Q3QzTVFqVklRb21qck80M0I0VEZQQjBKS2tuQ2l6bURRQ2NhYkwwTnQya3d5OGsyMTU1V3gtd3ZtZ2F4b3JFTXdoY0N1YXJ4eUthalkyTUg3N2RaR3NzYVZyNEZlRkRMUUROMmV3c1ctN3htRklTdmdTeTVLOFQxNmhwOVNJU2k5WFNfbFNJWWhVSQ?oc=5",
+      "publishedAt": "2026-06-02T18:00:00.000Z",
+      "source": "Microsoft"
+    },
+    {
+      "title": "New updates to Edge across desktop and mobile - Windows Blog",
+      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNblk1eVhJem9lS3lwSEtUb0NwY0xyUC1WTlBRRnljM1ZlMy1iNXo2eVhwdFZ1SGFtdGNSdmVNRXpHeUNxSTdpMUJpbmlGWmZ6UlAzakRLRUJRbkE0VjhFeGhoeE5GVnhpSDZUNF94VDVOeGF2bjdTRTkyczQtb3g1bU05V3BpZWw4amplNEdFSFdlb3dsNEo1OQ?oc=5",
+      "publishedAt": "2026-05-13T07:00:00.000Z",
+      "source": "Windows Blog"
+    },
+    {
+      "title": "Introducing Majorana 2 - Microsoft Source",
+      "url": "https://news.google.com/rss/articles/CBMinAFBVV95cUxPMG8yU3VmVWk5SkljWEJlNWtaZlJja0d6aGNMd24yMXFoRElmZ3FvN0hjd0YzdjlvS0cyZGlkakVqLWJoS0pLQ3FrOEp3S2lGSDJBSXk5UC15MDRqQ25CZFhUdWVsMUx6bUVVa0RmLU4zRlB3WlBxRy1KZHI5cE5SUG9JZU9Vb3ZKd3VEdlVOam45bVJoanhzMmF5MXc?oc=5",
+      "publishedAt": "2026-06-02T18:22:52.000Z",
+      "source": "Microsoft Source"
+    },
+    {
+      "title": "Introducing a powerful new chapter for Windows PCs, accelerated by NVIDIA RTX Spark - Windows Blog",
+      "url": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxNSWZjczN1RWREUTFoREpRQ3RVWnFzeEY3Yml5eWY0cURWLUdOYzNEUTRiSmxjdzJqTmI3Rkt4TUdwaG9HSEFIT2VLV05VNjVvN3RHTTRXdFdjSml4bnRHa1h3VUhwZnlBUWxCd3FXNm5YTlI3cmpTejdYOWlBUGJHYmFEVng4ZlF4Mi1MVEJXX213cWZndTR5M3NPekpOb0Rocnl1ZEVYbEZjekpPZjd2SmFGbjFlaWVVZGM5ZjhtRjhBS1NocERCeDlTbVBMQ0pBQWtpbw?oc=5",
+      "publishedAt": "2026-05-31T07:00:00.000Z",
+      "source": "Windows Blog"
+    },
+    {
+      "title": "Microsoft Build 2026: Be yourself at work - The Official Microsoft Blog",
+      "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOU2hGRUxONTljWXQwenhCVExKaVhBcjBhaWRMX1lZOXBzdFNZMGE4eVZuU0NNNVBWejRTV1VvNFJZLUNnNU5zU0RGNGFVX2VPYndxQ1BwQ25pWUx0OVhsSFQ2YUp1WEN4aUZ3Um1fNDNDQTh2dEJkSGJ2WUtpUndCOUQ4U2ZXTmFjV1RnemZB?oc=5",
+      "publishedAt": "2026-06-02T19:59:05.000Z",
+      "source": "The Official Microsoft Blog"
+    },
+    {
+      "title": "Introducing Surface Laptop Ultra: Made for world makers - Windows Blog",
+      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQRl9LWW1nNUJiV3RDcVpQQmpabzBEdVE2TFFlMENfVExmUHI1aUl4VEJVYlpzbnNOVmNLQUl1SGdGLVZTMlg0MnpDWTR4UmtwMzN6eFNBelJVODdyaGMtWDlUSk9kbHpNU2p2dkhhT0c1ajdSeGlQQ3h6SmF1cnYtYU5zSXN3cm5mMG13Tml3RmszWWZ6bVZxMmhickRhVDR5emc?oc=5",
+      "publishedAt": "2026-05-31T07:00:00.000Z",
+      "source": "Windows Blog"
+    }
+  ],
+  "ratings": [
+    {
+      "source": "Blind",
+      "score": 3.9,
+      "scale": 5,
+      "reviewCount": 12587,
+      "url": "https://www.teamblind.com/company/Microsoft",
+      "fetchedAt": "2026-06-10T00:25:05.379Z",
+      "scope": "general"
+    },
+    {
+      "source": "RepVue",
+      "score": 3.8,
+      "scale": 5,
+      "reviewCount": 2166,
+      "url": "https://www.repvue.com/companies/Microsoft",
+      "fetchedAt": "2026-06-10T00:25:08.869Z",
+      "scope": "sales"
+    }
+  ],
+  "ratingLinks": [
+    {
+      "label": "Glassdoor reviews",
+      "url": "https://www.glassdoor.com/Search/results.htm?keyword=Microsoft",
+      "provider": "links"
+    },
+    {
+      "label": "Indeed company reviews",
+      "url": "https://www.indeed.com/cmp/Microsoft/reviews",
+      "provider": "links"
+    },
+    {
+      "label": "Blind",
+      "url": "https://www.teamblind.com/search/Microsoft",
+      "provider": "links"
+    },
+    {
+      "label": "Comparably",
+      "url": "https://www.comparably.com/companies/microsoft",
+      "provider": "links"
+    }
+  ],
+  "sources": [
+    {
+      "label": "Wikidata — Q2283",
+      "url": "https://www.wikidata.org/wiki/Q2283",
+      "provider": "wikidata"
+    },
+    {
+      "label": "Wikipedia — Microsoft",
+      "url": "https://en.wikipedia.org/wiki/Microsoft",
+      "provider": "wikipedia"
+    },
+    {
+      "label": "SEC EDGAR",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000789019&type=10-K",
+      "provider": "sec"
+    },
+    {
+      "label": "Google News",
+      "url": "https://news.google.com/search?q=Microsoft",
+      "provider": "news"
+    },
+    {
+      "label": "Glassdoor reviews",
+      "url": "https://www.glassdoor.com/Search/results.htm?keyword=Microsoft",
+      "provider": "links"
+    },
+    {
+      "label": "Indeed company reviews",
+      "url": "https://www.indeed.com/cmp/Microsoft/reviews",
+      "provider": "links"
+    },
+    {
+      "label": "Blind",
+      "url": "https://www.teamblind.com/search/Microsoft",
+      "provider": "links"
+    },
+    {
+      "label": "Comparably",
+      "url": "https://www.comparably.com/companies/microsoft",
+      "provider": "links"
+    }
+  ],
+  "fetchedAt": "2026-06-10T00:25:03.161Z",
+  "overview": "Microsoft Corporation is an American multinational technology company headquartered in Redmond, Washington. The company became influential in the rise of personal computers through software like Windows and has since expanded into areas such as Internet services, cloud computing, artificial intelligence, video gaming, and more. A Big Tech company, Microsoft is the largest software company by revenue, one of the most valuable public companies, and one of the most valuable brands globally.",
+  "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Aerial_Microsoft_West_Campus_August_2009.jpg/3840px-Aerial_Microsoft_West_Campus_August_2009.jpg"
+}
