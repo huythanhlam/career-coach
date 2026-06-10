@@ -4,14 +4,15 @@ import {
   ArrowLeft, Send, User as UserIcon, ClipboardList, Check,
   Compass, UserCog, Pencil, SlidersHorizontal, Copy,
   Search, ChevronDown, ChevronRight, Layers,
+  ListChecks, CheckCircle2, Circle, MessageCircleHeart,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
-import { generateId, type SavedCareerPlan } from "@/types/userProfile";
+import { generateId, type SavedCareerPlan, type PlanMilestone } from "@/types/userProfile";
 import { workflowsConfig } from "@/config/workflows";
-import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
+import { createCoachingChat, sendMessageStream, extractPlanMilestones } from "@/services/geminiService";
 import {
   buildProfileBaseline, isProfileThin, buildSurveySummary,
   getProfileIdentity, hasBaselineIdentity, hasProfileBaseline, diffIdentityForSync, buildIdentityPatch,
@@ -35,6 +36,9 @@ interface StoredPlanPayload {
   /** The intake responses that produced this plan (added later; optional for
    * backward compatibility with plans saved before this feature). */
   intake?: GoalPlanIntakeData;
+  /** Structured milestones snapshot (added later; the live completion state
+   * lives on the SavedCareerPlan profile entry). */
+  milestones?: PlanMilestone[];
 }
 
 interface GoalPlanningWorkspaceProps {
@@ -90,6 +94,8 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
   const [isGenerating, setIsGenerating] = useState(false);
   const [input, setInput] = useState("");
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [milestones, setMilestones] = useState<PlanMilestone[]>([]);
+  const [extractingMilestones, setExtractingMilestones] = useState(false);
 
   // The responses behind the open plan, the saved plan being edited (so Save
   // updates in place), and inline plan-sheet editing.
@@ -237,6 +243,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
     setPlanMarkdown("");
     setCurrentIntake(intake);
     setEditingSheet(false);
+    setMilestones([]);
     setMode("plan");
     setIsGenerating(true);
 
@@ -334,6 +341,9 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
       setGoalSummary(payload.goalSummary);
       setMessages(transcript);
       setCurrentIntake(payload.intake ?? null);
+      // Live completion state lives on the profile entry; the payload only
+      // carries the snapshot from the last save (older plans have neither).
+      setMilestones(plan.milestones ?? payload.milestones ?? []);
       setEditingPlanId(plan.id);
       setEditingSheet(false);
       setMode("plan");
@@ -377,6 +387,21 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
 
     setIsSaving(true);
     try {
+      // First save of a plan: turn its Milestones section into a checkable
+      // list. Extraction failure is tolerated — the plan still saves.
+      let nextMilestones = milestones;
+      if (nextMilestones.length === 0 && planMarkdown.trim()) {
+        try {
+          const extracted = await extractPlanMilestones(planMarkdown);
+          nextMilestones = extracted.map((e) => ({
+            id: generateId(), title: e.title, timeframe: e.timeframe, done: false,
+          }));
+        } catch (err) {
+          console.error("Milestone extraction failed:", err);
+        }
+      }
+      setMilestones(nextMilestones);
+
       const payload: StoredPlanPayload = {
         version: 1,
         planMarkdown,
@@ -384,6 +409,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
         goalSummary,
         transcript: messages,
         intake: currentIntake ?? undefined,
+        milestones: nextMilestones,
       };
       const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
       const { error } = await supabase.storage
@@ -392,7 +418,10 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
       if (error) throw error;
 
       const createdAt = reuse?.createdAt ?? new Date().toISOString();
-      const entry: SavedCareerPlan = { id, name, storagePath, goalType, goalSummary, createdAt };
+      const entry: SavedCareerPlan = {
+        id, name, storagePath, goalType, goalSummary, createdAt,
+        milestones: nextMilestones, lastCheckInAt: reuse?.lastCheckInAt,
+      };
       const nextPlans = reuse
         ? savedPlans.map((p) => (p.id === id ? entry : p))
         : [...savedPlans, entry];
@@ -405,6 +434,64 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
       console.error("Failed to save plan:", err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  /* ── Milestone tracking ──────────────────────────────────────────── */
+  // Completion state persists on the plan's profile entry immediately, so
+  // progress survives without re-saving the whole plan.
+  const persistMilestones = async (next: PlanMilestone[], extra: Partial<SavedCareerPlan> = {}) => {
+    setMilestones(next);
+    if (!editingPlanId) return;
+    await updateProfile({
+      savedCareerPlans: savedPlans.map((p) =>
+        p.id === editingPlanId ? { ...p, milestones: next, ...extra } : p
+      ),
+    });
+  };
+
+  const toggleMilestone = (id: string) => {
+    const next = milestones.map((m) =>
+      m.id === id
+        ? { ...m, done: !m.done, completedAt: !m.done ? new Date().toISOString() : undefined }
+        : m
+    );
+    persistMilestones(next);
+  };
+
+  // Older plans (saved before milestones existed) can build their checklist on demand.
+  const handleExtractMilestones = async () => {
+    if (!planMarkdown.trim() || extractingMilestones) return;
+    setExtractingMilestones(true);
+    try {
+      const extracted = await extractPlanMilestones(planMarkdown);
+      await persistMilestones(
+        extracted.map((e) => ({ id: generateId(), title: e.title, timeframe: e.timeframe, done: false }))
+      );
+    } catch (err) {
+      console.error("Milestone extraction failed:", err);
+    } finally {
+      setExtractingMilestones(false);
+    }
+  };
+
+  // Weekly check-in: tell the coach where things stand and let it adjust the plan.
+  const handleCheckIn = () => {
+    if (isGenerating || !chatRef.current) return;
+    const done = milestones.filter((m) => m.done);
+    const open = milestones.filter((m) => !m.done);
+    const msg =
+      `Progress check-in on my plan.\n` +
+      `Completed so far: ${done.length ? done.map((m) => m.title).join("; ") : "nothing yet"}.\n` +
+      (open.length ? `Still open: ${open.map((m) => m.title).join("; ")}.\n` : "") +
+      `Given this progress, what should I focus on for the next two weeks? Call out anything that's slipping, and adjust the plan if needed.`;
+    handleSend(undefined, msg);
+    if (editingPlanId) {
+      updateProfile({
+        savedCareerPlans: savedPlans.map((p) =>
+          p.id === editingPlanId ? { ...p, lastCheckInAt: new Date().toISOString() } : p
+        ),
+      });
     }
   };
 
@@ -421,6 +508,16 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
         <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
           {p.goalType} · {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         </div>
+        {(p.milestones?.length ?? 0) > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+            <div style={{ flex: 1, maxWidth: 160, height: 5, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
+              <div style={{ width: `${Math.round((p.milestones!.filter((m) => m.done).length / p.milestones!.length) * 100)}%`, height: "100%", background: "var(--forest)", borderRadius: 9999 }} />
+            </div>
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
+              {p.milestones!.filter((m) => m.done).length}/{p.milestones!.length} milestones
+            </span>
+          </div>
+        )}
       </div>
       <button
         type="button"
@@ -559,6 +656,71 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
         <div className="flex-1 flex overflow-hidden">
           {/* Plan pane */}
           <div className="flex-1 overflow-auto no-scrollbar" style={{ padding: 28 }}>
+            {/* Milestones — the plan as a living checklist */}
+            {planMarkdown.trim() && !isGenerating && (
+              <div style={{ maxWidth: 720, margin: "0 auto 20px", ...cardStyle, overflow: "hidden" }}>
+                <div style={{ padding: "16px 22px", borderBottom: milestones.length > 0 ? "1px solid var(--border)" : "none", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <ListChecks className="w-4 h-4" style={{ color: "var(--primary)" }} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Milestones</span>
+                  {milestones.length > 0 ? (
+                    <>
+                      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {milestones.filter((m) => m.done).length} of {milestones.length} done
+                      </span>
+                      <div style={{ flex: "1 1 80px", minWidth: 60, height: 6, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
+                        <div style={{ width: `${Math.round((milestones.filter((m) => m.done).length / milestones.length) * 100)}%`, height: "100%", background: "var(--forest)", borderRadius: 9999, transition: "width 300ms ease" }} />
+                      </div>
+                      <button
+                        onClick={handleCheckIn}
+                        disabled={isGenerating}
+                        title="Tell the coach where things stand and get the plan adjusted"
+                        style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--primary)", border: "none", borderRadius: 8, height: 32, padding: "0 12px", cursor: isGenerating ? "not-allowed" : "pointer", color: "#fff", fontFamily: "inherit", fontSize: 12, fontWeight: 600, opacity: isGenerating ? 0.6 : 1 }}
+                      >
+                        <MessageCircleHeart className="w-3.5 h-3.5" /> Check in
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleExtractMilestones}
+                      disabled={extractingMilestones}
+                      style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, height: 32, padding: "0 12px", cursor: extractingMilestones ? "not-allowed" : "pointer", color: "var(--foreground)", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}
+                    >
+                      {extractingMilestones ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Building…</> : <><Sparkles className="w-3.5 h-3.5" /> Turn the plan into a checklist</>}
+                    </button>
+                  )}
+                </div>
+                {milestones.length > 0 && (
+                  <div style={{ padding: "8px 12px" }}>
+                    {milestones.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => toggleMilestone(m.id)}
+                        style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 10px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                        className="hover:bg-muted/50 transition-colors"
+                      >
+                        {m.done
+                          ? <CheckCircle2 className="w-[18px] h-[18px] shrink-0" style={{ color: "var(--forest)", marginTop: 1 }} />
+                          : <Circle className="w-[18px] h-[18px] shrink-0" style={{ color: "var(--muted-foreground)", opacity: 0.5, marginTop: 1 }} />}
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: m.done ? "var(--muted-foreground)" : "var(--foreground)", textDecoration: m.done ? "line-through" : "none", lineHeight: 1.45 }}>
+                            {m.title}
+                          </span>
+                          {m.timeframe && (
+                            <span style={{ display: "block", fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>{m.timeframe}</span>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                    {!editingPlanId && (
+                      <div style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "6px 10px 4px" }}>
+                        Save the plan to keep tracking these between visits.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ maxWidth: 720, margin: "0 auto", ...cardStyle, overflow: "hidden" }}>
               <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
                 {isGenerating && !planMarkdown.trim()

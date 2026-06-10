@@ -658,3 +658,96 @@ export async function sendMessageStream(chat: any, message: string, onChunk: (te
   const chunks = await chat.sendMessageStream({ message });
   onChunk(chunks[0].text);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Career-plan milestone extraction — turns the plan's markdown "Milestones"
+   section into a structured, checkable list.
+   ───────────────────────────────────────────────────────────────────────── */
+
+export interface ExtractedMilestone {
+  title: string;
+  timeframe?: string;
+}
+
+const MILESTONE_EXTRACTION_SYSTEM = `You are a structured data extractor. Given a career development plan in Markdown, extract its concrete milestones/checkpoints as a JSON array — no markdown fences, no explanation — matching exactly:
+[{ "title": "string (short, actionable, max ~12 words)", "timeframe": "string (the time-box as written, e.g. 'Month 3' or 'by mid-July' — omit if none)" }]
+Rules:
+- Pull primarily from the Milestones section; include Quick Wins only if there is no Milestones section.
+- Each entry must be a single concrete checkpoint someone can mark done — split combined items, drop vague aspirations.
+- Preserve the plan's order. Maximum 12 entries.
+- Output the raw JSON array only: begin with "[" and end with "]".`;
+
+export async function extractPlanMilestones(planMarkdown: string): Promise<ExtractedMilestone[]> {
+  const raw = await generateWorkflowData(
+    MILESTONE_EXTRACTION_SYSTEM,
+    `Extract the milestones from this plan:\n\n${planMarkdown.slice(0, 16000)}`,
+    "claude-haiku-4-5-20251001"
+  );
+  const parsed = parseJsonArray<{ title?: unknown; timeframe?: unknown }>(raw);
+  return parsed
+    .filter((m) => typeof m?.title === "string" && (m.title as string).trim())
+    .slice(0, 12)
+    .map((m) => ({
+      title: (m.title as string).trim(),
+      timeframe: typeof m.timeframe === "string" && m.timeframe.trim() ? m.timeframe.trim() : undefined,
+    }));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Interview transcript evaluation — scores a finished mock-interview session
+   against a fixed rubric so progress is comparable across sessions.
+   ───────────────────────────────────────────────────────────────────────── */
+
+export interface InterviewEvaluation {
+  scores: { communication: number; structure: number; depth: number };
+  overall: number;
+  summary: string;
+  strengths: string[];
+  improvements: string[];
+}
+
+const INTERVIEW_EVALUATION_SYSTEM = `You are a rigorous interview assessor. Given a mock-interview transcript, score THE CANDIDATE's answers (the "User" turns) — never the interviewer — and return ONLY a JSON object, no markdown fences, matching exactly:
+{
+  "scores": { "communication": 0-100, "structure": 0-100, "depth": 0-100 },
+  "overall": 0-100,
+  "summary": "string (2-3 sentences on the overall performance)",
+  "strengths": ["2-3 short, specific strengths"],
+  "improvements": ["2-3 short, specific, highest-impact things to practice"]
+}
+Rubric (score each 0-100, calibrated so 50 = a typical unprepared candidate, 80+ = hire-bar):
+- communication: clarity, concision, confidence of the answers.
+- structure: framing and organization (STAR for behavioral, explicit framework/approach for cases and technical).
+- depth: specificity, evidence, rigor, and trade-off awareness.
+Be honest and consistent — scores must reflect the actual transcript so they are comparable across sessions. If the candidate barely answered, score low.`;
+
+export async function evaluateInterviewTranscript(
+  interviewKind: string,
+  role: string,
+  transcript: { role: "user" | "model"; text: string }[]
+): Promise<InterviewEvaluation> {
+  const serialized = transcript
+    .map((t) => `${t.role === "user" ? "User" : "Interviewer"}: ${t.text}`)
+    .join("\n\n")
+    .slice(-20000); // keep the most recent turns when very long
+  const prompt = `Interview type: ${interviewKind}\nTarget role: ${role || "unspecified"}\n\nTRANSCRIPT:\n${serialized}\n\nScore the candidate per the rubric.`;
+  const raw = await generateWorkflowData(INTERVIEW_EVALUATION_SYSTEM, prompt, "claude-sonnet-4-6");
+  const parsed = parseLooseJsonObject(raw);
+
+  const clamp = (n: unknown): number =>
+    Math.min(100, Math.max(0, Math.round(typeof n === "number" ? n : parseFloat(String(n)) || 0)));
+  const strings = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((s) => typeof s === "string" && s.trim()).slice(0, 4) : [];
+
+  const scores = {
+    communication: clamp(parsed?.scores?.communication),
+    structure: clamp(parsed?.scores?.structure),
+    depth: clamp(parsed?.scores?.depth),
+  };
+  return {
+    scores,
+    overall: clamp(parsed?.overall ?? (scores.communication + scores.structure + scores.depth) / 3),
+    summary: typeof parsed?.summary === "string" ? parsed.summary : "",
+    strengths: strings(parsed?.strengths),
+    improvements: strings(parsed?.improvements),
+  };
+}
