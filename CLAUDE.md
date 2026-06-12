@@ -18,11 +18,11 @@ In remote/cloud sessions, run `npm ci` first — containers start without `node_
 
 ## Definition of done
 
-A change is not done until `npm run lint` and `npm test` both pass. CI (`.github/workflows/ci.yml`) additionally runs `npm run build` and `npm audit --omit=dev --audit-level=high`; run those too if you touched dependencies or build config.
+A change is not done until `npm run lint` and `npm test` both pass. CI (`.github/workflows/ci.yml`) additionally runs `npm run build` and `npm audit --omit=dev --audit-level=high`; run those too if you touched dependencies or build config. The `/verify-ci` skill runs the full gauntlet.
 
 ## Workflow: spec first
 
-For non-trivial features (new workflow, schema change, new pipeline), write a short design doc to `docs/superpowers/specs/YYYY-MM-DD-<slug>-design.md` and get it approved **before** implementing. Small fixes and refactors don't need a spec.
+For non-trivial features (new workflow, schema change, new pipeline), write a short design doc to `docs/superpowers/specs/YYYY-MM-DD-<slug>-design.md` and get it approved **before** implementing (the `/spec` skill does this). Small fixes and refactors don't need a spec. Schema changes: use the `/new-migration` skill.
 
 ## Architecture
 
