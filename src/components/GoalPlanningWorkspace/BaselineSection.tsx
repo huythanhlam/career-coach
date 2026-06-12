@@ -8,7 +8,6 @@ import type { ViewId } from "@/components/Sidebar";
 
 interface BaselineSectionProps {
   hasBaseline: boolean;
-  profileHasBaseline: boolean;
   baseline: string;
   baselineSurveyOpen: boolean;
   savingSurvey: boolean;

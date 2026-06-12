@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { generateId, type SavedCareerPlan } from "@/types/userProfile";
 import { workflowsConfig } from "@/config/workflows";
@@ -121,7 +121,7 @@ export function useGoalPlanningActions({
     );
   };
 
-  const handleSaveSurvey = async (survey: CareerSurvey) => {
+  const handleSaveSurvey = useCallback(async (survey: CareerSurvey) => {
     setSavingSurvey(true);
     try {
       if (profileHasBaseline) {
@@ -148,9 +148,10 @@ export function useGoalPlanningActions({
     } finally {
       setSavingSurvey(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, profileHasBaseline, updateProfile]);
 
-  const handleApplySync = async (keys: IdentityKey[]) => {
+  const handleApplySync = useCallback(async (keys: IdentityKey[]) => {
     if (!pendingSurvey) return;
     setSyncing(true);
     try {
@@ -165,14 +166,15 @@ export function useGoalPlanningActions({
       setSyncConflicts([]);
       setPendingSurvey(null);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, pendingSurvey, updateProfile]);
 
-  const dismissSync = () => {
+  const dismissSync = useCallback(() => {
     setSyncConflicts([]);
     setPendingSurvey(null);
-  };
+  }, []);
 
-  const handleGenerate = async (intake: GoalPlanIntakeData) => {
+  const handleGenerate = useCallback(async (intake: GoalPlanIntakeData) => {
     const labelFor = (g: { goalType: string; detail: string }) =>
       g.goalType === "Other"
         ? (g.detail.split("\n")[0].slice(0, 48).trim() || "Custom goal")
@@ -236,9 +238,10 @@ export function useGoalPlanningActions({
     } finally {
       setIsGenerating(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
-  const handleSend = async (e?: React.FormEvent, overrideText?: string) => {
+  const handleSend = useCallback(async (e?: React.FormEvent, overrideText?: string) => {
     if (e) e.preventDefault();
     const text = (overrideText ?? input).trim();
     if (!text || isGenerating || !chatRef.current) return;
@@ -267,9 +270,10 @@ export function useGoalPlanningActions({
     } finally {
       setIsGenerating(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, isGenerating]);
 
-  const handleOpen = async (plan: SavedCareerPlan) => {
+  const handleOpen = useCallback(async (plan: SavedCareerPlan) => {
     setLoadingPlanId(plan.id);
     try {
       const { data, error } = await supabase.storage.from(BUCKET).download(plan.storagePath);
@@ -290,9 +294,10 @@ export function useGoalPlanningActions({
     } finally {
       setLoadingPlanId(null);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
-  const handleDelete = async (plan: SavedCareerPlan) => {
+  const handleDelete = useCallback(async (plan: SavedCareerPlan) => {
     try {
       await supabase.storage.from(BUCKET).remove([plan.storagePath]);
     } catch (err) {
@@ -300,11 +305,12 @@ export function useGoalPlanningActions({
     }
     await updateProfile({ savedCareerPlans: savedPlans.filter((p) => p.id !== plan.id) });
     if (editingPlanId === plan.id) setEditingPlanId(null);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPlans, editingPlanId, updateProfile]);
 
   const existingPlan = editingPlanId ? savedPlans.find((p) => p.id === editingPlanId) : undefined;
 
-  const openSaveDialog = (asCopy = false) => {
+  const openSaveDialog = useCallback((asCopy = false) => {
     setSaveAsCopy(asCopy);
     const fallback = [profile.preferredName || profile.fullName, "Plan", goalSummary].filter(Boolean).join(" — ");
     const auto = asCopy
@@ -312,9 +318,10 @@ export function useGoalPlanningActions({
       : existingPlan?.name ?? fallback;
     setSaveName(auto);
     setShowSaveDialog(true);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, goalSummary, existingPlan]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!user) return;
     const reuse = saveAsCopy ? undefined : existingPlan;
     const id = reuse?.id ?? generateId();
@@ -352,11 +359,12 @@ export function useGoalPlanningActions({
     } finally {
       setIsSaving(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, savedPlans, planMarkdown, goalType, goalSummary, messages, currentIntake, editingPlanId, saveAsCopy, saveName, existingPlan, updateProfile]);
 
-  const startEditSheet = () => { setDraftMarkdown(planMarkdown); setEditingSheet(true); };
-  const applyEditSheet = () => { setPlanMarkdown(draftMarkdown); setEditingSheet(false); };
-  const cancelEditSheet = () => setEditingSheet(false);
+  const startEditSheet = useCallback(() => { setDraftMarkdown(planMarkdown); setEditingSheet(true); }, [planMarkdown]);
+  const applyEditSheet = useCallback(() => { setPlanMarkdown(draftMarkdown); setEditingSheet(false); }, [draftMarkdown]);
+  const cancelEditSheet = useCallback(() => setEditingSheet(false), []);
 
   return {
     handleSaveSurvey,

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
@@ -111,12 +111,22 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
     return [...groups.entries()];
   }, [filteredPlans]);
 
-  const toggleGroup = (key: string) =>
+  const toggleGroup = useCallback((key: string) =>
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
-    });
+    }), []);
+
+  const handleGoToList = useCallback(() => setMode("list"), []);
+  const handleGoToPlan = useCallback(() => setMode("plan"), []);
+  const handleGoToResponses = useCallback(() => setMode("responses"), []);
+  const handleOpenSurvey = useCallback(() => setBaselineSurveyOpen(true), []);
+  const handleCloseSurvey = useCallback(() => setBaselineSurveyOpen(false), []);
+  const handleSaveDialogCancel = useCallback(() => { setShowSaveDialog(false); setSaveAsCopy(false); }, []);
+  const handleSwitcherToggle = useCallback(() => setSwitcherOpen((o) => !o), []);
+  const handleSwitcherClose = useCallback(() => setSwitcherOpen(false), []);
+  const handleGroupByType = useCallback(() => setGroupByType((g) => !g), []);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -164,6 +174,10 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
     draftMarkdown,
   });
 
+  const handleIntakeSubmit = useCallback((intake: GoalPlanIntakeData) => { setEditingPlanId(null); actions.handleGenerate(intake); }, [actions.handleGenerate]);
+  const handleSaveDialog = useCallback(() => actions.openSaveDialog(false), [actions.openSaveDialog]);
+  const handleSaveAsCopy = useCallback(() => actions.openSaveDialog(true), [actions.openSaveDialog]);
+
   /* ════════════════════════════ EDIT RESPONSES ═════════════════════ */
   if (mode === "responses") {
     return (
@@ -172,7 +186,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
         hasBaseline={hasBaseline}
         currentIntake={currentIntake}
         onGenerate={actions.handleGenerate}
-        onBack={() => setMode("plan")}
+        onBack={handleGoToPlan}
       />
     );
   }
@@ -194,19 +208,19 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
           onStartEdit={actions.startEditSheet}
           onApplyEdit={actions.applyEditSheet}
           onCancelEdit={actions.cancelEditSheet}
-          onBack={() => setMode("list")}
-          onSave={() => actions.openSaveDialog(false)}
-          onSaveAsCopy={() => actions.openSaveDialog(true)}
+          onBack={handleGoToList}
+          onSave={handleSaveDialog}
+          onSaveAsCopy={handleSaveAsCopy}
           currentIntake={currentIntake}
-          onViewResponses={() => setMode("responses")}
+          onViewResponses={handleGoToResponses}
           goalSummary={goalSummary}
           goalType={goalType}
           editingPlanId={editingPlanId}
           savedPlans={savedPlans}
           scrollRef={scrollRef}
           switcherOpen={switcherOpen}
-          onSwitcherToggle={() => setSwitcherOpen((o) => !o)}
-          onSwitcherClose={() => setSwitcherOpen(false)}
+          onSwitcherToggle={handleSwitcherToggle}
+          onSwitcherClose={handleSwitcherClose}
           onOpenPlan={actions.handleOpen}
         />
         {showSaveDialog && (
@@ -216,7 +230,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
             isSaving={isSaving}
             title={saveAsCopy ? "Save as copy" : editingPlanId ? "Save changes" : "Save plan"}
             subtitle={saveAsCopy ? "This creates a new plan from your edits, leaving the original untouched." : undefined}
-            onCancel={() => { setShowSaveDialog(false); setSaveAsCopy(false); }}
+            onCancel={handleSaveDialogCancel}
             onSave={actions.handleSave}
           />
         )}
@@ -263,13 +277,12 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
 
           <BaselineSection
             hasBaseline={hasBaseline}
-            profileHasBaseline={profileHasBaseline}
             baseline={buildProfileBaseline(profile)}
             baselineSurveyOpen={baselineSurveyOpen}
             savingSurvey={savingSurvey}
             initialSurvey={initialSurvey}
-            onOpenSurvey={() => setBaselineSurveyOpen(true)}
-            onCloseSurvey={() => setBaselineSurveyOpen(false)}
+            onOpenSurvey={handleOpenSurvey}
+            onCloseSurvey={handleCloseSurvey}
             onSaveSurvey={actions.handleSaveSurvey}
             onNavigate={onNavigate}
           />
@@ -287,7 +300,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
               groupByType={groupByType}
               onPlanSearch={setPlanSearch}
               onPlanSort={setPlanSort}
-              onGroupByType={() => setGroupByType((g) => !g)}
+              onGroupByType={handleGroupByType}
               onToggleGroup={toggleGroup}
               onOpenPlan={actions.handleOpen}
               onDeletePlan={actions.handleDelete}
@@ -295,7 +308,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
           )}
 
           <IntakeFlow
-            onSubmit={(intake) => { setEditingPlanId(null); actions.handleGenerate(intake); }}
+            onSubmit={handleIntakeSubmit}
             isGenerating={isGenerating}
             baselineReady={hasBaseline}
           />
