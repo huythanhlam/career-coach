@@ -10,7 +10,6 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "server": "tsx server.ts",
-    "agents": "tsx agents/index.ts",
     "profiles:seed-list": "tsx scripts/company-profiles/seedList.ts",
     "profiles:build": "tsx scripts/company-profiles/build.ts",
     "profiles:sync": "tsx scripts/company-profiles/sync.ts",
