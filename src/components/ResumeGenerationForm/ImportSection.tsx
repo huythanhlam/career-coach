@@ -45,13 +45,13 @@ export function ImportSection({ state, dispatch, onFileUpload, onImport }: Props
               <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
                 On LinkedIn, go to your profile → <strong>More → Save to PDF</strong>. Upload that file here and we'll extract your work history, education, and skills automatically.
               </p>
-              <input ref={linkedinFileRef} type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: "none" }} onChange={(e) => onFileUpload(e, "linkedin")} />
+              <input ref={linkedinFileRef} type="file" accept=".pdf,application/pdf" style={{ display: "none" }} onChange={(e) => onFileUpload(e, "linkedin")} />
               <button type="button" disabled={isImporting} onClick={() => linkedinFileRef.current?.click()}
                 style={{ width: "100%", padding: "28px 0", border: "2px dashed var(--border)", borderRadius: 12, background: "var(--muted)", cursor: isImporting ? "not-allowed" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, fontFamily: "inherit" }}>
                 {isImporting ? (
                   <><Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--primary)" }} /><span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Extracting from PDF…</span></>
                 ) : (
-                  <><Upload className="w-6 h-6" style={{ color: "var(--primary)" }} /><span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Upload LinkedIn PDF or DOCX</span><span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>LinkedIn profile saved as PDF or Word doc</span></>
+                  <><Upload className="w-6 h-6" style={{ color: "var(--primary)" }} /><span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Upload LinkedIn PDF</span><span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>LinkedIn profile exported as PDF</span></>
                 )}
               </button>
               <details>

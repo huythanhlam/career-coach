@@ -48,13 +48,13 @@ export function Step0StartMethod({ state, dispatch, onStep0Upload, onResumeChoic
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(10,102,194,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {step0Uploading === "linkedin" ? <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#0a66c2" }} /> : <Upload className="w-6 h-6" style={{ color: "#0a66c2" }} />}
             </div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--foreground)", textAlign: "center" }}>Import LinkedIn PDF or DOCX</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--foreground)", textAlign: "center" }}>Import LinkedIn PDF</div>
             <div style={{ fontSize: 13, color: "var(--muted-foreground)", textAlign: "center", lineHeight: 1.5 }}>Go to LinkedIn → profile → <strong>More → Save to PDF</strong>, then upload here.</div>
           </div>
           <div style={{ padding: "14px 24px", borderTop: "1px solid var(--border)", background: "var(--muted)", textAlign: "center" }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#0a66c2" }}>{step0Uploading === "linkedin" ? "Importing…" : "Upload PDF / DOCX →"}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#0a66c2" }}>{step0Uploading === "linkedin" ? "Importing…" : "Upload PDF →"}</span>
           </div>
-          <input ref={step0LinkedinRef} type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: "none" }} onChange={(e) => onStep0Upload(e, "linkedin")} />
+          <input ref={step0LinkedinRef} type="file" accept=".pdf,application/pdf" style={{ display: "none" }} onChange={(e) => onStep0Upload(e, "linkedin")} />
         </div>
 
         {/* Import existing resume */}
