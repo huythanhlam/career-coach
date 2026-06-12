@@ -95,18 +95,6 @@ server.ts           # Express AI gateway
 
 ---
 
-## Multi-Agent Dev System
-
-The `agents/` directory contains an 8-agent CLI development workflow powered by the Anthropic Claude API:
-
-```bash
-npm run agents
-```
-
-Agents: `ux-designer`, `senior-developer`, `cloud-architect`, `qa-engineer`, `docs-writer`, `security-reviewer`, `product-manager`, `devops`
-
----
-
 ## Scripts
 
 | Command | Description |
@@ -115,4 +103,3 @@ Agents: `ux-designer`, `senior-developer`, `cloud-architect`, `qa-engineer`, `do
 | `npm run server` | Start Express AI gateway on port 4000 |
 | `npm run build` | Production build |
 | `npm run lint` | TypeScript type check (`tsc --noEmit`) |
-| `npm run agents` | Launch multi-agent CLI system |

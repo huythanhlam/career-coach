@@ -40,5 +40,5 @@ For non-trivial features (new workflow, schema change, new pipeline), write a sh
 ## Gotchas
 
 - `.npmrc` enforces `ignore-scripts=true` for supply-chain hardening — if a new dependency needs its install script, that's a deliberate decision to discuss, not a flag to flip.
-- README's "Multi-Agent Dev System" section is stale: `agents/` no longer exists and `npm run agents` fails.
+- `supabase/types.ts` is generated from the DB schema — regenerate it, never hand-edit.
 - CI uses Node 22.
