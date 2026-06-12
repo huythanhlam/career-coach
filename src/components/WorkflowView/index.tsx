@@ -39,16 +39,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         profileLinkedin={h.profile.linkedin}
         profileTargetRole={h.profile.targetRole}
         onSubmit={h.handleLinkedinSubmit}
-        onReset={() => {
-          if (h.linkedinFile?.objectUrl) URL.revokeObjectURL(h.linkedinFile.objectUrl);
-          h.setLinkedinSubmitted(false);
-          h.setLinkedinResult(null);
-          h.setLinkedinScreenshot(null);
-          h.setIsLinkedinAnalyzing(false);
-          h.setIsLinkedinCapturing(false);
-          h.setLinkedinUrl("");
-          h.setLinkedinFile(null);
-        }}
+        onReset={h.resetLinkedin}
       />
     );
   }
@@ -70,13 +61,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         tailorInitialResume={h.tailorInitialResume}
         onSetResumeGeneratorData={h.setResumeGeneratorData}
         onSetSavedResumeText={h.setSavedResumeText}
-        onResetBuilderAnalysis={() => {
-          if (h.builderAnalysisFile) URL.revokeObjectURL(h.builderAnalysisFile.objectUrl);
-          h.setBuilderAnalysisText(null);
-          h.setBuilderAnalysisResult(null);
-          h.setBuilderAnalysisFile(null);
-          h.setIsBuilderAnalyzing(false);
-        }}
+        onResetBuilderAnalysis={h.resetBuilderAnalysis}
         onSetShowTailor={h.setShowTailor}
         onSetTailorInitialResume={h.setTailorInitialResume}
         onAnalyzeFromBuilder={h.handleAnalyzeFromBuilder}
@@ -121,7 +106,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         onRefresh={() => h.runMarketAnalysis(true)}
         onSave={h.handleSaveMarket}
         onCopy={h.handleCopyMarket}
-        onReset={() => { h.setMarketData(null); h.setMarketCachedAt(null); h.setMainDocumentText(""); h.setMarketSaveState("idle"); }}
+        onReset={h.resetMarket}
       />
     );
   }
@@ -143,7 +128,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         onSubmitProfileRequest={h.submitProfileRequest}
         onRefreshNews={() => h.runCompanyResearch("news")}
         onRefreshAll={() => h.runCompanyResearch("all")}
-        onResetResult={() => { h.setCompanyResult(null); h.setCompanyCachedAt(null); h.setProfileMissing(false); h.setRequestState(null); }}
+        onResetResult={h.resetCompanyResult}
       />
     );
   }

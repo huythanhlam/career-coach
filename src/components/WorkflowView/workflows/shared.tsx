@@ -1,4 +1,15 @@
 import { Loader2, Sparkles } from "lucide-react";
+import type { WorkflowConfig } from "@/config/workflows";
+
+interface FormCardProps {
+  config: WorkflowConfig;
+  formData: Record<string, any>;
+  fileData: Record<string, any>;
+  isGenerating: boolean;
+  handleInputChange: (id: string, value: string) => void;
+  handleFileChange: (id: string, file: File | null) => void;
+  handleInitialSubmit: (e: React.FormEvent) => void;
+}
 
 export function PageHeader({ title, description }: { title: string; description: string }) {
   return (
@@ -19,7 +30,7 @@ export function MentorCard({ children, style = {}, className = "" }: { children:
   );
 }
 
-export function FormCard({ config, formData, fileData, isGenerating, handleInputChange, handleFileChange, handleInitialSubmit }: any) {
+export function FormCard({ config, formData, fileData, isGenerating, handleInputChange, handleFileChange, handleInitialSubmit }: FormCardProps) {
   const fieldStyle: React.CSSProperties = {
     width: "100%", background: "var(--muted)", border: "1px solid var(--border)",
     borderRadius: 14, padding: "0 16px", fontFamily: "inherit", fontSize: 14,

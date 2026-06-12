@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   createTechCoachChat, sendMessageStream,
 } from "@/services/geminiService";
@@ -65,6 +65,13 @@ export function useMarketHandlers(
     return null;
   };
 
+  const resetMarket = useCallback(() => {
+    setMarketData(null);
+    setMarketCachedAt(null);
+    setMainDocumentText("");
+    setMarketSaveState("idle");
+  }, [setMainDocumentText]);
+
   const runMarketAnalysis = async (forceRefresh = false) => {
     if (isGeneratingMarketData) return;
     setIsGeneratingMarketData(true);
@@ -117,6 +124,7 @@ export function useMarketHandlers(
     setMarketData,
     setMarketCachedAt,
     setMarketSaveState,
+    resetMarket,
     handleSaveMarket,
     handleCopyMarket,
     runMarketAnalysis,

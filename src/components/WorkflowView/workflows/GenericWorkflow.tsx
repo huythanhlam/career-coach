@@ -6,9 +6,10 @@ import { Document, Page } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { PageHeader, MentorCard, FormCard } from "./shared";
+import type { WorkflowConfig } from "@/config/workflows";
 
 interface GenericWorkflowProps {
-  config: any;
+  config: WorkflowConfig;
   formData: Record<string, any>;
   fileData: Record<string, any>;
   isGenerating: boolean;

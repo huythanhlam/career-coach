@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useUserProfile } from "@/context/UserProfileContext";
 import {
@@ -141,6 +141,26 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
     finally { setIsGenerating(false); }
   };
 
+  /* ── Reset handlers ──────────────────────────────────────────── */
+  const resetLinkedin = useCallback(() => {
+    if (linkedinFile?.objectUrl) URL.revokeObjectURL(linkedinFile.objectUrl);
+    setLinkedinSubmitted(false);
+    setLinkedinResult(null);
+    setLinkedinScreenshot(null);
+    setIsLinkedinAnalyzing(false);
+    setIsLinkedinCapturing(false);
+    setLinkedinUrl("");
+    setLinkedinFile(null);
+  }, [linkedinFile]);
+
+  const resetBuilderAnalysis = useCallback(() => {
+    if (builderAnalysisFile) URL.revokeObjectURL(builderAnalysisFile.objectUrl);
+    setBuilderAnalysisText(null);
+    setBuilderAnalysisResult(null);
+    setBuilderAnalysisFile(null);
+    setIsBuilderAnalyzing(false);
+  }, [builderAnalysisFile]);
+
   /* ── Resume builder handler ───────────────────────────────────── */
   const handleAnalyzeFromBuilder = (resumeText: string, file: File) => {
     const objectUrl = URL.createObjectURL(file);
@@ -251,6 +271,9 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
     setMainDocumentText,
     setFormData,
     setFileData,
+    // reset handlers
+    resetLinkedin,
+    resetBuilderAnalysis,
     // handlers
     handleLinkedinSubmit,
     handleInputChange,

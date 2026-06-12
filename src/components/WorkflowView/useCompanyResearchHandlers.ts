@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult,
 } from "@/services/geminiService";
@@ -98,6 +98,13 @@ export function useCompanyResearchHandlers() {
     await runCompanyResearch("auto", company);
   };
 
+  const resetCompanyResult = useCallback(() => {
+    setCompanyResult(null);
+    setCompanyCachedAt(null);
+    setProfileMissing(false);
+    setRequestState(null);
+  }, []);
+
   const submitProfileRequest = async () => {
     setRequestState("requesting");
     const result = await requestCompanyProfile(companyJobDetails.companyName);
@@ -118,6 +125,7 @@ export function useCompanyResearchHandlers() {
     setCompanyCachedAt,
     setProfileMissing,
     setRequestState,
+    resetCompanyResult,
     runCompanyResearch,
     startCompanyResearch,
     submitProfileRequest,

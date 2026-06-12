@@ -1,10 +1,11 @@
 import { Loader2 } from "lucide-react";
 import { MarketCompensationViz, MarketCompData } from "@/components/MarketCompensationViz";
 import type { ViewId } from "@/components/Sidebar";
+import type { WorkflowConfig } from "@/config/workflows";
 import { PageHeader, MentorCard, FormCard } from "./shared";
 
 interface MarketWorkflowProps {
-  config: any;
+  config: WorkflowConfig;
   formData: Record<string, any>;
   fileData: Record<string, any>;
   marketData: MarketCompData | null;
