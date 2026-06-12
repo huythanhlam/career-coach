@@ -2,37 +2,25 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabaseClient";
-import { generateId, type SavedCareerPlan } from "@/types/userProfile";
-import { workflowsConfig } from "@/config/workflows";
-import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
 import {
-  buildProfileBaseline, isProfileThin, buildSurveySummary,
-  getProfileIdentity, hasBaselineIdentity, hasProfileBaseline, diffIdentityForSync, buildIdentityPatch,
-  type IdentitySyncField, type IdentityKey,
+  isProfileThin, buildProfileBaseline, buildSurveySummary,
+  getProfileIdentity, hasBaselineIdentity, hasProfileBaseline,
+  type IdentitySyncField,
 } from "@/lib/careerBaseline";
 import { GoalPlanIntakeForm, type GoalPlanIntakeData } from "@/components/GoalPlanIntakeForm";
 import type { CareerSurvey } from "@/types/userProfile";
 import type { ViewId } from "@/components/Sidebar";
+import { workflowsConfig } from "@/config/workflows";
 import { ProfileSyncDialog } from "./ProfileSyncDialog";
 import { SaveDialog } from "./SaveDialog";
 import { PlanView } from "./PlanView";
 import { ResponsesView } from "./ResponsesView";
 import { BaselineSection } from "./BaselineSection";
 import { SavedPlansSection } from "./SavedPlansSection";
-
-const BUCKET = "user-documents";
+import { useGoalPlanningActions } from "./useGoalPlanningActions";
+import type { SavedCareerPlan } from "@/types/userProfile";
 
 type ChatMsg = { role: "user" | "model"; text: string };
-
-interface StoredPlanPayload {
-  version: 1;
-  planMarkdown: string;
-  goalType: string;
-  goalSummary: string;
-  transcript: ChatMsg[];
-  intake?: GoalPlanIntakeData;
-}
 
 interface GoalPlanningWorkspaceProps {
   onNavigate?: (view: ViewId) => void;
@@ -42,9 +30,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
   const { profile, updateProfile } = useUserProfile();
   const { user } = useAuth();
 
-  const baseline = useMemo(() => buildProfileBaseline(profile), [profile]);
   const thin = useMemo(() => isProfileThin(profile), [profile]);
-  const surveySummary = useMemo(() => buildSurveySummary(profile.careerSurvey), [profile.careerSurvey]);
   const hasBaseline = hasBaselineIdentity(profile, profile.careerSurvey);
   const profileHasBaseline = hasProfileBaseline(profile);
 
@@ -135,250 +121,47 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const buildSystemInstruction = () =>
-    workflowsConfig.goal_planning.systemInstruction +
-    "\n\n--- CANDIDATE PROFILE (BASELINE — ground every recommendation in this) ---\n" +
-    (baseline || "No profile data provided yet.") +
-    (surveySummary
-      ? "\n\n--- CURRENT-STATE SURVEY (how they feel about their job RIGHT NOW — weave this into the snapshot and tailor advice to it) ---\n" + surveySummary
-      : "");
-
-  const handleSaveSurvey = async (survey: CareerSurvey) => {
-    setSavingSurvey(true);
-    try {
-      if (profileHasBaseline) {
-        await updateProfile({ careerSurvey: survey });
-        setBaselineSurveyOpen(false);
-        return;
-      }
-
-      const diffs = diffIdentityForSync(profile, survey);
-      const newKeys = diffs.filter((d) => d.status === "new").map((d) => d.key);
-      const autoPatch =
-        newKeys.length > 0 ? buildIdentityPatch(profile, survey, newKeys) : {};
-
-      await updateProfile({ careerSurvey: survey, ...autoPatch });
-      setBaselineSurveyOpen(false);
-
-      const conflicts = diffs.filter((d) => d.status === "conflict");
-      if (conflicts.length > 0) {
-        setSyncConflicts(conflicts);
-        setPendingSurvey(survey);
-      }
-    } catch (err) {
-      console.error("Failed to save survey:", err);
-    } finally {
-      setSavingSurvey(false);
-    }
-  };
-
-  const handleApplySync = async (keys: IdentityKey[]) => {
-    if (!pendingSurvey) return;
-    setSyncing(true);
-    try {
-      if (keys.length > 0) {
-        const patch = buildIdentityPatch(profile, pendingSurvey, keys);
-        if (Object.keys(patch).length > 0) await updateProfile(patch);
-      }
-    } catch (err) {
-      console.error("Failed to sync profile:", err);
-    } finally {
-      setSyncing(false);
-      setSyncConflicts([]);
-      setPendingSurvey(null);
-    }
-  };
-
-  const dismissSync = () => {
-    setSyncConflicts([]);
-    setPendingSurvey(null);
-  };
-
-  const handleGenerate = async (intake: GoalPlanIntakeData) => {
-    const labelFor = (g: { goalType: string; detail: string }) =>
-      g.goalType === "Other"
-        ? (g.detail.split("\n")[0].slice(0, 48).trim() || "Custom goal")
-        : g.goalType;
-
-    const multi = intake.goals.length > 1;
-    const summary = intake.goals.map(labelFor).join(", ");
-    const typeMeta = multi ? `${intake.goals.length} goals` : labelFor(intake.goals[0]);
-
-    setGoalType(typeMeta);
-    setGoalSummary(summary);
-    setPlanMarkdown("");
-    setCurrentIntake(intake);
-    setEditingSheet(false);
-    setMode("plan");
-    setIsGenerating(true);
-
-    const chat = createCoachingChat(buildSystemInstruction());
-    chatRef.current = chat;
-
-    const goalsBlock = intake.goals
-      .map((g, i) => {
-        const head = g.goalType === "Other" ? "Custom goal" : g.goalType;
-        return `${i + 1}. ${head}${g.detail ? `\n   What I want to do this year: ${g.detail}` : ""}`;
-      })
-      .join("\n");
-
-    const request =
-      `Please create my career development plan for the next ${intake.timeframe}.\n\n` +
-      `My goal${multi ? "s" : ""} for the year:\n${goalsBlock}\n\n` +
-      (intake.notes ? `Additional context: ${intake.notes}\n\n` : "") +
-      (multi
-        ? `Create ONE integrated plan that addresses all of these goals together — highlight where they reinforce each other and sequence them so they don't compete for my time.\n\n`
-        : "") +
-      `Ground every step in my profile baseline and tailor it to my real background.`;
-
-    const friendlyUserMsg = `Create my plan — ${summary} (${intake.timeframe}).`;
-
-    setMessages([{ role: "user", text: friendlyUserMsg }, { role: "model", text: "" }]);
-
-    try {
-      let full = "";
-      await sendMessageStream(chat, request, (chunk) => {
-        full += chunk;
-        setPlanMarkdown(full);
-        setMessages((prev) => {
-          const m = [...prev];
-          m[m.length - 1] = { role: "model", text: full };
-          return m;
-        });
-      });
-    } catch (err) {
-      console.error("Plan generation failed:", err);
-      const msg = "**Error:** Could not generate your plan. Make sure the local AI gateway is running (`npx tsx server.ts`).";
-      setPlanMarkdown(msg);
-      setMessages((prev) => {
-        const m = [...prev];
-        m[m.length - 1] = { role: "model", text: msg };
-        return m;
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleSend = async (e?: React.FormEvent, overrideText?: string) => {
-    if (e) e.preventDefault();
-    const text = (overrideText ?? input).trim();
-    if (!text || isGenerating || !chatRef.current) return;
-
-    setInput("");
-    setIsGenerating(true);
-    setMessages((prev) => [...prev, { role: "user", text }, { role: "model", text: "" }]);
-
-    try {
-      let full = "";
-      await sendMessageStream(chatRef.current, text, (chunk) => {
-        full += chunk;
-        setMessages((prev) => {
-          const m = [...prev];
-          m[m.length - 1] = { role: "model", text: full };
-          return m;
-        });
-      });
-    } catch (err) {
-      console.error("Coaching reply failed:", err);
-      setMessages((prev) => {
-        const m = [...prev];
-        m[m.length - 1] = { role: "model", text: "**Error:** Failed to reach the coach. Is the AI gateway running?" };
-        return m;
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleOpen = async (plan: SavedCareerPlan) => {
-    setLoadingPlanId(plan.id);
-    try {
-      const { data, error } = await supabase.storage.from(BUCKET).download(plan.storagePath);
-      if (error || !data) throw error ?? new Error("No data");
-      const payload = JSON.parse(await data.text()) as StoredPlanPayload;
-      const transcript = payload.transcript ?? [];
-      chatRef.current = createCoachingChat(buildSystemInstruction(), transcript);
-      setPlanMarkdown(payload.planMarkdown);
-      setGoalType(payload.goalType);
-      setGoalSummary(payload.goalSummary);
-      setMessages(transcript);
-      setCurrentIntake(payload.intake ?? null);
-      setEditingPlanId(plan.id);
-      setEditingSheet(false);
-      setMode("plan");
-    } catch (err) {
-      console.error("Failed to open plan:", err);
-    } finally {
-      setLoadingPlanId(null);
-    }
-  };
-
-  const handleDelete = async (plan: SavedCareerPlan) => {
-    try {
-      await supabase.storage.from(BUCKET).remove([plan.storagePath]);
-    } catch (err) {
-      console.error("Storage delete failed:", err);
-    }
-    await updateProfile({ savedCareerPlans: savedPlans.filter((p) => p.id !== plan.id) });
-    if (editingPlanId === plan.id) setEditingPlanId(null);
-  };
-
-  const existingPlan = editingPlanId ? savedPlans.find((p) => p.id === editingPlanId) : undefined;
-
-  const openSaveDialog = (asCopy = false) => {
-    setSaveAsCopy(asCopy);
-    const fallback = [profile.preferredName || profile.fullName, "Plan", goalSummary].filter(Boolean).join(" — ");
-    const auto = asCopy
-      ? `${existingPlan?.name ?? fallback} (copy)`
-      : existingPlan?.name ?? fallback;
-    setSaveName(auto);
-    setShowSaveDialog(true);
-  };
-
-  const handleSave = async () => {
-    if (!user) return;
-    const reuse = saveAsCopy ? undefined : existingPlan;
-    const id = reuse?.id ?? generateId();
-    const storagePath = reuse?.storagePath ?? `${user.id}/career-plans/${id}.json`;
-    const name = saveName.trim() || goalSummary || "Career Plan";
-
-    setIsSaving(true);
-    try {
-      const payload: StoredPlanPayload = {
-        version: 1,
-        planMarkdown,
-        goalType,
-        goalSummary,
-        transcript: messages,
-        intake: currentIntake ?? undefined,
-      };
-      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-      const { error } = await supabase.storage
-        .from(BUCKET)
-        .upload(storagePath, blob, { upsert: true, contentType: "application/json" });
-      if (error) throw error;
-
-      const createdAt = reuse?.createdAt ?? new Date().toISOString();
-      const entry: SavedCareerPlan = { id, name, storagePath, goalType, goalSummary, createdAt };
-      const nextPlans = reuse
-        ? savedPlans.map((p) => (p.id === id ? entry : p))
-        : [...savedPlans, entry];
-
-      await updateProfile({ savedCareerPlans: nextPlans });
-      setEditingPlanId(id);
-      setShowSaveDialog(false);
-      setSaveAsCopy(false);
-    } catch (err) {
-      console.error("Failed to save plan:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const startEditSheet = () => { setDraftMarkdown(planMarkdown); setEditingSheet(true); };
-  const applyEditSheet = () => { setPlanMarkdown(draftMarkdown); setEditingSheet(false); };
-  const cancelEditSheet = () => setEditingSheet(false);
+  const actions = useGoalPlanningActions({
+    profile,
+    user,
+    updateProfile,
+    profileHasBaseline,
+    savedPlans,
+    planMarkdown,
+    goalType,
+    goalSummary,
+    messages,
+    input,
+    currentIntake,
+    editingPlanId,
+    saveAsCopy,
+    saveName,
+    chatRef,
+    setPlanMarkdown,
+    setGoalType,
+    setGoalSummary,
+    setMessages,
+    setIsGenerating,
+    setInput,
+    setCurrentIntake,
+    setEditingPlanId,
+    setEditingSheet,
+    setDraftMarkdown,
+    setMode,
+    setLoadingPlanId,
+    setSavingSurvey,
+    setSyncConflicts,
+    setPendingSurvey,
+    setSyncing,
+    setBaselineSurveyOpen,
+    setShowSaveDialog,
+    setSaveName,
+    setIsSaving,
+    setSaveAsCopy,
+    isGenerating,
+    pendingSurvey,
+    draftMarkdown,
+  });
 
   /* ════════════════════════════ EDIT RESPONSES ═════════════════════ */
   if (mode === "responses") {
@@ -387,7 +170,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
         isGenerating={isGenerating}
         hasBaseline={hasBaseline}
         currentIntake={currentIntake}
-        onGenerate={handleGenerate}
+        onGenerate={actions.handleGenerate}
         onBack={() => setMode("plan")}
       />
     );
@@ -402,17 +185,17 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
           messages={messages}
           input={input}
           onInputChange={setInput}
-          onSend={handleSend}
+          onSend={actions.handleSend}
           isGenerating={isGenerating}
           editingSheet={editingSheet}
           draftMarkdown={draftMarkdown}
           onDraftChange={setDraftMarkdown}
-          onStartEdit={startEditSheet}
-          onApplyEdit={applyEditSheet}
-          onCancelEdit={cancelEditSheet}
+          onStartEdit={actions.startEditSheet}
+          onApplyEdit={actions.applyEditSheet}
+          onCancelEdit={actions.cancelEditSheet}
           onBack={() => setMode("list")}
-          onSave={() => openSaveDialog(false)}
-          onSaveAsCopy={() => openSaveDialog(true)}
+          onSave={() => actions.openSaveDialog(false)}
+          onSaveAsCopy={() => actions.openSaveDialog(true)}
           currentIntake={currentIntake}
           onViewResponses={() => setMode("responses")}
           goalSummary={goalSummary}
@@ -423,7 +206,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
           switcherOpen={switcherOpen}
           onSwitcherToggle={() => setSwitcherOpen((o) => !o)}
           onSwitcherClose={() => setSwitcherOpen(false)}
-          onOpenPlan={handleOpen}
+          onOpenPlan={actions.handleOpen}
         />
         {showSaveDialog && (
           <SaveDialog
@@ -433,7 +216,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
             title={saveAsCopy ? "Save as copy" : editingPlanId ? "Save changes" : "Save plan"}
             subtitle={saveAsCopy ? "This creates a new plan from your edits, leaving the original untouched." : undefined}
             onCancel={() => { setShowSaveDialog(false); setSaveAsCopy(false); }}
-            onSave={handleSave}
+            onSave={actions.handleSave}
           />
         )}
       </>
@@ -480,17 +263,16 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
           <BaselineSection
             hasBaseline={hasBaseline}
             profileHasBaseline={profileHasBaseline}
-            baseline={baseline}
+            baseline={buildProfileBaseline(profile)}
             baselineSurveyOpen={baselineSurveyOpen}
             savingSurvey={savingSurvey}
             initialSurvey={initialSurvey}
             onOpenSurvey={() => setBaselineSurveyOpen(true)}
             onCloseSurvey={() => setBaselineSurveyOpen(false)}
-            onSaveSurvey={handleSaveSurvey}
+            onSaveSurvey={actions.handleSaveSurvey}
             onNavigate={onNavigate}
           />
 
-          {/* Saved plans */}
           {savedPlans.length > 0 && (
             <SavedPlansSection
               savedPlans={savedPlans}
@@ -506,13 +288,13 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
               onPlanSort={setPlanSort}
               onGroupByType={() => setGroupByType((g) => !g)}
               onToggleGroup={toggleGroup}
-              onOpenPlan={handleOpen}
-              onDeletePlan={handleDelete}
+              onOpenPlan={actions.handleOpen}
+              onDeletePlan={actions.handleDelete}
             />
           )}
 
           <GoalPlanIntakeForm
-            onSubmit={(intake) => { setEditingPlanId(null); handleGenerate(intake); }}
+            onSubmit={(intake) => { setEditingPlanId(null); actions.handleGenerate(intake); }}
             isGenerating={isGenerating}
             baselineReady={hasBaseline}
           />
@@ -523,8 +305,8 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
         <ProfileSyncDialog
           conflicts={syncConflicts}
           syncing={syncing}
-          onApply={handleApplySync}
-          onDismiss={dismissSync}
+          onApply={actions.handleApplySync}
+          onDismiss={actions.dismissSync}
         />
       )}
     </div>
