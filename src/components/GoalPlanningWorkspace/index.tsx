@@ -7,7 +7,7 @@ import {
   getProfileIdentity, hasBaselineIdentity, hasProfileBaseline,
   type IdentitySyncField,
 } from "@/lib/careerBaseline";
-import { GoalPlanIntakeForm, type GoalPlanIntakeData } from "@/components/GoalPlanIntakeForm";
+import type { GoalPlanIntakeData } from "@/components/GoalPlanIntakeForm";
 import type { CareerSurvey } from "@/types/userProfile";
 import type { ViewId } from "@/components/Sidebar";
 import { workflowsConfig } from "@/config/workflows";
@@ -17,6 +17,7 @@ import { PlanView } from "./PlanView";
 import { ResponsesView } from "./ResponsesView";
 import { BaselineSection } from "./BaselineSection";
 import { SavedPlansSection } from "./SavedPlansSection";
+import { IntakeFlow } from "./IntakeFlow";
 import { useGoalPlanningActions } from "./useGoalPlanningActions";
 import type { SavedCareerPlan } from "@/types/userProfile";
 
@@ -293,7 +294,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
             />
           )}
 
-          <GoalPlanIntakeForm
+          <IntakeFlow
             onSubmit={(intake) => { setEditingPlanId(null); actions.handleGenerate(intake); }}
             isGenerating={isGenerating}
             baselineReady={hasBaseline}
