@@ -36,7 +36,8 @@ import { CoverLetterForm, CoverLetterFormData } from "@/components/CoverLetterFo
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
 import { MockInterviewWorkspace } from "@/components/MockInterviewWorkspace";
 import { type JobDetailsValue } from "@/components/JobDetailsSection";
-import { researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult } from "@/services/geminiService";
+import { researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult, type CompanyProfileData } from "@/services/geminiService";
+import { fetchCareerPageContext } from "@/services/companyCareerService";
 import { CompanyResearchViz } from "@/components/companyResearch";
 import { CompanyProfileViz } from "@/components/companyResearch/CompanyProfileViz";
 import { RequestProfileBanner } from "@/components/companyResearch/RequestProfileBanner";
@@ -145,6 +146,10 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const [companyCachedAt, setCompanyCachedAt] = useState<string | null>(null);
   // Deterministic profile (reliable, non-AI). Preferred over the AI path.
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  // AI career insights (culture/benefits/interview tips from crawling the
+  // careers site) shown ALONGSIDE a deterministic profile.
+  const [careerInsights, setCareerInsights] = useState<CompanyProfileData | null>(null);
+  const [careerInsightsLoading, setCareerInsightsLoading] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false); // checked, none in DB → offer "request"
   const [requestState, setRequestState] = useState<RequestProfileResult | "requesting" | null>(null);
 
@@ -166,6 +171,9 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
       if (profile) {
         setCompanyProfile(profile);
         setIsResearching(false);
+        // Enrich the deterministic profile with AI career insights (crawls the
+        // company's careers site). Loads async with its own indicator.
+        loadCareerInsights(company);
         return;
       }
     } catch { /* fall through to AI */ }
@@ -184,7 +192,10 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   // Fetch a fresh tier (one grounded call) and persist it to the cache. Company
   // research is company-level — no job title/description needed.
   const fetchProfileFresh = async (company: string) => {
-    const p = await researchCompanyProfile({ jobTitle: "", companyName: company, jobDescription: "" });
+    // Navigate the company's own careers pages first so the profile is grounded
+    // in primary-source text (culture, benefits, interview process). Best-effort.
+    const careerContext = await fetchCareerPageContext(company).catch(() => ({ text: "", sources: [] }));
+    const p = await researchCompanyProfile({ jobTitle: "", companyName: company, jobDescription: "", careerContext });
     await putCachedCompanyResearch(company, "profile", p);
     return p;
   };
@@ -192,6 +203,30 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     const n = await researchCompanyNews({ jobTitle: "", companyName: company, jobDescription: "" });
     await putCachedCompanyResearch(company, "news", n);
     return n;
+  };
+
+  /**
+   * Load AI career insights (hiring values, benefits, interview tips — extracted
+   * from crawling the company's careers site) to enrich a deterministic profile.
+   * Reuses the cached "profile" research tier (stale-while-revalidate). Silent on
+   * failure — the deterministic profile still renders without it.
+   */
+  const loadCareerInsights = async (company: string) => {
+    setCareerInsights(null);
+    try {
+      const cached = await getCachedCompanyResearch(company, "profile");
+      if (cached) {
+        setCareerInsights(cached.data);
+        if (!cached.fresh) fetchProfileFresh(company).then(setCareerInsights).catch(() => {});
+        return;
+      }
+      setCareerInsightsLoading(true);
+      setCareerInsights(await fetchProfileFresh(company));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCareerInsightsLoading(false);
+    }
   };
 
   /**
@@ -765,7 +800,9 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
             {companyProfile && (
               <CompanyProfileViz
                 profile={companyProfile}
-                onReset={() => { setCompanyProfile(null); setProfileMissing(false); setRequestState(null); }}
+                careerInsights={careerInsights}
+                careerInsightsLoading={careerInsightsLoading}
+                onReset={() => { setCompanyProfile(null); setCareerInsights(null); setProfileMissing(false); setRequestState(null); }}
               />
             )}
 

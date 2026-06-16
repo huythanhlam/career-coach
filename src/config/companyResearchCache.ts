@@ -22,7 +22,7 @@ export type CompanyResearchKind = "profile" | "news";
 
 const TTL_MS: Record<CompanyResearchKind, number> = {
   profile: 45 * 24 * 60 * 60 * 1000, // ~quarterly; careers/values/financials move slowly
-  news: 2 * 24 * 60 * 60 * 1000,     // news goes stale fast
+  news: 1 * 24 * 60 * 60 * 1000,     // news goes stale fast — keep it within ~a day
 };
 
 const LS_PREFIX = "crcache:";

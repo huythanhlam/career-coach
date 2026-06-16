@@ -206,6 +206,57 @@ app.post('/api/fetch-url', async (req, res) => {
   }
 });
 
+// --- Stock price history proxy (dev parity for the stock-history Edge Fn) ---
+// Fetches Yahoo Finance's keyless v8 chart JSON server-side (no CORS) so the
+// Research Company stock chart works in local dev without deploying the Edge Fn.
+app.post('/api/stock-history', async (req, res) => {
+  const { ticker } = req.body as { ticker?: string };
+  if (!ticker || typeof ticker !== 'string' || !/^[A-Za-z][A-Za-z.\-]{0,9}$/.test(ticker)) {
+    res.status(400).json({ error: 'Invalid ticker' });
+    return;
+  }
+  const symbol = ticker.trim().toUpperCase();
+  const yahooSymbol = symbol.replace(/\./g, '-'); // BRK.B → BRK-B
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1wk`;
+
+  try {
+    // Host is hardcoded + symbol is validated, so plain fetch (with the browser
+    // UA Yahoo requires) is safe here — no user-controlled URL.
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      res.status(502).json({ error: `Fetch failed: ${response.statusText}` });
+      return;
+    }
+
+    const data: any = await response.json();
+    const r = data?.chart?.result?.[0];
+    const ts: number[] = Array.isArray(r?.timestamp) ? r.timestamp : [];
+    const closes: (number | null)[] = r?.indicators?.quote?.[0]?.close ?? [];
+    const currency: string = typeof r?.meta?.currency === 'string' ? r.meta.currency : 'USD';
+    const points: { date: string; close: number }[] = [];
+    for (let i = 0; i < ts.length; i++) {
+      const c = closes[i];
+      if (typeof c === 'number' && Number.isFinite(c) && c > 0) {
+        points.push({ date: new Date(ts[i] * 1000).toISOString().slice(0, 10), close: Math.round(c * 100) / 100 });
+      }
+    }
+    if (points.length < 2) {
+      res.status(404).json({ error: 'No price history for this ticker' });
+      return;
+    }
+    res.json({ ticker: symbol, currency, points: points.slice(-90) });
+  } catch (error: any) {
+    console.error('[stock-history] Error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch prices.' });
+  }
+});
+
 // --- BLS Public Data API proxy ---
 // Keeps the (free) registration key server-side and avoids browser CORS.
 app.post('/api/bls', async (req, res) => {

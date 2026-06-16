@@ -20,7 +20,7 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const MODEL = "gemini-2.5-flash";
 // Slow/fast TTLs mirror src/config/companyResearchCache.ts so we re-seed on the
 // same cadence the client treats data as stale.
-const TTL_MS = { profile: 45 * 24 * 60 * 60 * 1000, news: 2 * 24 * 60 * 60 * 1000 } as const;
+const TTL_MS = { profile: 45 * 24 * 60 * 60 * 1000, news: 1 * 24 * 60 * 60 * 1000 } as const;
 // Bound cost/runtime per invocation; the cron runs weekly and chips away.
 const MAX_PER_RUN = 12;
 
@@ -45,23 +45,28 @@ const COMPANIES: string[] = [
   "UPS", "Verizon", "Visa", "Walmart", "Walt Disney", "Wells Fargo", "Workday", "Zoom",
 ];
 
-const COMPANY_PROFILE_SYSTEM = `You research a company to help a candidate interview well. A live web search tool IS available — use it for anything time-sensitive and cite the real URLs you retrieve; never invent URLs or figures. You are given JOB POSTING TEXT — use it directly for benefits/values where present and only search for what it doesn't cover.
+const COMPANY_PROFILE_SYSTEM = `You research a company to help a candidate interview well. A live web search tool IS available — use it for anything time-sensitive and cite the real URLs you retrieve; never invent URLs or figures. You are given JOB POSTING TEXT — use it directly for benefits/values where present and only search for what it doesn't cover. You may also be given CAREERS-SITE TEXT scraped from the company's own careers/culture/benefits pages — treat that as the most authoritative source and extract from it directly, citing those page URLs.
 
-Produce, searching where needed:
-- hiringValues: what the company values when hiring (careers/jobs/culture pages — traits, principles, competencies).
+Navigate the company's OWN official careers website (its careers/jobs/culture/life/benefits/interview pages) and extract from it. Produce, searching where needed:
+- hiringValues: what the company values when hiring (careers/culture pages — traits, principles, competencies).
 - benefits: key benefits & perks (comp philosophy, health/leave, equity, remote/flexibility, learning budget).
+- interviewTips: how to succeed in THIS company's interview process — process/stages, formats, what they assess, prep advice, sample focus areas. Prefer the company's own "interview prep"/"hiring process" pages; otherwise reputable guides. Make each bullet actionable.
 - financials: most recent quarterly earnings, revenue/growth, guidance, stock; private → latest funding/valuation. Date-stamp every figure. If unknown, say so in the summary and leave bullets sparse.
+- ticker: the company's primary public stock ticker symbol in UPPERCASE (e.g. "AAPL"). If the company is private or you are unsure, use "".
+
 Do NOT output employee ratings or review scores — those are shown from verified sources elsewhere, not from you.
 
 Output ONLY a compact JSON object, no markdown fences:
-{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"sources":[{"label":"...","url":"..."}]}
-At most 4 bullets/section (≤25 words each) and 3 sources/section. Begin with "{" and end with "}".`;
+{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"interviewTips":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"ticker":"AAPL or \"\"","sources":[{"label":"...","url":"..."}]}
+At most 4 bullets/section (≤25 words each, interviewTips may use up to 5) and 3 sources/section. Begin with "{" and end with "}".`;
 
-const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news. Date-stamp each item.
+const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Strongly prioritize the MOST RECENT developments: aim for the last 30 days, and do not include anything older than ~6 months unless nothing newer exists. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news.
+
+Return each item with an ISO date so it can be sorted. The "date" MUST be the publication date in YYYY-MM-DD form (use the most precise date you can verify; if only month/year is known use the first of that month). Order does not matter — the app re-sorts newest first.
 
 Output ONLY a compact JSON object, no markdown fences:
-{"news":{"summary":"1-2 sentences","bullets":["headline — date — why it matters"],"sources":[{"label":"...","url":"https://..."}]},"sources":[{"label":"...","url":"..."}]}
-At most 5 bullets (≤25 words each) and 4 sources. Begin with "{" and end with "}".`;
+{"news":{"summary":"1-2 sentences","items":[{"headline":"...","date":"YYYY-MM-DD","whyItMatters":"why it matters for a candidate","url":"https://..."}],"sources":[{"label":"...","url":"https://..."}]},"sources":[{"label":"...","url":"..."}]}
+At most 8 items (headline + whyItMatters ≤25 words each) and 4 sources. Begin with "{" and end with "}".`;
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 

@@ -6,12 +6,27 @@ import {
   LineChart, Newspaper, Copy, Check, RotateCcw, ExternalLink,
 } from "lucide-react";
 import type { CompanyProfile, FinancialMetric } from "@/types/companyProfile";
+import type { CompanyProfileData } from "@/services/geminiService";
+import { tickerForCompany } from "@/data/popularCompanies";
 import { MentorCard, SectionHeader, btnStyle, fadeUp } from "./shared";
 import { ReviewLinksCard } from "./ReviewLinks";
+import { StockChart } from "./StockChart";
+import { ValueTags } from "./ValueTags";
+import { BenefitsGrid } from "./BenefitsGrid";
+import { InterviewTipsCard } from "./InterviewTipsCard";
 
 interface Props {
   profile: CompanyProfile;
+  /** AI insights from crawling the careers site (culture/benefits/interview tips). */
+  careerInsights?: CompanyProfileData | null;
+  careerInsightsLoading?: boolean;
   onReset: () => void;
+}
+
+/** Has the careers crawl produced any content worth showing? */
+function hasInsight(i?: CompanyProfileData | null): boolean {
+  if (!i) return false;
+  return [i.hiringValues, i.benefits, i.interviewTips].some((s) => s?.summary || (s?.bullets?.length ?? 0) > 0);
 }
 
 /** Abbreviate a currency amount: 383285000000 → "$383.3B". */
@@ -165,8 +180,15 @@ function FinancialsCard({ financials }: { financials: FinancialMetric[] }) {
   );
 }
 
+/** Newest first; undated items sink to the bottom. */
+function newsTime(publishedAt?: string): number {
+  const t = Date.parse(publishedAt ?? "");
+  return Number.isNaN(t) ? -Infinity : t;
+}
+
 function NewsCard({ profile }: { profile: CompanyProfile }) {
   if (!profile.news.length) return null;
+  const news = [...profile.news].sort((a, b) => newsTime(b.publishedAt) - newsTime(a.publishedAt));
   return (
     <MentorCard style={{ overflow: "hidden" }}>
       <SectionHeader Icon={Newspaper} color="#E8B948" title="Recent news" trailing={<span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Google News</span>} />
@@ -174,7 +196,7 @@ function NewsCard({ profile }: { profile: CompanyProfile }) {
         <div style={{ position: "relative", paddingLeft: 22 }}>
           <span style={{ position: "absolute", left: 5, top: 4, bottom: 4, width: 2, background: "var(--border)" }} />
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {profile.news.map((n, i) => (
+            {news.map((n, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
@@ -198,6 +220,20 @@ function NewsCard({ profile }: { profile: CompanyProfile }) {
 }
 
 
+/** Placeholder while the careers-site crawl + extraction is running. */
+function CareersLoadingCard() {
+  return (
+    <MentorCard style={{ overflow: "hidden" }}>
+      <SectionHeader Icon={Briefcase} color="var(--primary)" title="Working here" />
+      <div style={{ padding: "18px 22px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--muted-foreground)" }}>
+        <span style={{ width: 14, height: 14, borderRadius: 99, border: "2px solid var(--border)", borderTopColor: "var(--primary)", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
+        Reading the company’s careers site for culture, benefits & interview tips…
+        <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+      </div>
+    </MentorCard>
+  );
+}
+
 function toMarkdown(p: CompanyProfile): string {
   const lines = [`# ${p.name}`];
   if (p.overview) lines.push(p.overview);
@@ -213,7 +249,7 @@ function toMarkdown(p: CompanyProfile): string {
   return lines.join("\n");
 }
 
-export function CompanyProfileViz({ profile, onReset }: Props) {
+export function CompanyProfileViz({ profile, careerInsights, careerInsightsLoading, onReset }: Props) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     try { await navigator.clipboard.writeText(toMarkdown(profile)); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) { console.error(e); }
@@ -221,9 +257,21 @@ export function CompanyProfileViz({ profile, onReset }: Props) {
 
   // Only include cards that have content (each component also self-guards to null).
   const hasFacts = Object.keys(profile.keyFacts ?? {}).some((k) => (profile.keyFacts as Record<string, unknown>)[k] != null);
+  // Prefer the profile's verified ticker; fall back to our curated lookup.
+  const stockTicker = profile.keyFacts?.ticker?.trim() || tickerForCompany(profile.name);
+  const insights = hasInsight(careerInsights) ? careerInsights! : null;
   const sections = [
     hasFacts ? <KeyFactsCard key="facts" profile={profile} /> : null,
+    stockTicker ? <StockChart key="stock" ticker={stockTicker} title="Stock price" /> : null,
     profile.financials.length ? <FinancialsCard key="fin" financials={profile.financials} /> : null,
+    // Career insights from crawling the company's careers site.
+    careerInsightsLoading && !insights ? <CareersLoadingCard key="careers-loading" /> : null,
+    insights?.hiringValues && (insights.hiringValues.summary || insights.hiringValues.bullets.length)
+      ? <ValueTags key="values" section={insights.hiringValues} /> : null,
+    insights?.benefits && (insights.benefits.summary || insights.benefits.bullets.length)
+      ? <BenefitsGrid key="benefits" section={insights.benefits} /> : null,
+    insights?.interviewTips && (insights.interviewTips.summary || insights.interviewTips.bullets.length)
+      ? <InterviewTipsCard key="interview" section={insights.interviewTips} /> : null,
     profile.news.length ? <NewsCard key="news" profile={profile} /> : null,
     <ReviewLinksCard key="ratings" company={profile.name} ratings={profile.ratings} />,
   ].filter((n): n is React.ReactElement => n !== null);
@@ -255,10 +303,7 @@ export function CompanyProfileViz({ profile, onReset }: Props) {
         </MentorCard>
       </motion.div>
 
-      {sections.map((node, i) => (
-        <motion.div key={node.key} custom={i + 1} variants={fadeUp} initial="hidden" animate="show">{node}</motion.div>
-      ))}
-
+      {/* Action row — directly under the header so it's visible without scrolling. */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button onClick={handleCopy} style={btnStyle(false)}>
           {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy summary"}
@@ -267,6 +312,10 @@ export function CompanyProfileViz({ profile, onReset }: Props) {
           <RotateCcw className="w-4 h-4" /> Look up another
         </button>
       </div>
+
+      {sections.map((node, i) => (
+        <motion.div key={node.key} custom={i + 1} variants={fadeUp} initial="hidden" animate="show">{node}</motion.div>
+      ))}
     </div>
   );
 }

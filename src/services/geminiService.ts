@@ -422,10 +422,21 @@ ${resumeText}`;
  */
 export const COMPANY_RESEARCH_MODEL = MODELS.RESEARCH;
 
+/** A single dated news item — lets the UI sort strictly newest → oldest. */
+export interface CompanyNewsItem {
+  headline: string;
+  /** ISO date (YYYY-MM-DD) when known; "" if the model couldn't date it. */
+  date: string;
+  whyItMatters: string;
+  url?: string;
+}
+
 export interface CompanyResearchSection {
   summary: string;
   bullets: string[];
   sources: SourceLink[];
+  /** News only: structured, date-sorted items. Other sections leave this unset. */
+  items?: CompanyNewsItem[];
 }
 
 /** Combined shape the UI renders (assembled from the two cached tiers). */
@@ -433,8 +444,11 @@ export interface CompanyResearchResult {
   overview: string;
   hiringValues: CompanyResearchSection;
   benefits: CompanyResearchSection;
+  interviewTips: CompanyResearchSection;
   news: CompanyResearchSection;
   financials: CompanyResearchSection;
+  /** Public stock ticker (uppercase) when the company is listed; "" if private/unknown. */
+  ticker?: string;
   sources: SourceLink[];
 }
 
@@ -443,7 +457,9 @@ export interface CompanyProfileData {
   overview: string;
   hiringValues: CompanyResearchSection;
   benefits: CompanyResearchSection;
+  interviewTips: CompanyResearchSection;
   financials: CompanyResearchSection;
+  ticker?: string;
   sources: SourceLink[];
 }
 
@@ -454,24 +470,28 @@ export interface CompanyNewsData {
 }
 
 // Lean, purpose-built system prompts (no basePersona) to minimize input tokens.
-const COMPANY_PROFILE_SYSTEM = `You research a company to help a candidate interview well. A live web search tool IS available — use it for anything time-sensitive and cite the real URLs you retrieve; never invent URLs or figures. You are given JOB POSTING TEXT — use it directly for benefits/values where present and only search for what it doesn't cover.
+const COMPANY_PROFILE_SYSTEM = `You research a company to help a candidate interview well. A live web search tool IS available — use it for anything time-sensitive and cite the real URLs you retrieve; never invent URLs or figures. You are given JOB POSTING TEXT — use it directly for benefits/values where present and only search for what it doesn't cover. You may also be given CAREERS-SITE TEXT scraped from the company's own careers/culture/benefits pages — treat that as the most authoritative source and extract from it directly, citing those page URLs.
 
-Produce, searching where needed:
-- hiringValues: what the company values when hiring (careers/jobs/culture pages — traits, principles, competencies).
+Navigate the company's OWN official careers website (its careers/jobs/culture/life/benefits/interview pages) and extract from it. Produce, searching where needed:
+- hiringValues: what the company values when hiring (careers/culture pages — traits, principles, competencies).
 - benefits: key benefits & perks (comp philosophy, health/leave, equity, remote/flexibility, learning budget).
+- interviewTips: how to succeed in THIS company's interview process — process/stages, formats, what they assess, prep advice, sample focus areas. Prefer the company's own "interview prep"/"hiring process" pages; otherwise reputable guides. Make each bullet actionable.
 - financials: most recent quarterly earnings, revenue/growth, guidance, stock; private → latest funding/valuation. Date-stamp every figure. If unknown, say so in the summary and leave bullets sparse.
+- ticker: the company's primary public stock ticker symbol in UPPERCASE (e.g. "AAPL"). If the company is private or you are unsure, use "".
 
 Do NOT output employee ratings or review scores — those are shown from verified sources elsewhere, not from you.
 
 Output ONLY a compact JSON object, no markdown fences:
-{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"sources":[{"label":"...","url":"..."}]}
-At most 4 bullets/section (≤25 words each) and 3 sources/section. Begin with "{" and end with "}".`;
+{"overview":"2-3 sentences + recency note","hiringValues":{"summary":"1-2 sentences","bullets":["..."],"sources":[{"label":"...","url":"https://..."}]},"benefits":{"summary":"...","bullets":["..."],"sources":[...]},"interviewTips":{"summary":"...","bullets":["..."],"sources":[...]},"financials":{"summary":"...","bullets":["metric — value — period"],"sources":[...]},"ticker":"AAPL or \"\"","sources":[{"label":"...","url":"..."}]}
+At most 4 bullets/section (≤25 words each, interviewTips may use up to 5) and 3 sources/section. Begin with "{" and end with "}".`;
 
-const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news. Date-stamp each item.
+const COMPANY_NEWS_SYSTEM = `You find recent news about a company to help a candidate interview well. A live web search tool IS available — use it and cite the real URLs you retrieve; never invent URLs. Strongly prioritize the MOST RECENT developments: aim for the last 30 days, and do not include anything older than ~6 months unless nothing newer exists. Prioritize news tied to the candidate's role/team/department (launches, org changes, hiring in that area); if little role-specific news exists, fall back to the most important recent company news.
+
+Return each item with an ISO date so it can be sorted. The "date" MUST be the publication date in YYYY-MM-DD form (use the most precise date you can verify; if only month/year is known use the first of that month). Order does not matter — the app re-sorts newest first.
 
 Output ONLY a compact JSON object, no markdown fences:
-{"news":{"summary":"1-2 sentences","bullets":["headline — date — why it matters"],"sources":[{"label":"...","url":"https://..."}]},"sources":[{"label":"...","url":"..."}]}
-At most 5 bullets (≤25 words each) and 4 sources. Begin with "{" and end with "}".`;
+{"news":{"summary":"1-2 sentences","items":[{"headline":"...","date":"YYYY-MM-DD","whyItMatters":"why it matters for a candidate","url":"https://..."}],"sources":[{"label":"...","url":"https://..."}]},"sources":[{"label":"...","url":"..."}]}
+At most 8 items (headline + whyItMatters ≤25 words each) and 4 sources. Begin with "{" and end with "}".`;
 
 /**
  * Parse a JSON object from an LLM response that may be fenced (```json) and/or
@@ -482,6 +502,39 @@ At most 5 bullets (≤25 words each) and 4 sources. Begin with "{" and end with 
  * no `{` at all.
  */
 const EMPTY_SECTION = (summary: string): CompanyResearchSection => ({ summary, bullets: [], sources: [] });
+
+/** Coerce a model-supplied ticker to a clean uppercase symbol, or "" if implausible. */
+function normalizeTicker(raw: any): string {
+  if (typeof raw !== "string") return "";
+  const t = raw.trim().toUpperCase();
+  return /^[A-Z][A-Z.\-]{0,9}$/.test(t) ? t : "";
+}
+
+/**
+ * Coerce the model's `news.items` into dated, newest-first CompanyNewsItems and
+ * synthesize matching `bullets` ("headline — date — why") for the copy/markdown
+ * path and older renderers. Undated items sort to the bottom.
+ */
+export function normalizeNewsSection(raw: any, fallbackSources: SourceLink[]): CompanyResearchSection {
+  const base = normalizeSection(raw, fallbackSources);
+  const rawItems: any[] = Array.isArray(raw?.items) ? raw.items : [];
+  const items: CompanyNewsItem[] = rawItems
+    .map((it) => ({
+      headline: typeof it?.headline === "string" ? it.headline.trim() : "",
+      date: typeof it?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(it.date.trim()) ? it.date.trim() : "",
+      whyItMatters: typeof it?.whyItMatters === "string" ? it.whyItMatters.trim() : "",
+      url: typeof it?.url === "string" && it.url.trim() ? it.url.trim() : undefined,
+    }))
+    .filter((it) => it.headline)
+    .sort((a, b) => (b.date || "0").localeCompare(a.date || "0"));
+
+  if (items.length === 0) return base; // pre-`items` shape or empty — keep bullets as-is
+  return {
+    ...base,
+    items,
+    bullets: items.map((it) => [it.headline, it.date, it.whyItMatters].filter(Boolean).join(" — ")),
+  };
+}
 
 function normalizeSection(raw: any, fallbackSources: SourceLink[]): CompanyResearchSection {
   const sources: SourceLink[] = Array.isArray(raw?.sources)
@@ -526,19 +579,58 @@ function collectSources(parsed: any, grounding: SourceLink[], fallback: SourceLi
  * Slow-moving tier: hiring values, benefits, financials (+overview). Mines the
  * provided JD excerpt for benefits/values before searching. Cached for weeks.
  */
+// Cap how much scraped careers-site text we feed the profile call so the input
+// stays bounded even when several pages were navigated.
+const CAREERS_TEXT_EXCERPT = 6000;
+
+/** URLs on the company's OWN careers site, used to navigate + scrape primary-source content. */
+export interface CareerPageLinks {
+  careers?: string;
+  culture?: string;
+  benefits?: string;
+  interview?: string;
+}
+
+const CAREER_DISCOVERY_SYSTEM = `You locate a company's OWN official careers website pages. A live web search tool IS available — use it and return only real, working URLs on the company's own domain (never Glassdoor/LinkedIn/Indeed/news/aggregators). Find up to four pages: the main careers/jobs page, a culture/life/values page, a benefits/perks page, and an interview-process / how-we-hire page. Omit any you genuinely can't find on the company's own site.
+Output ONLY a compact JSON object, no fences: {"careers":"https://...","culture":"https://...","benefits":"https://...","interview":"https://..."}. Begin with "{" and end with "}".`;
+
+/**
+ * Ask the grounded model for the company's own careers-related page URLs so the
+ * app can navigate to and scrape them. Best-effort: returns {} on any failure.
+ */
+export async function discoverCareerUrls(companyName: string): Promise<CareerPageLinks> {
+  const { text } = await postToGatewayRaw({
+    systemInstruction: CAREER_DISCOVERY_SYSTEM,
+    prompt: `COMPANY: ${companyName}\nReturn only the JSON object.`,
+    model: COMPANY_RESEARCH_MODEL,
+    enableSearch: true,
+  });
+  try {
+    const parsed = parseLooseJsonObject(text);
+    const pick = (v: any) => (typeof v === "string" && /^https?:\/\//i.test(v.trim()) ? v.trim() : undefined);
+    return { careers: pick(parsed.careers), culture: pick(parsed.culture), benefits: pick(parsed.benefits), interview: pick(parsed.interview) };
+  } catch {
+    return {};
+  }
+}
+
 export async function researchCompanyProfile(input: {
   jobTitle: string;
   companyName: string;
   jobDescription: string;
+  /** Real text scraped from the company's own careers pages, plus their URLs. */
+  careerContext?: { text: string; sources: SourceLink[] };
 }): Promise<CompanyProfileData> {
-  const { jobTitle, companyName, jobDescription } = input;
+  const { jobTitle, companyName, jobDescription, careerContext } = input;
   const fallback = buildCompanyResearchSources(companyName);
+  const careersText = (careerContext?.text ?? "").trim().slice(0, CAREERS_TEXT_EXCERPT);
+  const careerSources = careerContext?.sources ?? [];
   const prompt = `COMPANY: ${companyName}
 ${roleLine(jobTitle, jobDescription, JD_PROFILE_EXCERPT)}
 
 JOB POSTING TEXT (use for benefits/values where present; don't search for what's already here):
 ${(jobDescription || "(none provided)").slice(0, JD_PROFILE_EXCERPT)}
-
+${careersText ? `\nCAREERS-SITE TEXT (scraped from ${careerSources.map((s) => s.url).join(", ") || "the company's careers pages"} — authoritative; extract culture/benefits/interview tips from this and cite these pages):\n${careersText}\n` : ""}
 Return only the JSON object.`;
   const { text, sources: grounding } = await postToGatewayRaw({
     systemInstruction: COMPANY_PROFILE_SYSTEM,
@@ -550,10 +642,12 @@ Return only the JSON object.`;
     const parsed = parseLooseJsonObject(text);
     return {
       overview: typeof parsed.overview === "string" ? parsed.overview : "",
-      hiringValues: normalizeSection(parsed.hiringValues, [fallback.careers]),
-      benefits: normalizeSection(parsed.benefits, [fallback.careers]),
+      hiringValues: normalizeSection(parsed.hiringValues, careerSources.length ? careerSources : [fallback.careers]),
+      benefits: normalizeSection(parsed.benefits, careerSources.length ? careerSources : [fallback.careers]),
+      interviewTips: normalizeSection(parsed.interviewTips, careerSources.length ? careerSources : [fallback.careers]),
       financials: normalizeSection(parsed.financials, [fallback.financials]),
-      sources: collectSources(parsed, grounding, [fallback.careers, fallback.financials]),
+      ticker: normalizeTicker(parsed.ticker),
+      sources: collectSources(parsed, [...careerSources, ...grounding], [fallback.careers, fallback.financials]),
     };
   } catch {
     console.error("Failed to parse company profile JSON. Raw preview:", text.slice(0, 500));
@@ -561,7 +655,9 @@ Return only the JSON object.`;
       overview: "",
       hiringValues: EMPTY_SECTION(""),
       benefits: EMPTY_SECTION(""),
+      interviewTips: EMPTY_SECTION(""),
       financials: EMPTY_SECTION(""),
+      ticker: "",
       sources: [fallback.careers, fallback.financials],
     };
   }
@@ -587,7 +683,7 @@ Find recent news (role/team-relevant first, else important recent company news).
   });
   try {
     const parsed = parseLooseJsonObject(text);
-    return { news: normalizeSection(parsed.news, [fallback.news]), sources: collectSources(parsed, grounding, [fallback.news]) };
+    return { news: normalizeNewsSection(parsed.news, [fallback.news]), sources: collectSources(parsed, grounding, [fallback.news]) };
   } catch {
     console.error("Failed to parse company news JSON. Raw preview:", text.slice(0, 500));
     return { news: EMPTY_SECTION(""), sources: [fallback.news] };
@@ -602,8 +698,11 @@ export function assembleCompanyResearch(profile: CompanyProfileData, news: Compa
     overview: profile.overview,
     hiringValues: profile.hiringValues,
     benefits: profile.benefits,
+    // Default for profiles cached/seeded before interviewTips existed.
+    interviewTips: profile.interviewTips ?? EMPTY_SECTION(""),
     news: news.news,
     financials: profile.financials,
+    ticker: profile.ticker ?? "",
     sources,
   };
 }
