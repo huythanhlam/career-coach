@@ -130,6 +130,8 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         isRevalidating={h.isRevalidating}
         companyCachedAt={h.companyCachedAt}
         companyProfile={h.companyProfile}
+        careerInsights={h.careerInsights}
+        careerInsightsLoading={h.careerInsightsLoading}
         profileMissing={h.profileMissing}
         requestState={h.requestState}
         onPick={h.startCompanyResearch}

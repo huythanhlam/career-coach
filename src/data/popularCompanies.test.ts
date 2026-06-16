@@ -3,6 +3,7 @@ import {
   canonicalCompanyName,
   companyCacheIdentity,
   selectCompaniesToSeed,
+  tickerForCompany,
   POPULAR_COMPANIES,
 } from "./popularCompanies";
 
@@ -62,6 +63,34 @@ describe("selectCompaniesToSeed", () => {
     expect(names).not.toContain("Apple");
     expect(names).not.toContain("Alphabet (Google)");
     expect(pending.length).toBe(POPULAR_COMPANIES.length - 2);
+  });
+});
+
+describe("tickerForCompany", () => {
+  it("resolves a canonical name to its ticker", () => {
+    expect(tickerForCompany("Apple")).toBe("AAPL");
+  });
+
+  it("resolves through aliases and parenthetical forms", () => {
+    expect(tickerForCompany("Google")).toBe("GOOGL");
+    expect(tickerForCompany("Facebook")).toBe("META");
+  });
+
+  it("is case/whitespace/punctuation insensitive", () => {
+    expect(tickerForCompany("  apple inc. ")).toBe("AAPL");
+  });
+
+  it("resolves S&P-500 names that carry no ticker in the curated list", () => {
+    expect(tickerForCompany("3M")).toBe("MMM");
+    expect(tickerForCompany("Berkshire Hathaway")).toBe("BRK.B");
+    expect(tickerForCompany("Visa")).toBe("V");
+  });
+
+  it("returns undefined for unknown or private companies", () => {
+    expect(tickerForCompany("Some Private Startup LLC")).toBeUndefined();
+    expect(tickerForCompany("Stripe")).toBeUndefined(); // private — intentionally omitted
+    expect(tickerForCompany("")).toBeUndefined();
+    expect(tickerForCompany(undefined)).toBeUndefined();
   });
 });
 

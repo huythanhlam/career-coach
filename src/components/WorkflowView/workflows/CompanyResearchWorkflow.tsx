@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { CompanyResearchResult } from "@/services/geminiService";
+import { CompanyResearchResult, type CompanyProfileData } from "@/services/geminiService";
 import { CompanyResearchViz } from "@/components/companyResearch";
 import { CompanyProfileViz } from "@/components/companyResearch/CompanyProfileViz";
 import { RequestProfileBanner } from "@/components/companyResearch/RequestProfileBanner";
@@ -16,6 +16,8 @@ interface CompanyResearchWorkflowProps {
   isRevalidating: boolean;
   companyCachedAt: string | null;
   companyProfile: CompanyProfile | null;
+  careerInsights: CompanyProfileData | null;
+  careerInsightsLoading: boolean;
   profileMissing: boolean;
   requestState: RequestProfileResult | "requesting" | null;
   onPick: (name: string) => void;
@@ -34,6 +36,8 @@ export function CompanyResearchWorkflow({
   isRevalidating,
   companyCachedAt,
   companyProfile,
+  careerInsights,
+  careerInsightsLoading,
   profileMissing,
   requestState,
   onPick,
@@ -65,6 +69,8 @@ export function CompanyResearchWorkflow({
           {companyProfile && (
             <CompanyProfileViz
               profile={companyProfile}
+              careerInsights={careerInsights}
+              careerInsightsLoading={careerInsightsLoading}
               onReset={onResetProfile}
             />
           )}

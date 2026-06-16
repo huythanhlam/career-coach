@@ -1,7 +1,9 @@
 import { motion, useReducedMotion } from "motion/react";
 import { LineChart } from "lucide-react";
 import type { CompanyResearchSection } from "@/services/geminiService";
+import { tickerForCompany } from "@/data/popularCompanies";
 import { MentorCard, SectionHeader, SourceChips } from "./shared";
+import { StockChart } from "./StockChart";
 
 const ACCENT = "#3B82F6";
 
@@ -15,16 +17,28 @@ function parseStat(bullet: string): { metric: string; value: string; period?: st
   return null;
 }
 
-export function FinancialsCard({ section }: { section: CompanyResearchSection }) {
+export function FinancialsCard({
+  section,
+  companyName,
+  ticker,
+}: {
+  section: CompanyResearchSection;
+  companyName?: string;
+  /** AI-supplied ticker fallback for companies outside the curated list. */
+  ticker?: string;
+}) {
   const reduce = useReducedMotion();
   const bullets = section?.bullets ?? [];
   const stats = bullets.map(parseStat);
   const allParsed = bullets.length > 0 && stats.every(Boolean);
+  // Prefer the curated ticker (authoritative); fall back to whatever the model returned.
+  const resolvedTicker = tickerForCompany(companyName) ?? (ticker?.trim() || undefined);
 
   return (
     <MentorCard style={{ overflow: "hidden" }}>
       <SectionHeader Icon={LineChart} color={ACCENT} title="Financials" />
       <div style={{ padding: "18px 22px" }}>
+        {resolvedTicker && <StockChart ticker={resolvedTicker} />}
         {section?.summary && (
           <p style={{ fontSize: 14, color: "var(--foreground)", margin: "0 0 14px", lineHeight: 1.6 }}>{section.summary}</p>
         )}

@@ -1,7 +1,9 @@
 import { useCallback, useState } from "react";
 import {
   researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult,
+  type CompanyProfileData,
 } from "@/services/geminiService";
+import { fetchCareerPageContext } from "@/services/companyCareerService";
 import { getCachedCompanyResearch, putCachedCompanyResearch } from "@/config/companyResearchCache";
 import { getCompanyProfile, requestCompanyProfile, type RequestProfileResult } from "@/services/companyProfileService";
 import type { CompanyProfile } from "@/types/companyProfile";
@@ -13,13 +15,44 @@ export function useCompanyResearchHandlers() {
   const [isRevalidating, setIsRevalidating] = useState(false);
   const [companyCachedAt, setCompanyCachedAt] = useState<string | null>(null);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  // AI career insights (culture/benefits/interview tips from crawling the
+  // careers site) shown ALONGSIDE a deterministic profile.
+  const [careerInsights, setCareerInsights] = useState<CompanyProfileData | null>(null);
+  const [careerInsightsLoading, setCareerInsightsLoading] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false);
   const [requestState, setRequestState] = useState<RequestProfileResult | "requesting" | null>(null);
 
   const fetchProfileFresh = async (company: string) => {
-    const p = await researchCompanyProfile({ jobTitle: "", companyName: company, jobDescription: "" });
+    // Navigate the company's own careers pages first so the profile is grounded
+    // in primary-source text (culture, benefits, interview process). Best-effort.
+    const careerContext = await fetchCareerPageContext(company).catch(() => ({ text: "", sources: [] }));
+    const p = await researchCompanyProfile({ jobTitle: "", companyName: company, jobDescription: "", careerContext });
     await putCachedCompanyResearch(company, "profile", p);
     return p;
+  };
+
+  /**
+   * Load AI career insights (hiring values, benefits, interview tips — extracted
+   * from crawling the company's careers site) to enrich a deterministic profile.
+   * Reuses the cached "profile" research tier (stale-while-revalidate). Silent on
+   * failure — the deterministic profile still renders without it.
+   */
+  const loadCareerInsights = async (company: string) => {
+    setCareerInsights(null);
+    try {
+      const cached = await getCachedCompanyResearch(company, "profile");
+      if (cached) {
+        setCareerInsights(cached.data);
+        if (!cached.fresh) fetchProfileFresh(company).then(setCareerInsights).catch(() => {});
+        return;
+      }
+      setCareerInsightsLoading(true);
+      setCareerInsights(await fetchProfileFresh(company));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCareerInsightsLoading(false);
+    }
   };
 
   const fetchNewsFresh = async (company: string) => {
@@ -90,6 +123,9 @@ export function useCompanyResearchHandlers() {
       if (profile) {
         setCompanyProfile(profile);
         setIsResearching(false);
+        // Enrich the deterministic profile with AI career insights (crawls the
+        // company's careers site). Loads async with its own indicator.
+        loadCareerInsights(company);
         return;
       }
     } catch { /* fall through to AI */ }
@@ -101,6 +137,7 @@ export function useCompanyResearchHandlers() {
   const resetCompanyResult = useCallback(() => {
     setCompanyResult(null);
     setCompanyCachedAt(null);
+    setCareerInsights(null);
     setProfileMissing(false);
     setRequestState(null);
   }, []);
@@ -118,6 +155,8 @@ export function useCompanyResearchHandlers() {
     isRevalidating,
     companyCachedAt,
     companyProfile,
+    careerInsights,
+    careerInsightsLoading,
     profileMissing,
     requestState,
     setCompanyProfile,

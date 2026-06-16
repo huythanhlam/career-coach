@@ -6,6 +6,7 @@ import { MentorCard, btnStyle, fadeUp } from "./shared";
 import { ReviewLinksCard } from "./ReviewLinks";
 import { ValueTags } from "./ValueTags";
 import { BenefitsGrid } from "./BenefitsGrid";
+import { InterviewTipsCard } from "./InterviewTipsCard";
 import { NewsTimeline } from "./NewsTimeline";
 import { FinancialsCard } from "./FinancialsCard";
 
@@ -35,6 +36,7 @@ function toMarkdown(data: CompanyResearchResult, company: string): string {
     data.overview,
     sec("What they value when hiring", data.hiringValues),
     sec("Key benefits & perks", data.benefits),
+    sec("Interview tips", data.interviewTips),
     sec("Recent news", data.news),
     sec("Financials", data.financials),
   ].filter(Boolean).join("\n\n");
@@ -61,8 +63,9 @@ export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt
   const sections = [
     <ValueTags key="values" section={data.hiringValues} />,
     <BenefitsGrid key="benefits" section={data.benefits} />,
+    <InterviewTipsCard key="interview" section={data.interviewTips} />,
     <NewsTimeline key="news" section={data.news} />,
-    <FinancialsCard key="financials" section={data.financials} />,
+    <FinancialsCard key="financials" section={data.financials} companyName={companyName} ticker={data.ticker} />,
     <ReviewLinksCard key="reviews" company={companyName} />,
   ];
 
@@ -95,12 +98,7 @@ export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt
         </MentorCard>
       </motion.div>
 
-      {sections.map((node, i) => (
-        <motion.div key={node.key} custom={i + 1} variants={fadeUp} initial="hidden" animate="show">
-          {node}
-        </motion.div>
-      ))}
-
+      {/* Action row — kept directly under the header so it's visible without scrolling. */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button onClick={onRefreshNews} disabled={isRevalidating} style={btnStyle(!!isRevalidating)} title="Re-check the news only (cheapest)">
           {isRevalidating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh news
@@ -115,6 +113,12 @@ export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt
           <RotateCcw className="w-4 h-4" /> Start new analysis
         </button>
       </div>
+
+      {sections.map((node, i) => (
+        <motion.div key={node.key} custom={i + 1} variants={fadeUp} initial="hidden" animate="show">
+          {node}
+        </motion.div>
+      ))}
     </div>
   );
 }
