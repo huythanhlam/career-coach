@@ -39,7 +39,7 @@ export function LinkedInUploadForm({ initialUrl = "", initialTargetRole = "", is
   const handleFile = (f: File | null) => {
     setError(null);
     if (f && !isSupportedFile(f)) {
-      setError("Unsupported file. Please upload a PDF, DOCX, or TXT file.");
+      setError("Unsupported file. Please upload a PDF file (LinkedIn's export format).");
       setFile(null);
       return;
     }
@@ -83,10 +83,10 @@ export function LinkedInUploadForm({ initialUrl = "", initialTargetRole = "", is
               <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
                 {file ? file.name : "Click to upload"}
               </span>
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>PDF, DOCX, or TXT · up to 20 MB</span>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>PDF only · up to 20 MB</span>
               <input
                 type="file"
-                accept=".pdf,.docx,.txt,application/pdf"
+                accept=".pdf,application/pdf"
                 onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
                 style={{ display: "none" }}
               />
