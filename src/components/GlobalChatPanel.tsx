@@ -8,6 +8,10 @@ import { cn } from "@/lib/utils";
 import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
 import { workflowsConfig, basePersona } from "@/config/workflows";
 import { ViewId } from "@/components/Sidebar";
+import { useUserProfile } from "@/context/UserProfileContext";
+import { useJobPostings } from "@/hooks/useJobPostings";
+import { buildProfileBaseline } from "@/lib/careerBaseline";
+import { buildPipelineSummary } from "@/lib/pipelineStats";
 
 interface Message {
   role: "user" | "model";
@@ -37,10 +41,12 @@ function restoreMessages(): Message[] {
 }
 
 export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanelProps) {
+  const { profile } = useUserProfile();
+  const { postings } = useJobPostings();
   const [messages, setMessages] = useState<Message[]>(restoreMessages);
+  const [chatInstance, setChatInstance] = useState<ReturnType<typeof createCoachingChat> | null>(null);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [chatInstance, setChatInstance] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Persist the conversation so a refresh doesn't lose it. Skipped while
@@ -65,11 +71,29 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   const workflowConfig = workflowsConfig[activeView as any];
   const systemInstruction = workflowConfig?.systemInstruction || basePersona;
 
+  const initials =
+    (profile.preferredName || profile.fullName || "")
+      .trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "You";
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  // Ground every turn in what the app already knows — profile, pipeline, and
+  // scores — so the coach advises on the user's actual situation instead of
+  // asking for context they've already given.
+  const buildContextualInstruction = () => {
+    const context = [
+      buildProfileBaseline(profile),
+      buildPipelineSummary(postings),
+      profile.resumeScore != null ? `Latest resume score: ${profile.resumeScore}/100` : "",
+      profile.linkedinScore != null ? `Latest LinkedIn score: ${profile.linkedinScore}/100` : "",
+    ].filter(Boolean).join("\n\n");
+    if (!context) return systemInstruction;
+    return `${systemInstruction}\n\nWHAT YOU ALREADY KNOW ABOUT THIS USER (from their profile and activity in the app — use it naturally, don't re-ask for it):\n${context}`;
+  };
 
   const handleSend = async (e?: React.FormEvent, overrideText?: string) => {
     if (e) e.preventDefault();
@@ -85,9 +109,8 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
     try {
       let currentChat = chatInstance;
       if (!currentChat) {
-        // Seed with the prior conversation (including any restored from a
-        // previous session) so the coach has real multi-turn memory.
-        currentChat = createCoachingChat(systemInstruction, messages);
+        // Create once, seeded with transcript + profile/pipeline context.
+        currentChat = createCoachingChat(buildContextualInstruction(), messages);
         setChatInstance(currentChat);
       }
 
@@ -166,7 +189,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
                   Hey, I'm your coach 👋
                 </div>
                 <p className="text-xs leading-relaxed max-w-[200px] mx-auto" style={{ color: "var(--muted-foreground)" }}>
-                  I'm watching your current workspace. Ask me anything about your strategy.
+                  I know your profile, your pipeline, and this workspace. Ask me anything about your strategy.
                 </p>
               </div>
             </div>
@@ -180,7 +203,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
                   ? "border-border text-foreground"
                   : "border-primary/20 text-primary"
               )} style={{ background: msg.role === "user" ? "var(--muted)" : "rgba(217,119,87,0.10)" }}>
-                {msg.role === "user" ? "HL" : <Sparkles className="w-3.5 h-3.5" />}
+                {msg.role === "user" ? initials : <Sparkles className="w-3.5 h-3.5" />}
               </div>
               <div className={cn(
                 "max-w-[80%] rounded-[18px] px-4 py-3 text-sm leading-relaxed",

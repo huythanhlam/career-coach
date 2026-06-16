@@ -29,6 +29,16 @@ export interface SavedCoverLetter {
   createdAt: string;
 }
 
+/** One time-boxed checkpoint extracted from a plan's Milestones section. */
+export interface PlanMilestone {
+  id: string;
+  title: string;
+  /** Optional time-box as written in the plan, e.g. "Month 3" or "by mid-July". */
+  timeframe?: string;
+  done: boolean;
+  completedAt?: string;
+}
+
 export interface SavedCareerPlan {
   id: string;
   name: string;
@@ -36,6 +46,11 @@ export interface SavedCareerPlan {
   goalType: string;
   goalSummary: string;
   createdAt: string;
+  /** Structured milestones with completion state — lives here (not just in the
+   * storage payload) so the Dashboard can show progress without a download. */
+  milestones?: PlanMilestone[];
+  /** Last time the user checked in with the coach about this plan. */
+  lastCheckInAt?: string;
 }
 
 /** Sentinel value letting the user explicitly answer "Unsure" on any question. */

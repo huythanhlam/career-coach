@@ -13,7 +13,7 @@ import { SectionHeading, Label, CompanyLogo, FitBreakdown } from "./_shared";
 
 /* ── DetailDrawer ───────────────────────────────────────────────────────── */
 export const DetailDrawer = React.memo(function DetailDrawer({
-  posting, profile, onClose, onUpdate, onDelete, onNavigate, onSaveCoverLetter, onSaveResume,
+  posting, profile, onClose, onUpdate, onDelete, onNavigate, onSaveCoverLetter, onTailor,
 }: {
   posting: JobPosting;
   profile: ReturnType<typeof useUserProfile>["profile"];
@@ -22,16 +22,13 @@ export const DetailDrawer = React.memo(function DetailDrawer({
   onDelete: () => void;
   onNavigate?: (view: ViewId) => void;
   onSaveCoverLetter: (cl: NonNullable<typeof profile.savedCoverLetters>[number]) => void;
-  onSaveResume: (r: NonNullable<typeof profile.savedResumes>[number]) => void;
+  onTailor: () => void;
 }) {
   const [notes, setNotes] = useState(posting.notes ?? "");
   const [scoring, setScoring] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [coverDraft, setCoverDraft] = useState("");
   const [coverSaved, setCoverSaved] = useState(false);
-  const [resumeGenerating, setResumeGenerating] = useState(false);
-  const [resumeDraft, setResumeDraft] = useState("");
-  const [resumeSaved, setResumeSaved] = useState(false);
 
   const resumeText = profile.resumeText
     ?? profile.savedResumes?.find((r) => r.text)?.text
@@ -77,30 +74,6 @@ export const DetailDrawer = React.memo(function DetailDrawer({
     setCoverSaved(true);
   };
 
-  const generateResume = async () => {
-    setResumeGenerating(true); setResumeSaved(false);
-    try {
-      const system = "You are an expert resume writer. Tailor the candidate's resume to THIS job using ONLY their real experience — never invent employers, titles, dates, or metrics. Surface the most relevant experience and weave in keywords from the job description. Output a clean, ATS-friendly resume in Markdown. No commentary.";
-      const name = profile.fullName || profile.preferredName || "";
-      const prompt = `Tailor a resume for this job.\n\nJOB:\n${posting.title} at ${posting.company ?? ""}\n${posting.description ?? ""}\n\nCANDIDATE:\nName: ${name}\nTarget role: ${profile.targetRole ?? ""}\nSkills: ${(profile.skills ?? []).join(", ")}\nExisting resume / background:\n${resumeText.slice(0, 6000)}`;
-      setResumeDraft(await generateWorkflowData(system, prompt, MODELS.QUALITY));
-    } finally {
-      setResumeGenerating(false);
-    }
-  };
-
-  const saveResume = () => {
-    const id = generateId();
-    onSaveResume({
-      id,
-      name: `${posting.title} — ${posting.company ?? "resume"}`,
-      storagePath: "",
-      text: resumeDraft,
-      createdAt: new Date().toISOString(),
-    });
-    onUpdate({ appliedResumeId: id });
-    setResumeSaved(true);
-  };
 
   const savedResumes = profile.savedResumes ?? [];
   const savedCovers = profile.savedCoverLetters ?? [];
@@ -184,18 +157,9 @@ export const DetailDrawer = React.memo(function DetailDrawer({
                     Builder <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <button style={{ ...ghostBtn, width: "100%", justifyContent: "center" }} onClick={generateResume} disabled={resumeGenerating}>
-                  {resumeGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Generate a tailored resume
+                <button style={{ ...ghostBtn, width: "100%", justifyContent: "center" }} onClick={onTailor}>
+                  <Sparkles className="w-3.5 h-3.5" /> Tailor resume for this job
                 </button>
-                {resumeDraft && (
-                  <div style={{ marginTop: 8 }}>
-                    <textarea value={resumeDraft} onChange={(e) => { setResumeDraft(e.target.value); setResumeSaved(false); }}
-                      style={{ ...inputStyle, height: 220, padding: 14, resize: "vertical" as const, lineHeight: 1.5, fontFamily: "var(--font-mono, monospace)", fontSize: 12 }} />
-                    <button style={{ ...primaryBtn, marginTop: 8 }} onClick={saveResume} disabled={resumeSaved}>
-                      {resumeSaved ? "Saved & attached" : "Save resume"}
-                    </button>
-                  </div>
-                )}
               </div>
 
               <div>

@@ -2,11 +2,11 @@ import React from "react";
 import {
   Loader2, Sparkles, Bookmark, Target, ArrowLeft, Send,
   User as UserIcon, Check, Pencil, SlidersHorizontal, Copy,
-  ChevronDown,
+  ChevronDown, ListChecks, CheckCircle2, Circle, MessageCircleHeart,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { workflowsConfig } from "@/config/workflows";
-import type { SavedCareerPlan } from "@/types/userProfile";
+import type { SavedCareerPlan, PlanMilestone } from "@/types/userProfile";
 import type { GoalPlanIntakeData } from "@/components/GoalPlanIntakeForm";
 
 type ChatMsg = { role: "user" | "model"; text: string };
@@ -45,6 +45,11 @@ interface PlanViewProps {
   onSwitcherToggle: () => void;
   onSwitcherClose: () => void;
   onOpenPlan: (plan: SavedCareerPlan) => void;
+  milestones: PlanMilestone[];
+  extractingMilestones: boolean;
+  onToggleMilestone: (id: string) => void;
+  onExtractMilestones: () => void;
+  onCheckIn: () => void;
 }
 
 export const PlanView = React.memo(function PlanView({
@@ -74,6 +79,11 @@ export const PlanView = React.memo(function PlanView({
   onSwitcherToggle,
   onSwitcherClose,
   onOpenPlan,
+  milestones,
+  extractingMilestones,
+  onToggleMilestone,
+  onExtractMilestones,
+  onCheckIn,
 }: PlanViewProps) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
@@ -159,6 +169,61 @@ export const PlanView = React.memo(function PlanView({
       <div className="flex-1 flex overflow-hidden">
         {/* Plan pane */}
         <div className="flex-1 overflow-auto no-scrollbar" style={{ padding: 28 }}>
+          {/* Milestones — the plan as a living checklist */}
+          {planMarkdown.trim() && !isGenerating && (
+            <div style={{ maxWidth: 720, margin: "0 auto 20px", ...cardStyle, overflow: "hidden" }}>
+              <div style={{ padding: "16px 22px", borderBottom: milestones.length > 0 ? "1px solid var(--border)" : "none", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <ListChecks className="w-4 h-4" style={{ color: "var(--primary)" }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Milestones</span>
+                {milestones.length > 0 ? (
+                  <>
+                    <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                      {milestones.filter((m) => m.done).length} of {milestones.length} done
+                    </span>
+                    <div style={{ flex: "1 1 80px", minWidth: 60, height: 6, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
+                      <div style={{ width: `${Math.round((milestones.filter((m) => m.done).length / milestones.length) * 100)}%`, height: "100%", background: "var(--forest)", borderRadius: 9999, transition: "width 300ms ease" }} />
+                    </div>
+                    <button onClick={onCheckIn} disabled={isGenerating} title="Tell the coach where things stand and get the plan adjusted"
+                      style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--primary)", border: "none", borderRadius: 8, height: 32, padding: "0 12px", cursor: isGenerating ? "not-allowed" : "pointer", color: "#fff", fontFamily: "inherit", fontSize: 12, fontWeight: 600, opacity: isGenerating ? 0.6 : 1 }}>
+                      <MessageCircleHeart className="w-3.5 h-3.5" /> Check in
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={onExtractMilestones} disabled={extractingMilestones}
+                    style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, height: 32, padding: "0 12px", cursor: extractingMilestones ? "not-allowed" : "pointer", color: "var(--foreground)", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>
+                    {extractingMilestones ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Building…</> : <><Sparkles className="w-3.5 h-3.5" /> Turn the plan into a checklist</>}
+                  </button>
+                )}
+              </div>
+              {milestones.length > 0 && (
+                <div style={{ padding: "8px 12px" }}>
+                  {milestones.map((m) => (
+                    <button key={m.id} onClick={() => onToggleMilestone(m.id)}
+                      style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 10px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                      className="hover:bg-muted/50 transition-colors">
+                      {m.done
+                        ? <CheckCircle2 className="w-[18px] h-[18px] shrink-0" style={{ color: "var(--forest)", marginTop: 1 }} />
+                        : <Circle className="w-[18px] h-[18px] shrink-0" style={{ color: "var(--muted-foreground)", opacity: 0.5, marginTop: 1 }} />}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: m.done ? "var(--muted-foreground)" : "var(--foreground)", textDecoration: m.done ? "line-through" : "none", lineHeight: 1.45 }}>
+                          {m.title}
+                        </span>
+                        {m.timeframe && (
+                          <span style={{ display: "block", fontSize: 11, color: "var(--muted-foreground)", marginTop: 1 }}>{m.timeframe}</span>
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                  {!editingPlanId && (
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "6px 10px 4px" }}>
+                      Save the plan to keep tracking these between visits.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ maxWidth: 720, margin: "0 auto", ...cardStyle, overflow: "hidden" }}>
             <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
               {isGenerating && !planMarkdown.trim()

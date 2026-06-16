@@ -158,7 +158,7 @@ interface PostingDetailProps {
   onDeletePosting: (id: string) => void;
   onNavigate?: (view: ViewId) => void;
   onSaveCoverLetter: (cl: NonNullable<ReturnType<typeof useUserProfile>["profile"]["savedCoverLetters"]>[number]) => void;
-  onSaveResume: (r: NonNullable<ReturnType<typeof useUserProfile>["profile"]["savedResumes"]>[number]) => void;
+  onTailor: () => void;
   onSavePreview: () => void;
   onSaveAndTailorPreview: () => void;
   onSaveImportDraft: (p: NewPosting) => void;
@@ -168,7 +168,7 @@ export const PostingDetail = React.memo(function PostingDetail({
   detail, preview, importDraft, profile, personalized, savingKey, previewKey,
   onCloseDetail, onClosePreview, onCloseImport,
   onUpdatePosting, onDeletePosting, onNavigate,
-  onSaveCoverLetter, onSaveResume,
+  onSaveCoverLetter, onTailor,
   onSavePreview, onSaveAndTailorPreview, onSaveImportDraft,
 }: PostingDetailProps) {
   const handleUpdate = useCallback((patch: Partial<JobPosting>) => {
@@ -207,7 +207,7 @@ export const PostingDetail = React.memo(function PostingDetail({
           onDelete={handleDelete}
           onNavigate={onNavigate}
           onSaveCoverLetter={onSaveCoverLetter}
-          onSaveResume={onSaveResume}
+          onTailor={onTailor}
         />
       )}
     </>

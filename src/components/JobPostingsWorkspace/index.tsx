@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, Bell, Plus, X } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useJobPostings, type NewPosting } from "@/hooks/useJobPostings";
+import { TailorResumeWorkspace } from "@/components/TailorResumeWorkspace";
 import {
   searchAggregators, scanJobs, importJobFromUrl, type ImportedJobDraft,
 } from "@/services/jobScanService";
@@ -15,7 +16,8 @@ import {
   type JobPosting, type JobStatus, type AggregatorJob, type ScannedJob,
 } from "@/types/jobPosting";
 import type { ViewId } from "@/components/Sidebar";
-import { cardStyle, primaryBtn } from "./styles";
+import { cardStyle, primaryBtn, ghostBtn } from "./styles";
+import { CompanyLogo } from "./_shared";
 import { ScanControls } from "./ScanControls";
 import { PostingList } from "./PostingList";
 import { PostingDetail } from "./PostingDetail";
@@ -43,6 +45,8 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [savedOnly, setSavedOnly] = useState(false);
+  const [tailorPosting, setTailorPosting] = useState<JobPosting | null>(null);
+  const [showAllSuggested, setShowAllSuggested] = useState(false);
 
   /* ── Search + filters ─────────────────────────────────────────────────── */
   const defaults = useMemo(() => buildDefaultQuery(profile), [profile]);
@@ -124,6 +128,14 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
 
   const personalized = useMemo(() => canScoreProfile(profile), [profile]);
 
+  const suggested = useMemo(() => {
+    const lane = postings
+      .filter((p) => p.status === "suggested")
+      .map((p) => ({ posting: p, fit: personalized ? scoreJobFit(p, profile) : { score: 0, factors: [] as FitFactor[] } }));
+    if (personalized) lane.sort((a, b) => b.fit.score - a.fit.score);
+    return lane;
+  }, [postings, profile, personalized]);
+
   /* ── Unified list ─────────────────────────────────────────────────────── */
   const items = useMemo<ListItem[]>(() => {
     const saved = new Set(postings.filter((p) => p.externalId).map((p) => `${p.source}:${p.externalId}`));
@@ -140,6 +152,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
       personalized ? scoreJobFit(j, profile) : { score: 0, factors: [] as FitFactor[] };
 
     const fromPostings: ListItem[] = postings
+      .filter((p) => p.status !== "suggested")
       .filter((p) => passesFacets({ title: p.title, location: p.location, description: p.description, remote: p.remote }))
       .map((p) => {
         const { score, factors } = fit(p);
@@ -178,12 +191,12 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
     else if (item.result) setPreview(item);
   };
 
-  const saveItem = async (item: ListItem, openDrawer = false) => {
+  const saveItem = async (item: ListItem, then?: "tailor") => {
     if (!item.result) return;
     setSavingKey(item.key);
     const p = await addPosting(item.result);
     setSavingKey(null);
-    if (openDrawer && p) { setPreview(null); setDetailId(p.id); }
+    if (then === "tailor" && p) { setPreview(null); setTailorPosting(p); }
   };
 
   return (
@@ -238,6 +251,66 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           </div>
         )}
 
+        {/* Suggested this week — fresh matches delivered by the weekly scan */}
+        {suggested.length > 0 && !savedOnly && (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Bell className="w-4.5 h-4.5" style={{ width: 18, height: 18, color: "var(--primary)" }} />
+                Suggested this week
+                <span style={{ fontSize: 14, color: "var(--muted-foreground)", fontWeight: 500 }}>· {suggested.length}</span>
+              </h3>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>New matches for your target roles — refreshed every Monday</span>
+            </div>
+            <div style={{ ...cardStyle, padding: 0, overflow: "hidden", border: "1px solid rgba(217,119,87,0.30)" }}>
+              {(showAllSuggested ? suggested : suggested.slice(0, 6)).map(({ posting: p, fit }, i, shown) => (
+                <div key={p.id} onClick={() => setDetailId(p.id)} className="hover:bg-muted/40 transition-colors"
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: i === shown.length - 1 ? "none" : "1px solid var(--border)", cursor: "pointer" }}>
+                  <CompanyLogo company={p.company} url={p.url} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="font-display" style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {[p.company, p.location].filter(Boolean).join(" · ") || "—"}
+                    </div>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); updatePosting(p.id, { status: "saved" }); }}
+                    style={{ height: 34, padding: "0 14px", borderRadius: 9, flexShrink: 0, border: "1px solid var(--primary)", background: "var(--primary)", color: "#FFF", fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <Plus className="w-3.5 h-3.5" /> Save
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deletePosting(p.id); }} title="Dismiss suggestion"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)", display: "flex", padding: 4, flexShrink: 0 }}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {suggested.length > 6 && (
+                <button onClick={() => setShowAllSuggested((s) => !s)}
+                  style={{ width: "100%", padding: "12px 20px", background: "var(--muted)", border: "none", borderTop: "1px solid var(--border)", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>
+                  {showAllSuggested ? "Show fewer" : `Show all ${suggested.length} suggestions`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Job-alerts prompt when no suggestions and no target roles set */}
+        {suggested.length === 0 && !savedOnly && (profile.targetRoles?.length ?? 0) === 0 && (
+          <div style={{ ...cardStyle, padding: 18, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 12, background: "rgba(217,119,87,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Bell className="w-5 h-5" style={{ color: "var(--primary)" }} />
+            </div>
+            <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Get new matches every Monday</div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>
+                Set your target roles and followed companies, and we'll scan their job boards weekly and deliver fresh matches here.
+              </div>
+            </div>
+            <button style={{ ...ghostBtn, flexShrink: 0 }} onClick={() => onNavigate?.("profile_settings")}>
+              Set up job alerts <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         <PostingList
           items={items}
           loading={loading}
@@ -257,26 +330,42 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
         />
       </div>
 
-      <PostingDetail
-        detail={detail}
-        preview={preview}
-        importDraft={importDraft}
-        profile={profile}
-        personalized={personalized}
-        savingKey={savingKey}
-        previewKey={preview?.key ?? null}
-        onCloseDetail={() => setDetailId(null)}
-        onClosePreview={() => setPreview(null)}
-        onCloseImport={() => setImportDraft(null)}
-        onUpdatePosting={updatePosting}
-        onDeletePosting={deletePosting}
-        onNavigate={onNavigate}
-        onSaveCoverLetter={(cl) => updateProfile({ savedCoverLetters: [...(profile.savedCoverLetters ?? []), cl] })}
-        onSaveResume={(r) => updateProfile({ savedResumes: [...(profile.savedResumes ?? []), r] })}
-        onSavePreview={() => { saveItem(preview!); setPreview(null); }}
-        onSaveAndTailorPreview={() => saveItem(preview!, true)}
-        onSaveImportDraft={async (p) => { const saved = await addPosting(p); setImportDraft(null); setShowImport(false); if (saved) setDetailId(saved.id); }}
-      />
+      {!tailorPosting && (
+        <PostingDetail
+          detail={detail}
+          preview={preview}
+          importDraft={importDraft}
+          profile={profile}
+          personalized={personalized}
+          savingKey={savingKey}
+          previewKey={preview?.key ?? null}
+          onCloseDetail={() => setDetailId(null)}
+          onClosePreview={() => setPreview(null)}
+          onCloseImport={() => setImportDraft(null)}
+          onUpdatePosting={updatePosting}
+          onDeletePosting={deletePosting}
+          onNavigate={onNavigate}
+          onSaveCoverLetter={(cl) => updateProfile({ savedCoverLetters: [...(profile.savedCoverLetters ?? []), cl] })}
+          onTailor={() => detail && setTailorPosting(detail)}
+          onSavePreview={() => { saveItem(preview!); setPreview(null); }}
+          onSaveAndTailorPreview={() => saveItem(preview!, "tailor")}
+          onSaveImportDraft={async (p) => { const saved = await addPosting(p); setImportDraft(null); setShowImport(false); if (saved) setDetailId(saved.id); }}
+        />
+      )}
+
+      {tailorPosting && (
+        <div className="fixed inset-0 z-[120] flex" style={{ background: "var(--background)" }}>
+          <TailorResumeWorkspace
+            onBack={() => setTailorPosting(null)}
+            initialJobDetails={{
+              jobTitle: tailorPosting.title,
+              companyName: tailorPosting.company ?? "",
+              jobDescription: tailorPosting.description ?? "",
+            }}
+            onVariantSaved={(variant) => updatePosting(tailorPosting.id, { appliedResumeId: variant.id })}
+          />
+        </div>
+      )}
     </div>
   );
 }

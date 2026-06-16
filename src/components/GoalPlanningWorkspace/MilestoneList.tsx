@@ -39,6 +39,16 @@ function PlanCard({
         <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2 }}>
           {p.goalType} · {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         </div>
+        {(p.milestones?.length ?? 0) > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+            <div style={{ flex: 1, maxWidth: 160, height: 5, background: "var(--muted)", borderRadius: 9999, overflow: "hidden" }}>
+              <div style={{ width: `${Math.round((p.milestones!.filter((m) => m.done).length / p.milestones!.length) * 100)}%`, height: "100%", background: "var(--forest)", borderRadius: 9999 }} />
+            </div>
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
+              {p.milestones!.filter((m) => m.done).length}/{p.milestones!.length} milestones
+            </span>
+          </div>
+        )}
       </div>
       <button
         type="button"

@@ -2,6 +2,7 @@ import { pdfjs } from "react-pdf";
 import { configurePdfWorker } from "@/lib/pdfWorker";
 import { WorkflowId, type ViewId } from "@/components/Sidebar";
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
+import { MockInterviewWorkspace } from "@/components/MockInterviewWorkspace";
 import { LinkedInWorkflow } from "./workflows/LinkedInWorkflow";
 import { ResumeWorkflow } from "./workflows/ResumeWorkflow";
 import { CoverLetterWorkflow } from "./workflows/CoverLetterWorkflow";
@@ -21,6 +22,14 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     return (
       <div className="flex-1 flex flex-col h-full relative">
         <GoalPlanningWorkspace onNavigate={onNavigate} />
+      </div>
+    );
+  }
+
+  if (workflowId === "mock_behavioral" || workflowId === "mock_case_study" || workflowId === "mock_tech") {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <MockInterviewWorkspace workflowId={workflowId} />
       </div>
     );
   }

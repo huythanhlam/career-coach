@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { generateId, type SavedCareerPlan } from "@/types/userProfile";
+import { generateId, type SavedCareerPlan, type PlanMilestone } from "@/types/userProfile";
 import { workflowsConfig } from "@/config/workflows";
-import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
+import { createCoachingChat, sendMessageStream, extractPlanMilestones } from "@/services/geminiService";
 import {
   buildProfileBaseline, buildSurveySummary,
   diffIdentityForSync, buildIdentityPatch,
@@ -22,6 +22,9 @@ interface StoredPlanPayload {
   goalSummary: string;
   transcript: ChatMsg[];
   intake?: GoalPlanIntakeData;
+  /** Structured milestones snapshot (added later; the live completion state
+   * lives on the SavedCareerPlan profile entry). */
+  milestones?: PlanMilestone[];
 }
 
 export interface GoalPlanningActionsParams {
@@ -62,6 +65,10 @@ export interface GoalPlanningActionsParams {
   setSaveName: (v: string) => void;
   setIsSaving: (v: boolean) => void;
   setSaveAsCopy: (v: boolean) => void;
+  milestones: PlanMilestone[];
+  setMilestones: React.Dispatch<React.SetStateAction<PlanMilestone[]>>;
+  extractingMilestones: boolean;
+  setExtractingMilestones: (v: boolean) => void;
   isGenerating: boolean;
   pendingSurvey: CareerSurvey | null;
   draftMarkdown: string;
@@ -104,6 +111,10 @@ export function useGoalPlanningActions({
   setSaveName,
   setIsSaving,
   setSaveAsCopy,
+  milestones,
+  setMilestones,
+  extractingMilestones,
+  setExtractingMilestones,
   isGenerating,
   pendingSurvey,
   draftMarkdown,
@@ -189,6 +200,7 @@ export function useGoalPlanningActions({
     setPlanMarkdown("");
     setCurrentIntake(intake);
     setEditingSheet(false);
+    setMilestones([]);
     setMode("plan");
     setIsGenerating(true);
 
@@ -286,6 +298,7 @@ export function useGoalPlanningActions({
       setGoalSummary(payload.goalSummary);
       setMessages(transcript);
       setCurrentIntake(payload.intake ?? null);
+      setMilestones(plan.milestones ?? payload.milestones ?? []);
       setEditingPlanId(plan.id);
       setEditingSheet(false);
       setMode("plan");
@@ -330,6 +343,19 @@ export function useGoalPlanningActions({
 
     setIsSaving(true);
     try {
+      let nextMilestones = milestones;
+      if (nextMilestones.length === 0 && planMarkdown.trim()) {
+        try {
+          const extracted = await extractPlanMilestones(planMarkdown);
+          nextMilestones = extracted.map((e) => ({
+            id: generateId(), title: e.title, timeframe: e.timeframe, done: false,
+          }));
+        } catch (err) {
+          console.error("Milestone extraction failed:", err);
+        }
+      }
+      setMilestones(nextMilestones);
+
       const payload: StoredPlanPayload = {
         version: 1,
         planMarkdown,
@@ -337,6 +363,7 @@ export function useGoalPlanningActions({
         goalSummary,
         transcript: messages,
         intake: currentIntake ?? undefined,
+        milestones: nextMilestones,
       };
       const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
       const { error } = await supabase.storage
@@ -345,7 +372,10 @@ export function useGoalPlanningActions({
       if (error) throw error;
 
       const createdAt = reuse?.createdAt ?? new Date().toISOString();
-      const entry: SavedCareerPlan = { id, name, storagePath, goalType, goalSummary, createdAt };
+      const entry: SavedCareerPlan = {
+        id, name, storagePath, goalType, goalSummary, createdAt,
+        milestones: nextMilestones, lastCheckInAt: reuse?.lastCheckInAt,
+      };
       const nextPlans = reuse
         ? savedPlans.map((p) => (p.id === id ? entry : p))
         : [...savedPlans, entry];
@@ -366,6 +396,62 @@ export function useGoalPlanningActions({
   const applyEditSheet = useCallback(() => { setPlanMarkdown(draftMarkdown); setEditingSheet(false); }, [draftMarkdown]);
   const cancelEditSheet = useCallback(() => setEditingSheet(false), []);
 
+  /* ── Milestone tracking ──────────────────────────────────────────── */
+  const persistMilestones = useCallback(async (next: PlanMilestone[], extra: Partial<SavedCareerPlan> = {}) => {
+    setMilestones(next);
+    if (!editingPlanId) return;
+    await updateProfile({
+      savedCareerPlans: savedPlans.map((p) =>
+        p.id === editingPlanId ? { ...p, milestones: next, ...extra } : p
+      ),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingPlanId, savedPlans, updateProfile]);
+
+  const toggleMilestone = useCallback((id: string) => {
+    const next = milestones.map((m) =>
+      m.id === id
+        ? { ...m, done: !m.done, completedAt: !m.done ? new Date().toISOString() : undefined }
+        : m
+    );
+    persistMilestones(next);
+  }, [milestones, persistMilestones]);
+
+  const handleExtractMilestones = useCallback(async () => {
+    if (!planMarkdown.trim() || extractingMilestones) return;
+    setExtractingMilestones(true);
+    try {
+      const extracted = await extractPlanMilestones(planMarkdown);
+      await persistMilestones(
+        extracted.map((e) => ({ id: generateId(), title: e.title, timeframe: e.timeframe, done: false }))
+      );
+    } catch (err) {
+      console.error("Milestone extraction failed:", err);
+    } finally {
+      setExtractingMilestones(false);
+    }
+  }, [planMarkdown, extractingMilestones, persistMilestones]);
+
+  const handleCheckIn = useCallback(() => {
+    if (isGenerating || !chatRef.current) return;
+    const done = milestones.filter((m) => m.done);
+    const open = milestones.filter((m) => !m.done);
+    const msg =
+      `Progress check-in on my plan.\n` +
+      `Completed so far: ${done.length ? done.map((m) => m.title).join("; ") : "nothing yet"}.\n` +
+      (open.length ? `Still open: ${open.map((m) => m.title).join("; ")}.\n` : "") +
+      `Given this progress, what should I focus on for the next two weeks? Call out anything that's slipping, and adjust the plan if needed.`;
+    handleSend(undefined, msg);
+    if (editingPlanId) {
+      updateProfile({
+        savedCareerPlans: savedPlans.map((p) =>
+          p.id === editingPlanId ? { ...p, lastCheckInAt: new Date().toISOString() } : p
+        ),
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGenerating, milestones, editingPlanId, savedPlans, updateProfile, handleSend]);
+
   return {
     handleSaveSurvey,
     handleApplySync,
@@ -380,5 +466,8 @@ export function useGoalPlanningActions({
     applyEditSheet,
     cancelEditSheet,
     existingPlan,
+    toggleMilestone,
+    handleExtractMilestones,
+    handleCheckIn,
   };
 }

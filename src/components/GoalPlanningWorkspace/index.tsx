@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ListChecks, CheckCircle2, Circle, MessageCircleHeart, Loader2, Sparkles } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -8,7 +8,7 @@ import {
   type IdentitySyncField,
 } from "@/lib/careerBaseline";
 import type { GoalPlanIntakeData } from "@/components/GoalPlanIntakeForm";
-import type { CareerSurvey } from "@/types/userProfile";
+import type { CareerSurvey, PlanMilestone } from "@/types/userProfile";
 import type { ViewId } from "@/components/Sidebar";
 import { workflowsConfig } from "@/config/workflows";
 import { ProfileSyncDialog } from "./ProfileSyncDialog";
@@ -62,6 +62,8 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
   const [isGenerating, setIsGenerating] = useState(false);
   const [input, setInput] = useState("");
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [milestones, setMilestones] = useState<PlanMilestone[]>([]);
+  const [extractingMilestones, setExtractingMilestones] = useState(false);
 
   const [currentIntake, setCurrentIntake] = useState<GoalPlanIntakeData | null>(null);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -169,6 +171,10 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
     setSaveName,
     setIsSaving,
     setSaveAsCopy,
+    milestones,
+    setMilestones,
+    extractingMilestones,
+    setExtractingMilestones,
     isGenerating,
     pendingSurvey,
     draftMarkdown,
@@ -222,6 +228,11 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
           onSwitcherToggle={handleSwitcherToggle}
           onSwitcherClose={handleSwitcherClose}
           onOpenPlan={actions.handleOpen}
+          milestones={milestones}
+          extractingMilestones={extractingMilestones}
+          onToggleMilestone={actions.toggleMilestone}
+          onExtractMilestones={actions.handleExtractMilestones}
+          onCheckIn={actions.handleCheckIn}
         />
         {showSaveDialog && (
           <SaveDialog
