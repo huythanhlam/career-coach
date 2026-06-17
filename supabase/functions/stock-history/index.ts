@@ -2,14 +2,14 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { safeFetchText } from "../_shared/safe-fetch.ts";
 
-// ── Keyless daily stock-price history ──────────────────────────────────────
+// ── Keyless stock-price history ────────────────────────────────────────────
 // Powers the price chart in the Research Company → Financials card. Fetches
-// Stooq's free, keyless daily CSV server-side (no CORS, no API key), parses the
-// last ~year of closes, downsamples to keep the payload tiny, and caches per
-// ticker in-memory so repeated lookups don't re-hit Stooq.
+// Yahoo Finance's free, keyless v8 chart JSON server-side (no CORS, no API key)
+// for the requested window, parses the closes, caps the payload, and caches per
+// ticker+range in-memory so repeated lookups don't re-hit Yahoo.
 
 interface StockPoint {
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD for daily+ windows; full ISO datetime for intraday
   close: number;
 }
 interface StockHistory {
@@ -18,8 +18,22 @@ interface StockHistory {
   points: StockPoint[];
 }
 
-const MAX_POINTS = 90; // weekly over a year ≈ 52; cap is just a safety bound
+// Allowlisted chart windows → Yahoo (range, interval). User input only ever
+// selects a key, never reaches the URL, so the upstream URL stays fixed-shape.
+const RANGE_MAP: Record<string, { range: string; interval: string; intraday: boolean }> = {
+  "1D": { range: "1d", interval: "5m", intraday: true },
+  "1W": { range: "5d", interval: "30m", intraday: true },
+  "1M": { range: "1mo", interval: "1d", intraday: false },
+  "3M": { range: "3mo", interval: "1d", intraday: false },
+  "6M": { range: "6mo", interval: "1d", intraday: false },
+  "1Y": { range: "1y", interval: "1wk", intraday: false },
+  "5Y": { range: "5y", interval: "1mo", intraday: false },
+  "MAX": { range: "max", interval: "1mo", intraday: false },
+};
+
+const MAX_POINTS = 400; // intraday windows can carry a few hundred bars
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const INTRADAY_CACHE_TTL_MS = 5 * 60 * 1000; // intraday windows move minute-to-minute
 // Yahoo blocks the default UA; a browser-like UA is required.
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
@@ -43,7 +57,7 @@ async function verifyUser(authHeader: string | null) {
 
 /** Parse a Yahoo Finance v8 chart response → date-ascending closes + currency. */
 // deno-lint-ignore no-explicit-any
-function parseYahoo(jsonText: string): { points: StockPoint[]; currency: string } {
+function parseYahoo(jsonText: string, intraday: boolean): { points: StockPoint[]; currency: string } {
   let parsed: any;
   try {
     parsed = JSON.parse(jsonText);
@@ -58,7 +72,8 @@ function parseYahoo(jsonText: string): { points: StockPoint[]; currency: string 
   for (let i = 0; i < ts.length; i++) {
     const c = closes[i];
     if (typeof c === "number" && Number.isFinite(c) && c > 0) {
-      points.push({ date: new Date(ts[i] * 1000).toISOString().slice(0, 10), close: Math.round(c * 100) / 100 });
+      const iso = new Date(ts[i] * 1000).toISOString();
+      points.push({ date: intraday ? iso : iso.slice(0, 10), close: Math.round(c * 100) / 100 });
     }
   }
   return { points: points.slice(-MAX_POINTS), currency };
@@ -72,20 +87,23 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: "Unauthorized" }, 401, cors);
 
   try {
-    const { ticker } = await req.json();
+    const { ticker, range } = await req.json();
     if (!ticker || typeof ticker !== "string" || !/^[A-Za-z][A-Za-z.\-]{0,9}$/.test(ticker)) {
       return json({ error: "Invalid ticker" }, 400, cors);
     }
+    const win = RANGE_MAP[typeof range === "string" ? range : "1Y"] ?? RANGE_MAP["1Y"];
     const symbol = ticker.trim().toUpperCase();
+    const cacheId = `${symbol}:${range ?? "1Y"}`;
 
-    const cached = cache.get(symbol);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    const cached = cache.get(cacheId);
+    const ttl = win.intraday ? INTRADAY_CACHE_TTL_MS : CACHE_TTL_MS;
+    if (cached && Date.now() - cached.ts < ttl) {
       return json(cached.data, 200, cors);
     }
 
-    // Yahoo symbols use "-" for class shares (e.g. BRK.B → BRK-B). Weekly over 1y.
+    // Yahoo symbols use "-" for class shares (e.g. BRK.B → BRK-B).
     const yahooSymbol = symbol.replace(/\./g, "-");
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1wk`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${win.range}&interval=${win.interval}`;
 
     let res;
     try {
@@ -101,11 +119,11 @@ Deno.serve(async (req) => {
     }
     if (!res.ok) return json({ error: `Fetch failed: ${res.statusText}` }, 502, cors);
 
-    const { points, currency } = parseYahoo(res.text);
+    const { points, currency } = parseYahoo(res.text, win.intraday);
     if (points.length < 2) return json({ error: "No price history for this ticker" }, 404, cors);
 
     const data: StockHistory = { ticker: symbol, currency, points };
-    cache.set(symbol, { data, ts: Date.now() });
+    cache.set(cacheId, { data, ts: Date.now() });
     return json(data, 200, cors);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

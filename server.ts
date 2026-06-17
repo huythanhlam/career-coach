@@ -209,19 +209,35 @@ app.post('/api/fetch-url', async (req, res) => {
 // --- Stock price history proxy (dev parity for the stock-history Edge Fn) ---
 // Fetches Yahoo Finance's keyless v8 chart JSON server-side (no CORS) so the
 // Research Company stock chart works in local dev without deploying the Edge Fn.
+
+// Allowlisted chart windows → Yahoo (range, interval). User input only ever
+// selects a key, never reaches the URL, so the upstream URL stays fixed-shape.
+const STOCK_RANGE_MAP: Record<string, { range: string; interval: string; intraday: boolean }> = {
+  '1D': { range: '1d', interval: '5m', intraday: true },
+  '1W': { range: '5d', interval: '30m', intraday: true },
+  '1M': { range: '1mo', interval: '1d', intraday: false },
+  '3M': { range: '3mo', interval: '1d', intraday: false },
+  '6M': { range: '6mo', interval: '1d', intraday: false },
+  '1Y': { range: '1y', interval: '1wk', intraday: false },
+  '5Y': { range: '5y', interval: '1mo', intraday: false },
+  MAX: { range: 'max', interval: '1mo', intraday: false },
+};
+const STOCK_MAX_POINTS = 400; // intraday windows can carry a few hundred bars
+
 app.post('/api/stock-history', async (req, res) => {
-  const { ticker } = req.body as { ticker?: string };
+  const { ticker, range } = req.body as { ticker?: string; range?: string };
   if (!ticker || typeof ticker !== 'string' || !/^[A-Za-z][A-Za-z.\-]{0,9}$/.test(ticker)) {
     res.status(400).json({ error: 'Invalid ticker' });
     return;
   }
+  const win = STOCK_RANGE_MAP[range ?? '1Y'] ?? STOCK_RANGE_MAP['1Y'];
   const symbol = ticker.trim().toUpperCase();
   const yahooSymbol = symbol.replace(/\./g, '-'); // BRK.B → BRK-B
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1wk`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${win.range}&interval=${win.interval}`;
 
   try {
-    // Host is hardcoded + symbol is validated, so plain fetch (with the browser
-    // UA Yahoo requires) is safe here — no user-controlled URL.
+    // Host is hardcoded + symbol is validated + range/interval are allowlisted,
+    // so plain fetch (with the browser UA Yahoo requires) is safe here.
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
@@ -243,14 +259,15 @@ app.post('/api/stock-history', async (req, res) => {
     for (let i = 0; i < ts.length; i++) {
       const c = closes[i];
       if (typeof c === 'number' && Number.isFinite(c) && c > 0) {
-        points.push({ date: new Date(ts[i] * 1000).toISOString().slice(0, 10), close: Math.round(c * 100) / 100 });
+        const iso = new Date(ts[i] * 1000).toISOString();
+        points.push({ date: win.intraday ? iso : iso.slice(0, 10), close: Math.round(c * 100) / 100 });
       }
     }
     if (points.length < 2) {
       res.status(404).json({ error: 'No price history for this ticker' });
       return;
     }
-    res.json({ ticker: symbol, currency, points: points.slice(-90) });
+    res.json({ ticker: symbol, currency, points: points.slice(-STOCK_MAX_POINTS) });
   } catch (error: any) {
     console.error('[stock-history] Error:', error.message);
     res.status(500).json({ error: 'Failed to fetch prices.' });
