@@ -18,6 +18,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realHttpGet, slugify, sleep } from "./lib.ts";
 import { loadTickerMap } from "./sources/sec.ts";
+import { fetchBusinessNews } from "./sources/news.ts";
 import { buildProfile } from "./buildProfile.ts";
 import { createRenderer } from "./sources/render.ts";
 import { DIR, ensureDir, loadList, saveList, filterTargets, parseListArgs } from "./list.ts";
@@ -82,13 +83,15 @@ async function main() {
   console.log(`Building ${targets.length} profile(s)…`);
 
   const tickerMap = await loadTickerMap(realHttpGet).catch(() => ({ byTicker: {}, byName: {} }));
+  const businessNews = await fetchBusinessNews(realHttpGet).catch(() => []);
+  console.log(`• Loaded ${businessNews.length} business-news headlines (shared across companies).`);
   const renderer = await createRenderer();
   console.log(renderer ? "• Headless renderer available (render-only sources enabled)." : "• No Chrome found — render-only rating sources skipped.");
   let ok = 0;
   try {
     for (const entry of targets) {
       try {
-        const profile: CompanyProfile = await buildProfile(entry, { httpGet: realHttpGet, tickerMap, render: renderer?.render });
+        const profile: CompanyProfile = await buildProfile(entry, { httpGet: realHttpGet, tickerMap, businessNews, render: renderer?.render });
         writeFileSync(join(DIR, `${entry.slug}.json`), JSON.stringify(profile, null, 2) + "\n");
         const facts = [profile.overview && "overview", profile.financials.length && "financials", profile.news.length && "news", profile.ratings.length && `${profile.ratings.length} rating${profile.ratings.length > 1 ? "s" : ""}`].filter(Boolean).join("+") || "links-only";
         console.log(`  ✓ ${entry.slug} (${facts})`);

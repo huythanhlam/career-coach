@@ -10,7 +10,7 @@ sources, with a review-gated path into the database.
 | Overview + logo | Wikipedia REST summary | disambiguated via the Wikidata sitelink |
 | Key facts (founded, HQ, industry, employees, CEO, website, ticker, country) | Wikidata | CEO = current officeholder (rank `preferred`, no future-dated holders) |
 | Financials (revenue, net income, total assets) | SEC EDGAR XBRL | latest 10-K, USD; public US companies only |
-| Recent news | Google News RSS | last ~90 days |
+| Recent news | Google News RSS (per-company) + business feeds (CNBC, NYT Business, MarketWatch, Fox Business) filtered to the company | merged, deduped, **sorted newest-first**, top 12; ~90-day window. Business feeds fetched once per run (`fetchBusinessNews`) and shared across companies |
 | Employee ratings | **Blind** (real score scraped) + links | see below |
 
 ### Employee ratings
