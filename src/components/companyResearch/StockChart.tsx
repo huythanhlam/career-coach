@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { LineChart, TrendingDown, TrendingUp } from "lucide-react";
-import { fetchStockHistory, type StockHistory } from "@/services/stockService";
+import {
+  fetchStockHistory,
+  isIntradayRange,
+  DEFAULT_STOCK_RANGE,
+  STOCK_RANGES,
+  type StockHistory,
+  type StockRange,
+} from "@/services/stockService";
 import { MentorCard, SectionHeader } from "./shared";
 
 const UP = "#2F6B4F";
@@ -11,9 +18,28 @@ function fmtPrice(n: number, currency: string): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 2 }).format(n);
 }
 
-function fmtAxisDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+// Point `date` is a full ISO datetime for intraday windows and a YYYY-MM-DD
+// string otherwise; normalize so both parse as UTC.
+function parsePointDate(value: string): Date {
+  return new Date(value.includes("T") ? value : `${value}T00:00:00Z`);
+}
+
+function fmtAxisDate(value: string, range: StockRange): string {
+  const d = parsePointDate(value);
+  if (Number.isNaN(d.getTime())) return value;
+  if (range === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (range === "1W") return d.toLocaleDateString("en-US", { weekday: "short" });
+  if (range === "1M" || range === "3M" || range === "6M") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+}
+
+function fmtTooltipDate(value: string, range: StockRange): string {
+  const d = parsePointDate(value);
+  if (Number.isNaN(d.getTime())) return value;
+  if (isIntradayRange(range)) {
+    return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 /**
@@ -28,25 +54,42 @@ function fmtAxisDate(iso: string): string {
  *    the deterministic company-profile view).
  */
 export function StockChart({ ticker, title }: { ticker: string; title?: string }) {
+  const [range, setRange] = useState<StockRange>(DEFAULT_STOCK_RANGE);
   const [history, setHistory] = useState<StockHistory | null>(null);
   const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  // New company: clear prior data and reset to the default window.
+  useEffect(() => {
+    setRange(DEFAULT_STOCK_RANGE);
+    setHistory(null);
+    setDone(false);
+  }, [ticker]);
+
+  // Fetch whenever the ticker or selected window changes. The previous chart
+  // stays on screen (dimmed) while a window switch is in flight.
   useEffect(() => {
     let active = true;
-    setDone(false);
-    setHistory(null);
-    fetchStockHistory(ticker)
-      .then((h) => active && setHistory(h))
-      .finally(() => active && setDone(true));
+    setLoading(true);
+    fetchStockHistory(ticker, range)
+      .then((h) => {
+        if (active && h) setHistory(h);
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+          setDone(true);
+        }
+      });
     return () => {
       active = false;
     };
-  }, [ticker]);
+  }, [ticker, range]);
 
-  // Loading: show a skeleton inline; in framed mode render nothing yet so an
-  // empty titled card never flashes before we know whether data exists.
+  // Initial load for this ticker: skeleton inline; in framed mode render nothing
+  // yet so an empty titled card never flashes before we know data exists.
   if (!done) {
-    return title ? null : <div style={{ height: 188, borderRadius: 14, background: "var(--muted)", border: "1px solid var(--border)", marginBottom: 14 }} aria-hidden />;
+    return title ? null : <div style={{ height: 220, borderRadius: 14, background: "var(--muted)", border: "1px solid var(--border)", marginBottom: 14 }} aria-hidden />;
   }
   if (!history || history.points.length < 2) return null;
 
@@ -59,6 +102,36 @@ export function StockChart({ ticker, title }: { ticker: string; title?: string }
   const color = up ? UP : DOWN;
   const Arrow = up ? TrendingUp : TrendingDown;
 
+  const switcher = (
+    <div role="group" aria-label="Chart time range" style={{ display: "inline-flex", gap: 2, padding: 2, borderRadius: 9, background: "var(--muted)", border: "1px solid var(--border)" }}>
+      {STOCK_RANGES.map((r) => {
+        const active = r.key === range;
+        return (
+          <button
+            key={r.key}
+            type="button"
+            onClick={() => setRange(r.key)}
+            aria-pressed={active}
+            style={{
+              padding: "3px 9px",
+              fontSize: 11,
+              fontWeight: 600,
+              lineHeight: 1.3,
+              borderRadius: 7,
+              border: "none",
+              cursor: "pointer",
+              background: active ? "var(--card)" : "transparent",
+              color: active ? "var(--foreground)" : "var(--muted-foreground)",
+              boxShadow: active ? "0 1px 2px rgb(0 0 0 / 0.08)" : "none",
+            }}
+          >
+            {r.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const body = (
     <>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
@@ -69,10 +142,11 @@ export function StockChart({ ticker, title }: { ticker: string; title?: string }
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color }}>
           <Arrow className="w-4 h-4" />
           {up ? "+" : ""}{fmtPrice(delta, currency)} ({up ? "+" : ""}{pct.toFixed(1)}%)
-          <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>· 1Y</span>
+          <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>· {range}</span>
         </span>
       </div>
-      <div style={{ height: 140 }}>
+      <div style={{ marginBottom: 10 }}>{switcher}</div>
+      <div style={{ height: 140, opacity: loading ? 0.45 : 1, transition: "opacity 120ms ease" }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={points} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
@@ -81,11 +155,11 @@ export function StockChart({ ticker, title }: { ticker: string; title?: string }
                 <stop offset="100%" stopColor={color} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="date" tickFormatter={fmtAxisDate} minTickGap={48} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="date" tickFormatter={(v) => fmtAxisDate(String(v), range)} minTickGap={48} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
             <YAxis domain={["auto", "auto"]} width={52} tickFormatter={(v) => fmtPrice(Number(v), currency)} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
             <RechartsTooltip
               formatter={(v: number) => [fmtPrice(Number(v), currency), "Close"]}
-              labelFormatter={(l: string) => new Date(`${l}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              labelFormatter={(l: string) => fmtTooltipDate(String(l), range)}
               contentStyle={{ borderRadius: 8, border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 12, boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
             />
             <Area type="monotone" dataKey="close" stroke={color} strokeWidth={2} fill={`url(#stockfill-${history.ticker})`} />
@@ -93,8 +167,8 @@ export function StockChart({ ticker, title }: { ticker: string; title?: string }
         </ResponsiveContainer>
       </div>
       <div style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "right", marginTop: 2 }}>
-        Daily close · source{" "}
-        <a href="https://stooq.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary)" }}>Stooq</a>
+        source{" "}
+        <a href="https://finance.yahoo.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary)" }}>Yahoo Finance</a>
       </div>
     </>
   );
