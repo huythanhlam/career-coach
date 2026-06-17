@@ -11,7 +11,7 @@ import { fetchSecFinancials, resolveCik, type TickerMaps } from "./sources/sec.t
 import { fetchNews } from "./sources/news.ts";
 import { fetchRatings, type RenderFn } from "./sources/ratings.ts";
 import { buildReviewLinks } from "../../src/config/reviewSites.ts";
-import type { CompanyProfile, CompanyListEntry, ProfileSource } from "../../src/types/companyProfile.ts";
+import type { CompanyProfile, CompanyListEntry, NewsItem, ProfileSource } from "../../src/types/companyProfile.ts";
 
 /** Deterministic review *links* (no scores — no free rating API exists). */
 function ratingLinks(company: string): ProfileSource[] {
@@ -22,12 +22,14 @@ export interface BuildDeps {
   httpGet: HttpGet;
   /** Pre-loaded SEC ticker/name → CIK maps so we fetch the index once per run. */
   tickerMap?: TickerMaps;
+  /** Pre-fetched general business news (shared across companies, fetched once per run). */
+  businessNews?: NewsItem[];
   /** Optional headless renderer for sites that need a browser (e.g. RepVue). */
   render?: RenderFn;
 }
 
 export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Promise<CompanyProfile> {
-  const { httpGet, tickerMap, render } = deps;
+  const { httpGet, tickerMap, businessNews, render } = deps;
   const slug = entry.slug || slugify(entry.name);
   const notes: string[] = [];
   const sources: ProfileSource[] = [];
@@ -88,9 +90,13 @@ export async function buildProfile(entry: CompanyListEntry, deps: BuildDeps): Pr
     notes.push(`SEC fetch failed: ${errMsg(e)}`);
   }
 
-  // News — Google News RSS.
+  // News — Google News RSS (company-specific) + shared business feeds filtered
+  // to this company. Sorted newest-first.
   try {
-    const news = await fetchNews(entry.name, httpGet);
+    const news = await fetchNews(entry.name, httpGet, {
+      ticker: entry.ticker ?? profile.keyFacts.ticker,
+      businessNews,
+    });
     profile.news = news.news;
     if (news.source) sources.push(news.source);
     if (!news.news.length) notes.push("No recent news found.");

@@ -4,7 +4,7 @@ import { slugify, dedupeByUrl } from "./lib.ts";
 import { fetchWikipedia } from "./sources/wikipedia.ts";
 import { fetchWikidata, currentEntityId } from "./sources/wikidata.ts";
 import { fetchSecFinancials, loadTickerMap, resolveCik, normalizeCompanyName } from "./sources/sec.ts";
-import { fetchNews } from "./sources/news.ts";
+import { fetchNews, fetchBusinessNews, parseRssItems, mentionsCompany } from "./sources/news.ts";
 import { parseAggregateRating, fetchBlindRating, fetchRepVueRating, fetchRatings } from "./sources/ratings.ts";
 import { buildProfile } from "./buildProfile.ts";
 
@@ -223,15 +223,89 @@ describe("fetchNews", () => {
     <item><title>Acme hires CFO</title><link>https://news/2</link><pubDate>Mon, 01 Jun 2026 10:00:00 GMT</pubDate></item>
   </channel></rss>`;
 
-  it("parses items with CDATA, dates, and source", async () => {
+  it("parses items with CDATA, dates, and source; sorts newest-first", async () => {
     const http = mockHttp([{ match: "news.google.com/rss", body: rss }]);
     const r = await fetchNews("Acme", http);
     expect(r.news).toHaveLength(2);
-    expect(r.news[0].title).toBe("Acme launches product");
+    expect(r.news[0].title).toBe("Acme launches product"); // Jun 02 before Jun 01
     expect(r.news[0].url).toBe("https://news/1");
     expect(r.news[0].source).toBe("TechCrunch");
     expect(r.news[0].publishedAt).toBe("2026-06-02T10:00:00.000Z");
     expect(r.source?.provider).toBe("news");
+  });
+
+  it("merges business news that names the company and sorts the whole set by date", async () => {
+    const http = mockHttp([{ match: "news.google.com/rss", body: rss }]);
+    const businessNews = [
+      { title: "Acme beats earnings as shares jump", url: "https://cnbc/x", publishedAt: "2026-06-10T00:00:00.000Z", source: "CNBC" },
+      { title: "Unrelated market roundup", url: "https://cnbc/y", publishedAt: "2026-06-11T00:00:00.000Z", source: "CNBC" },
+    ];
+    const r = await fetchNews("Acme", http, { businessNews });
+    // Only the Acme-mentioning business item is kept; it's the newest, so it leads.
+    expect(r.news.map((n) => n.url)).toEqual(["https://cnbc/x", "https://news/1", "https://news/2"]);
+    expect(r.news.find((n) => n.url === "https://cnbc/y")).toBeUndefined();
+  });
+
+  it("dedupes the same story across feeds despite Google's ' - Publisher' suffix", async () => {
+    const dupRss = `<rss><channel>
+      <item><title>Acme launches product - TechCrunch</title><link>https://news.google.com/x</link><pubDate>Tue, 02 Jun 2026 10:00:00 GMT</pubDate></item>
+    </channel></rss>`;
+    const http = mockHttp([{ match: "news.google.com/rss", body: dupRss }]);
+    const businessNews = [
+      { title: "Acme launches product", url: "https://techcrunch/direct", publishedAt: "2026-06-02T09:00:00.000Z", source: "TechCrunch" },
+    ];
+    const r = await fetchNews("Acme", http, { businessNews });
+    expect(r.news).toHaveLength(1); // collapsed to one despite different titles + urls
+  });
+
+  it("matches business headlines by ticker too, and respects the limit", async () => {
+    const http = mockHttp([{ match: "news.google.com/rss", body: rss }]);
+    const businessNews = [
+      { title: "ACME stock upgraded to buy", url: "https://mw/1", publishedAt: "2026-06-09T00:00:00.000Z", source: "MarketWatch" },
+    ];
+    const r = await fetchNews("Acme Corporation", http, { ticker: "ACME", limit: 2, businessNews });
+    expect(r.news).toHaveLength(2);
+    expect(r.news.some((n) => n.url === "https://mw/1")).toBe(true);
+  });
+});
+
+describe("mentionsCompany", () => {
+  it("matches the company name case-insensitively on word boundaries", () => {
+    expect(mentionsCompany("Apple unveils new chip", "Apple Inc.")).toBe(true);
+    expect(mentionsCompany("Alphabet earnings beat", "Alphabet (Google)")).toBe(true);
+    expect(mentionsCompany("Pineapple recipes for summer", "Apple")).toBe(false);
+  });
+
+  it("matches a ticker case-sensitively (uppercase symbol, not the lowercase word)", () => {
+    expect(mentionsCompany("MMM raises dividend", "3M", "MMM")).toBe(true);
+    expect(mentionsCompany("the cat sat down", "Caterpillar", "CAT")).toBe(false);
+  });
+});
+
+describe("parseRssItems / fetchBusinessNews", () => {
+  const cnbc = `<rss><channel>
+    <item><link>https://cnbc/a</link><title>Markets rally</title><pubDate>Tue, 16 Jun 2026 22:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+  const fox = `<rss><channel>
+    <item> <link>https://fox/b</link> <title>Verizon drops fees</title> <pubDate>Mon, 15 Jun 2026 10:00:00 -0400</pubDate> </item>
+  </channel></rss>`;
+
+  it("parses link/title/pubDate and applies a fallback source label", () => {
+    const items = parseRssItems(cnbc, "CNBC");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ url: "https://cnbc/a", title: "Markets rally", source: "CNBC" });
+    expect(items[0].publishedAt).toBe("2026-06-16T22:00:00.000Z");
+  });
+
+  it("fetchBusinessNews flattens reachable feeds and degrades on failures", async () => {
+    // Match CNBC + Fox by host; the other two feeds 404 (unmatched) and contribute nothing.
+    const http = mockHttp([
+      { match: "cnbc.com", body: cnbc },
+      { match: "foxbusiness.com", body: fox },
+    ]);
+    const items = await fetchBusinessNews(http);
+    expect(items.map((i) => i.source).sort()).toEqual(["CNBC", "Fox Business"]);
+    expect(items.map((i) => i.url).sort()).toEqual(["https://cnbc/a", "https://fox/b"]);
   });
 });
 
