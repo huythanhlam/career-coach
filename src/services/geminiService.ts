@@ -1,4 +1,5 @@
 import type { UserProfile } from "@/types/userProfile";
+import type { QuestionFeedback, STARElement } from "@/types/interviewSession";
 import { supabase } from "@/lib/supabaseClient";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 import { parseJsonObject, parseJsonArray, parseLooseJsonObject } from "@/lib/looseJson";
@@ -864,20 +865,41 @@ export interface InterviewEvaluation {
   summary: string;
   strengths: string[];
   improvements: string[];
+  questionFeedback: QuestionFeedback[];
 }
 
-const INTERVIEW_EVALUATION_SYSTEM = `You are a rigorous interview assessor. Given a mock-interview transcript, score THE CANDIDATE's answers (the "User" turns) — never the interviewer — and return ONLY a JSON object, no markdown fences, matching exactly:
+const INTERVIEW_EVALUATION_SYSTEM = `You are a rigorous behavioral-interview assessor. Given a mock-interview transcript, evaluate THE CANDIDATE's answers (the "User" turns) — never the interviewer — and return ONLY a JSON object, no markdown fences, matching exactly:
 {
   "scores": { "communication": 0-100, "structure": 0-100, "depth": 0-100 },
   "overall": 0-100,
   "summary": "string (2-3 sentences on the overall performance)",
   "strengths": ["2-3 short, specific strengths"],
-  "improvements": ["2-3 short, specific, highest-impact things to practice"]
+  "improvements": ["2-3 short, specific, highest-impact things to practice"],
+  "questionFeedback": [
+    {
+      "question": "the interviewer's question, paraphrased briefly",
+      "answerSummary": "1-2 sentence summary of how the candidate answered",
+      "star": {
+        "situation": "what they described as the situation, or null if absent",
+        "task": "the task/goal they described, or null if absent",
+        "action": "the actions they took, or null if absent",
+        "result": "the outcome/result they described, or null if absent"
+      },
+      "missing": ["Situation"|"Task"|"Action"|"Result" — list ONLY the STAR elements the candidate failed to provide],
+      "score": 0-100,
+      "quality": "Strong" | "Adequate" | "Weak",
+      "feedback": "2-4 sentences of specific, constructive feedback on this answer"
+    }
+  ]
 }
-Rubric (score each 0-100, calibrated so 50 = a typical unprepared candidate, 80+ = hire-bar):
+Overall rubric (score each 0-100, calibrated so 50 = a typical unprepared candidate, 80+ = hire-bar):
 - communication: clarity, concision, confidence of the answers.
-- structure: framing and organization (STAR for behavioral, explicit framework/approach for cases and technical).
+- structure: framing and organization (STAR — Situation, Task, Action, Result).
 - depth: specificity, evidence, rigor, and trade-off awareness.
+Per-question rules:
+- Add ONE questionFeedback entry for every substantive interview question the candidate answered (skip the interviewer's greeting and any closing remarks).
+- For each STAR element, fill the summary if the candidate clearly provided it; otherwise set it to null AND name it in "missing".
+- "score" rates that single answer 0-100; set "quality" to "Strong" (>=80), "Adequate" (>=50), or "Weak" (<50) to match.
 Be honest and consistent — scores must reflect the actual transcript so they are comparable across sessions. If the candidate barely answered, score low.`;
 
 export async function evaluateInterviewTranscript(
@@ -903,11 +925,48 @@ export async function evaluateInterviewTranscript(
     structure: clamp(parsed?.scores?.structure),
     depth: clamp(parsed?.scores?.depth),
   };
+
+  const STAR_NAMES: readonly STARElement[] = ["Situation", "Task", "Action", "Result"];
+  const starText = (v: unknown): string | null =>
+    typeof v === "string" && v.trim() ? v.trim() : null;
+  const questionFeedback: QuestionFeedback[] = Array.isArray(parsed?.questionFeedback)
+    ? parsed.questionFeedback
+        .filter((q: unknown) => q && typeof q === "object")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((q: any): QuestionFeedback => {
+          const score = clamp(q?.score);
+          const quality: QuestionFeedback["quality"] =
+            q?.quality === "Strong" || q?.quality === "Adequate" || q?.quality === "Weak"
+              ? q.quality
+              : score >= 80 ? "Strong" : score >= 50 ? "Adequate" : "Weak";
+          const missing: STARElement[] = Array.isArray(q?.missing)
+            ? q.missing.filter((m: unknown): m is STARElement =>
+                STAR_NAMES.includes(m as STARElement))
+            : [];
+          return {
+            question: typeof q?.question === "string" ? q.question : "",
+            answerSummary: typeof q?.answerSummary === "string" ? q.answerSummary : "",
+            star: {
+              situation: starText(q?.star?.situation),
+              task: starText(q?.star?.task),
+              action: starText(q?.star?.action),
+              result: starText(q?.star?.result),
+            },
+            missing,
+            score,
+            quality,
+            feedback: typeof q?.feedback === "string" ? q.feedback : "",
+          };
+        })
+        .filter((q: QuestionFeedback) => q.question || q.feedback)
+    : [];
+
   return {
     scores,
     overall: clamp(parsed?.overall ?? (scores.communication + scores.structure + scores.depth) / 3),
     summary: typeof parsed?.summary === "string" ? parsed.summary : "",
     strengths: strings(parsed?.strengths),
     improvements: strings(parsed?.improvements),
+    questionFeedback,
   };
 }

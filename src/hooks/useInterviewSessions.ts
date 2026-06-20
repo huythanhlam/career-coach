@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
-import type { InterviewSession, InterviewScores, ChatTurn, MockWorkflowId } from "@/types/interviewSession";
+import type { InterviewSession, InterviewScores, ChatTurn, MockWorkflowId, QuestionFeedback } from "@/types/interviewSession";
 
 // Interview practice history data hook — reads/writes the `interview_sessions`
 // table. Mirrors the useJobPostings shape (list + add + delete).
@@ -18,6 +18,7 @@ function rowToSession(row: Record<string, unknown>): InterviewSession {
     summary: (row.summary as string) ?? undefined,
     strengths: (row.strengths as string[]) ?? undefined,
     improvements: (row.improvements as string[]) ?? undefined,
+    questionFeedback: (row.question_feedback as QuestionFeedback[]) ?? undefined,
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
   };
 }
@@ -59,6 +60,7 @@ export function useInterviewSessions() {
           summary: session.summary ?? null,
           strengths: session.strengths ?? null,
           improvements: session.improvements ?? null,
+          question_feedback: session.questionFeedback ?? null,
         })
         .select()
         .single();
