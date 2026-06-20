@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, User, Send, X, MessageSquare, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Bot, User, Send, X, MessageSquare, Loader2, Sparkles, Trash2, RotateCcw } from "lucide-react";
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
@@ -47,6 +47,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   const [chatInstance, setChatInstance] = useState<ReturnType<typeof createCoachingChat> | null>(null);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [failedInput, setFailedInput] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Persist the conversation so a refresh doesn't lose it. Skipped while
@@ -63,6 +64,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   const clearConversation = () => {
     setMessages([]);
     setChatInstance(null);
+    setFailedInput(null);
     try {
       localStorage.removeItem(CHAT_STORAGE_KEY);
     } catch {}
@@ -95,17 +97,12 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
     return `${systemInstruction}\n\nWHAT YOU ALREADY KNOW ABOUT THIS USER (from their profile and activity in the app — use it naturally, don't re-ask for it):\n${context}`;
   };
 
-  const handleSend = async (e?: React.FormEvent, overrideText?: string) => {
-    if (e) e.preventDefault();
-    const text = overrideText || input.trim();
-    if (!text || isGenerating) return;
-
-    setInput("");
+  // Stream a model reply to `text`, which already has its trailing empty model
+  // bubble in place. On failure, leave a calm message and remember `text` so the
+  // user can retry the same turn without retyping.
+  const streamReply = async (text: string) => {
     setIsGenerating(true);
-
-    const newMessages: Message[] = [...messages, { role: "user", text }];
-    setMessages([...newMessages, { role: "model", text: "" }]);
-
+    setFailedInput(null);
     try {
       let currentChat = chatInstance;
       if (!currentChat) {
@@ -127,11 +124,31 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
       console.error(err);
       setMessages((prev) => [
         ...prev.slice(0, -1),
-        { role: "model", text: "**Error:** Failed to connect to AI. Ensure server is running." }
+        { role: "model", text: "I couldn't reach the AI just now. No worries — tap Retry to try again." }
       ]);
+      setFailedInput(text);
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSend = async (e?: React.FormEvent, overrideText?: string) => {
+    if (e) e.preventDefault();
+    const text = overrideText || input.trim();
+    if (!text || isGenerating) return;
+
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", text }, { role: "model", text: "" }]);
+    await streamReply(text);
+  };
+
+  // Re-attempt the last failed turn: swap the error bubble for a fresh empty one
+  // and stream again, without re-adding the user's message.
+  const retry = async () => {
+    if (!failedInput || isGenerating) return;
+    const text = failedInput;
+    setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: "" }]);
+    await streamReply(text);
   };
 
   if (!isOpen) return null;
@@ -150,8 +167,8 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
           </div>
           <div>
             <div className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>The Coach</div>
-            <div className="text-[10px] font-semibold" style={{ color: "var(--forest)" }}>
-              ● Listening · {workflowConfig?.title || "All tools"}
+            <div className="text-[10px] font-semibold" aria-live="polite" style={{ color: "var(--forest)" }}>
+              ● {isGenerating ? "Thinking…" : "AI coach"} · {workflowConfig?.title || "All tools"}
             </div>
           </div>
         </div>
@@ -177,7 +194,13 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0" style={{ padding: "18px" }}>
-        <div className="space-y-4 pb-4">
+        <div
+          className="space-y-4 pb-4"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+          aria-label="Coach conversation"
+        >
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
               <div className="w-14 h-14 rounded-full flex items-center justify-center"
@@ -228,6 +251,19 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
               </div>
             </div>
           ))}
+
+          {failedInput && !isGenerating && (
+            <div className="flex justify-center">
+              <button
+                onClick={retry}
+                aria-label="Retry the last message"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-[12px] font-semibold transition-colors hover:border-primary/40"
+                style={{ background: "var(--card)", color: "var(--primary)", fontFamily: "inherit" }}
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Retry
+              </button>
+            </div>
+          )}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
@@ -255,6 +291,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask the coach…"
+            aria-label="Message the coach"
             className="flex-1 h-9 border-0 bg-transparent text-sm outline-none shadow-none focus-visible:ring-0 p-0"
             style={{ color: "var(--foreground)" }}
           />
@@ -262,6 +299,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
             type="submit"
             size="icon"
             disabled={isGenerating || !input.trim()}
+            aria-label="Send message"
             className="w-9 h-9 rounded-[10px] flex-shrink-0"
             style={{ background: "var(--primary)", color: "#FFF", border: "none" }}
           >

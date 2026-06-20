@@ -6,7 +6,6 @@ import {
   Building,
   DollarSign,
   Users,
-  Code,
   PenTool,
   ShieldCheck,
   Compass,
@@ -240,18 +239,10 @@ const features: Feature[] = [
   {
     id: "mock_behavioral",
     icon: Users,
-    title: "Mock Behavioral Interview",
-    description: "Practice with an AI interviewer that shows you how to structure each answer with a clear situation, action, and result.",
+    title: "Mock Interview",
+    description: "Sit a realistic, spoken behavioral interview with an AI that asks role-specific questions, then get STAR-rated feedback on every answer.",
     color: "#D97757",
     tab: "mock_behavioral",
-  },
-  {
-    id: "mock_tech",
-    icon: Code,
-    title: "Mock Tech Interview",
-    description: "Tackle system design, coding, and AI engineering problems with an adaptive AI interviewer.",
-    color: "#E8B948",
-    tab: "mock_tech",
   },
   {
     id: "goal_planning",

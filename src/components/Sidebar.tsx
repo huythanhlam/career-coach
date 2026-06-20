@@ -7,8 +7,6 @@ import {
   DollarSign,
   Building,
   Users,
-  PenTool,
-  Code,
   Compass,
   Grid,
   Plus,
@@ -34,8 +32,6 @@ export type ViewId =
   | "goal_planning"
   | "company_research"
   | "mock_behavioral"
-  | "mock_case_study"
-  | "mock_tech"
   | "profile_settings"
   | "security_settings";
 
@@ -82,9 +78,7 @@ const navGroups: NavGroup[] = [
   {
     name: "Practice",
     items: [
-      { id: "mock_behavioral", label: "Behavioral Sim",  icon: Users },
-      { id: "mock_tech",       label: "Technical Sim",   icon: Code },
-      { id: "mock_case_study", label: "Case Study",      icon: PenTool },
+      { id: "mock_behavioral", label: "Mock Interview",  icon: Users },
     ],
   },
   {

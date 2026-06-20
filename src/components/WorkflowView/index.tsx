@@ -26,7 +26,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     );
   }
 
-  if (workflowId === "mock_behavioral" || workflowId === "mock_case_study" || workflowId === "mock_tech") {
+  if (workflowId === "mock_behavioral") {
     return (
       <div className="flex-1 flex flex-col h-full relative">
         <MockInterviewWorkspace workflowId={workflowId} />

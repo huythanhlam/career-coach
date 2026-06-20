@@ -338,8 +338,8 @@ Be specific and realistic. Reference their actual roles, companies, and skills b
   },
   mock_behavioral: {
     id: "mock_behavioral",
-    title: "Mock Behavioral Interview",
-    description: "Practice behavioral questions with direct guidance and feedback.",
+    title: "Mock Interview",
+    description: "A spoken, conversational behavioral interview tailored to your target role.",
     fields: [
       {
         id: "jdUrl",
@@ -372,150 +372,51 @@ Be specific and realistic. Reference their actual roles, companies, and skills b
         ],
         allowCustom: true,
         required: false,
-      }
-    ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Mock Behavioral Interview\nAction: Run a realistic behavioral interview, one question at a time, tailored to the user's role, field, and focus area. You cannot open URLs — if the user references a job description by link, ask them to paste the text.
-
-Conduct it like a real interviewer:
-- Ask exactly ONE behavioral question, then STOP and wait for the user's answer. Do not ask the next question, and do not answer your own question.
-- When the user responds, give brief feedback structured by STAR (Situation, Task, Action, Result): note which elements were strong and which were missing or vague, plus one concrete tip to improve. Keep feedback tight (a few sentences), then ask the next question.
-- Progress in difficulty and stay on the focus area if one was given.
-
-After roughly 5 questions (or when the user asks to stop), give a short overall summary: top strengths, the 2-3 highest-impact things to work on, and an encouraging close.`,
-    generatePrompt: (data) => {
-      let prompt = `Let's start a mock behavioral interview for a ${data.role} role. ${data.focus ? `Focus on: ${data.focus}.` : ''}\n\n`;
-      if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
-      prompt += `Please ask the first question.`;
-      return prompt;
-    },
-    enableSearch: true,
-    suggestedPrompts: [
-      "Can we focus on questions about dealing with difficult coworkers?",
-      "I don't have a good example for that, can you give me a hint?",
-      "How would you rate my last answer out of 10?",
-    ],
-  },
-  mock_case_study: {
-    id: "mock_case_study",
-    title: "Mock Case Study & Design Test",
-    description: "Practice product case studies and design tests with step-by-step guidance.",
-    fields: [
-      {
-        id: "jdUrl",
-        label: "Job Description URL (Optional)",
-        type: "url",
-        placeholder: "https://...",
-        required: false,
       },
       {
-        id: "role",
-        label: "Target Role",
-        type: "select",
-        options: COMMON_ROLES,
-        allowCustom: true,
-        required: true,
-      },
-      {
-        id: "topic",
-        label: "Case Study Topic (Optional)",
+        id: "duration",
+        label: "Interview Length",
         type: "select",
         options: [
-          { label: "Product Strategy", value: "Product Strategy" },
-          { label: "Product Design", value: "Product Design" },
-          { label: "Metrics & Analytics", value: "Metrics & Analytics" },
-          { label: "Go-to-Market", value: "Go-to-Market" },
-          { label: "Growth & Acquisition", value: "Growth & Acquisition" },
-          { label: "Other", value: "Other" },
-        ],
-        allowCustom: true,
-        required: false,
-      }
-    ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Mock Case Study\nAction: Run an interactive case study or design exercise appropriate to the user's role and field (product, business, design, consulting, operations, etc.). You cannot open URLs — if the user references a job description by link, ask them to paste the text.
-
-Run it as a guided, multi-step conversation — do NOT dump a full model answer up front:
-1. Present one realistic case prompt (use the chosen topic if given). Keep it concise.
-2. Invite the user to ask clarifying questions and answer them as the interviewer would; nudge them if they skip this step.
-3. Have them structure an approach/framework before solving. React to their structure, then let them work through it.
-4. Give feedback at each step: what's strong, what's missing, and a guiding hint or probing follow-up — without handing them the answer prematurely.
-5. After they've worked it through, summarize: strengths, gaps, and how a strong candidate would have approached it.
-
-Coach toward the candidate doing the thinking. Ask one focused thing at a time and wait for their response rather than monologuing.`,
-    generatePrompt: (data) => {
-      let prompt = `Let's start a mock case study for a ${data.role} role. ${data.topic ? `Topic: ${data.topic}.` : 'Please provide a random prompt.'}\n\n`;
-      if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
-      return prompt;
-    },
-    enableSearch: true,
-    suggestedPrompts: [
-      "What framework should I use to structure my answer?",
-      "Can you act as the user so I can ask clarifying questions?",
-      "What edge cases am I missing?",
-    ],
-  },
-  mock_tech: {
-    id: "mock_tech",
-    title: "Mock Tech Interview",
-    description: "Practice system design, AI engineering, or coding interviews.",
-    fields: [
-      {
-        id: "jdUrl",
-        label: "Job Description URL (Optional)",
-        type: "url",
-        placeholder: "https://...",
-        required: false,
-      },
-      {
-        id: "type",
-        label: "Interview Type",
-        type: "select",
-        options: [
-          { label: "System Design", value: "System Design" },
-          { label: "Coding / Algorithms", value: "Coding / Algorithms" },
-          { label: "AI / Machine Learning", value: "AI / Machine Learning" },
-          { label: "Frontend Architecture", value: "Frontend Architecture" },
-          { label: "Backend Architecture", value: "Backend Architecture" },
-          { label: "Database Design", value: "Database Design" },
-          { label: "Other", value: "Other" },
-        ],
-        allowCustom: true,
-        required: true,
-      },
-      {
-        id: "level",
-        label: "Seniority Level",
-        type: "select",
-        options: [
-          { label: "Intern", value: "Intern" },
-          { label: "Junior", value: "Junior" },
-          { label: "Mid-Level", value: "Mid-Level" },
-          { label: "Senior", value: "Senior" },
-          { label: "Staff", value: "Staff" },
-          { label: "Principal", value: "Principal" },
+          { label: "5 minutes (~1–2 questions)", value: "5" },
+          { label: "10 minutes (~3 questions)", value: "10" },
+          { label: "15 minutes (~4 questions)", value: "15" },
+          { label: "20 minutes (~5–6 questions)", value: "20" },
         ],
         allowCustom: false,
         required: true,
       }
     ],
-    systemInstruction: `${basePersona}\n\nWorkflow: Mock Tech Interview\nAction: Act as a technical interviewer for the user's selected interview type, calibrating difficulty to their seniority level (intern/junior through staff/principal). You cannot open URLs — if the user references a job description by link, ask them to paste the text.
+    systemInstruction: `${basePersona}\n\nWorkflow: Mock Behavioral Interview (spoken)\nAction: Conduct a realistic behavioral job interview, tailored to the candidate's target role, field, and focus area. Your messages are read aloud by text-to-speech, so write the way a real interviewer speaks: warm, natural, and concise. Avoid markdown formatting, bullet lists, and headings — use plain conversational sentences. You cannot open URLs — if the user references a job description by link, ask them to paste the text.
 
-Run it like a real technical interview:
-- Present ONE problem appropriate to the selected type, then STOP and let the user attempt it. Do NOT reveal the optimal solution up front, and don't solve it for them.
-- Draw out their thinking: ask follow-up questions about approach, trade-offs, edge cases, and complexity/cost as they work. Offer hints rather than answers when they're stuck.
-- Only after they've made a genuine attempt, walk through a strong solution and where theirs could improve.
+RELEVANCE IS CRITICAL — every question must fit the candidate's specific target role:
+- Ground each question in the real day-to-day responsibilities, scenarios, stakeholders, and competencies of THAT role and industry. A teacher should get questions about classroom management, lesson planning, differentiating instruction, and handling students/parents — NOT generic corporate or sales scenarios. A nurse → patient care, triage, working with doctors; a software engineer → shipping features, debugging, code review, on-call; a retail manager → staffing, shrink, upset customers. Use the role title to infer the right context, and lean on the candidate profile when present.
+- If a focus area is given (e.g. Leadership, Conflict Resolution), every question must address that competency AS IT SHOWS UP IN THIS ROLE (e.g. "leadership" for a teacher = leading a classroom or mentoring colleagues, not running a product team). Keep all questions within the focus area when one is set.
+- If the role is ambiguous, ask one brief clarifying question about their context before diving in, then proceed.
 
-Close with feedback across: correctness, approach & trade-offs, communication/clarity, and (where relevant) efficiency or scalability — plus the top 2-3 things to practice next.`,
+Behave like a real interviewer, NOT a coach:
+- Ask exactly ONE question at a time, then STOP and wait for the candidate's answer. Never answer your own question.
+- Do NOT give feedback, scores, STAR breakdowns, or coaching tips during the interview — stay in character. At most, ask a brief, natural follow-up to probe an answer (e.g. "What was the outcome?"), then move on.
+- Open with a short, friendly greeting and the first question. Progress in difficulty and stay on the focus area if one was given.
+- Pace yourself to the requested interview length and approximate number of questions. When you've reached the end (or the candidate asks to wrap up), thank them and let them know the interview is complete and they can end the session to see their feedback. Save all evaluation for after the interview ends.`,
     generatePrompt: (data) => {
-      let prompt = `Let's start a ${data.level} level ${data.type} mock interview.\n\n`;
+      const minutes = parseInt(data.duration || "10", 10) || 10;
+      // Real behavioral interviews run ~3-4 minutes per question (the answer plus
+      // a natural follow-up), so pace to roughly minutes / 3.5 questions.
+      const numQuestions = Math.max(1, Math.round(minutes / 3.5));
+      let prompt = `Let's begin a mock behavioral interview for a ${data.role} role.\n\n`;
+      prompt += `Ask behavioral questions that are specific to the real responsibilities of a ${data.role} — the scenarios, stakeholders, and challenges someone in that exact role actually faces. Do not ask generic questions that ignore the role.\n\n`;
+      if (data.focus) prompt += `Focus area: ${data.focus}. Keep every question on this competency, framed for a ${data.role}.\n\n`;
+      prompt += `Target length: about ${minutes} minutes. Real interviews spend ~3-4 minutes per question (the answer plus a follow-up or two), so ask only about ${numQuestions} main question${numQuestions === 1 ? "" : "s"} total — go deep with follow-ups rather than rushing through many questions.\n\n`;
       if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
-      prompt += `Please give me a problem to solve.`;
+      prompt += `Greet me briefly and ask the first question.`;
       return prompt;
     },
     enableSearch: true,
     suggestedPrompts: [
-      "Can I get a hint on the optimal time complexity?",
-      "What are the trade-offs of using a NoSQL database here?",
-      "How would this system scale to 1 million users?",
+      "Can we focus on questions about dealing with difficult coworkers?",
+      "Could you repeat the question?",
+      "I'd like to wrap up the interview now.",
     ],
   },
   resume_generation: {
