@@ -41,15 +41,21 @@ let warmed = false;
 
 async function load() {
   const { KokoroTTS } = await import("kokoro-js");
-  // WebGPU is much faster when available. Use q4f16 there, NOT fp16: fp16 emits
-  // NaN — i.e. silent — audio for some voices (notably the default af_heart) on
-  // certain GPUs/drivers, while q4f16 is numerically stable across every voice
-  // and stays small. Otherwise fall back to WASM (CPU) with the small q8 weights.
+  // Prefer WebGPU (much faster) with q4f16 weights — NOT fp16, which emits NaN
+  // (silent) audio for some voices, notably the default af_heart. But q4f16
+  // needs 4-bit WebGPU kernels that not every GPU/driver provides, and a failed
+  // GPU load otherwise bricks every voice ("Kokoro unavailable"). So fall back
+  // to the universally-supported WASM (CPU) q8 path if the GPU path can't load.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hasGpu = typeof navigator !== "undefined" && !!(navigator as any).gpu;
-  const device: "webgpu" | "wasm" = hasGpu ? "webgpu" : "wasm";
-  const dtype: "q4f16" | "q8" = hasGpu ? "q4f16" : "q8";
-  return KokoroTTS.from_pretrained(MODEL_ID, { dtype, device });
+  if (hasGpu) {
+    try {
+      return await KokoroTTS.from_pretrained(MODEL_ID, { dtype: "q4f16", device: "webgpu" });
+    } catch (e) {
+      console.warn("Kokoro: WebGPU load failed, falling back to WASM/CPU.", e);
+    }
+  }
+  return KokoroTTS.from_pretrained(MODEL_ID, { dtype: "q8", device: "wasm" });
 }
 
 function ensureLoad() {
