@@ -41,12 +41,14 @@ let warmed = false;
 
 async function load() {
   const { KokoroTTS } = await import("kokoro-js");
-  // WebGPU is much faster when available; fp16 there is half the size of fp32
-  // and quick. Otherwise fall back to WASM (CPU) with the small q8 weights.
+  // WebGPU is much faster when available. Use q4f16 there, NOT fp16: fp16 emits
+  // NaN — i.e. silent — audio for some voices (notably the default af_heart) on
+  // certain GPUs/drivers, while q4f16 is numerically stable across every voice
+  // and stays small. Otherwise fall back to WASM (CPU) with the small q8 weights.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hasGpu = typeof navigator !== "undefined" && !!(navigator as any).gpu;
   const device: "webgpu" | "wasm" = hasGpu ? "webgpu" : "wasm";
-  const dtype: "fp16" | "q8" = hasGpu ? "fp16" : "q8";
+  const dtype: "q4f16" | "q8" = hasGpu ? "q4f16" : "q8";
   return KokoroTTS.from_pretrained(MODEL_ID, { dtype, device });
 }
 
