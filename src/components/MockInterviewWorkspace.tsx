@@ -323,6 +323,23 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     } catch { return DEFAULT_KOKORO_VOICE; }
   });
   const [samplingVoice, setSamplingVoice] = useState<string | null>(null);
+  // Surfaced when a voice preview can't be played, so a silent failure doesn't
+  // read as "this voice is broken".
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  // Hold onto the playing sample so it isn't garbage-collected mid-clip and can
+  // be stopped before the next preview (no overlapping samples).
+  const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
+  const stopSample = () => {
+    const a = sampleAudioRef.current;
+    if (a) { try { a.pause(); } catch { /* ignore */ } a.src = ""; sampleAudioRef.current = null; }
+  };
+  useEffect(() => stopSample, []);
+  // Warm the ~80MB Kokoro model up front while the user reads the setup screen.
+  // Cold generation takes many seconds; if the user taps Sample first and waits
+  // that long, the browser drops the click's user-activation and blocks
+  // audio.play() (silent "nothing happened"). A pre-warmed model generates in
+  // ~1s, so playback stays inside the activation window.
+  useEffect(() => { if (mode.kind === "setup") preloadKokoro(); }, [mode.kind]);
 
   // ── Hands-free conversation: auto-submit after the user pauses speaking ──
   const [conversational, setConversational] = useState(true);
@@ -543,19 +560,35 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
 
   /** Sample a Kokoro voice (plays a short line) so the user can choose. */
   const sampleVoice = async (voiceId: string) => {
+    // Silence the interviewer and any previous sample so previews don't overlap.
+    speech.cancel();
+    stopSample();
+    setVoiceError(null);
     setSamplingVoice(voiceId);
-    preloadKokoro();
     try {
       const blob = await kokoroGenerate(
         "Hi, I'm your interviewer today. Let's get started — tell me about yourself.",
         voiceId,
         { waitForLoad: true },
       );
-      speech.cancel();
-      const audio = new Audio(URL.createObjectURL(blob));
-      await audio.play().catch(() => {});
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      sampleAudioRef.current = audio;
+      // Resolve on natural end; reject if playback can't start (e.g. the browser
+      // blocked it) so the failure surfaces instead of being swallowed.
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          URL.revokeObjectURL(url);
+          if (sampleAudioRef.current === audio) sampleAudioRef.current = null;
+        };
+        audio.onended = () => { cleanup(); resolve(); };
+        audio.onerror = () => { cleanup(); reject(new Error("playback failed")); };
+        audio.play().catch((err) => { cleanup(); reject(err); });
+      });
     } catch (err) {
       console.error("Voice sample failed:", err);
+      const label = KOKORO_VOICES.find((v) => v.id === voiceId)?.label ?? "this voice";
+      setVoiceError(`Couldn't play the ${label} sample — tap Sample again to try.`);
     } finally {
       setSamplingVoice(null);
     }
@@ -1088,6 +1121,11 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                 );
               })}
             </div>
+            {voiceError && (
+              <p role="alert" style={{ fontSize: 12, color: "var(--destructive)", margin: "12px 0 0", lineHeight: 1.5 }}>
+                {voiceError}
+              </p>
+            )}
           </div>
 
           {/* Start — at the bottom, once role, length, questions & voice are set */}

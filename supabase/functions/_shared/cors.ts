@@ -6,6 +6,14 @@
 // returned (so unknown origins are not granted access). If the secret is unset we
 // fail closed in production; the "*" fallback applies only when running against a
 // local Supabase stack, for dev convenience.
+//
+// Entries may contain `*` wildcards, where each `*` matches any run of characters
+// within a single hostname label (it never crosses a `.`, so it can't broaden to
+// other subdomains). This is how dynamic Vercel preview deployments are allowed —
+// their URLs vary per branch/commit. For example,
+//   "https://career-coach-*-myteam.vercel.app"
+// matches "https://career-coach-git-some-branch-myteam.vercel.app" but not an
+// attacker-controlled "https://career-coach-evil.example.com".
 
 const CONFIGURED = (Deno.env.get("ALLOWED_ORIGIN") ?? "")
   .split(",")
@@ -28,12 +36,35 @@ if (ALLOW_LIST.length === 0) {
 
 const ALLOW_ALL = ALLOW_LIST.includes("*");
 
+/** Build a matcher for one allowlist entry; `*` matches within a hostname label. */
+function makeMatcher(pattern: string): (origin: string) => boolean {
+  if (!pattern.includes("*")) return (origin) => origin === pattern;
+  // Escape regex metacharacters, then turn each `*` into "any chars but a dot"
+  // so a wildcard can't widen the match across subdomain boundaries.
+  const re = new RegExp(
+    "^" +
+      pattern
+        .split("*")
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("[^.]*") +
+      "$",
+  );
+  return (origin) => re.test(origin);
+}
+
+const MATCHERS = ALLOW_LIST.map(makeMatcher);
+// A concrete (wildcard-free) origin to fall back to for unknown requests — never
+// a pattern, which would be a meaningless Origin value.
+const FALLBACK_ORIGIN = ALLOW_LIST.find((o) => !o.includes("*")) ?? "null";
+
 function resolveOrigin(requestOrigin: string | null): string {
   if (ALLOW_ALL) return "*";
-  if (requestOrigin && ALLOW_LIST.includes(requestOrigin)) return requestOrigin;
+  if (requestOrigin && MATCHERS.some((match) => match(requestOrigin))) {
+    return requestOrigin;
+  }
   // Unknown origin: echo an origin the browser's Origin header can never
   // match, so the response is unreadable cross-origin.
-  return ALLOW_LIST[0] ?? "null";
+  return FALLBACK_ORIGIN;
 }
 
 /** Build CORS headers for a given request (honors the Origin allowlist). */
