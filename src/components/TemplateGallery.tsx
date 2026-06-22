@@ -68,12 +68,12 @@ export function TemplateGallery({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex"
+      className="fixed inset-0 z-[200] flex p-3 sm:p-0"
       style={{ background: 'rgba(31,27,22,0.72)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
       <div
-        className="m-auto flex w-full max-w-6xl rounded-2xl overflow-hidden"
+        className="m-auto flex flex-col md:flex-row w-full max-w-6xl rounded-2xl overflow-hidden"
         style={{
           height: '88vh',
           background: 'var(--background)',
@@ -84,8 +84,8 @@ export function TemplateGallery({
       >
         {/* Left panel — template list */}
         <div
-          className="flex flex-col shrink-0"
-          style={{ width: 340, borderRight: '1px solid var(--border)', background: 'var(--card)' }}
+          className="flex flex-col shrink-0 w-full md:w-[340px] h-[42vh] md:h-auto border-b md:border-b-0 md:border-r"
+          style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
         >
           {/* Header */}
           <div

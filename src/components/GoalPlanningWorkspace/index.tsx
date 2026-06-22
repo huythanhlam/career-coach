@@ -261,7 +261,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
         </p>
       </header>
 
-      <div className="flex-1 overflow-auto no-scrollbar p-8">
+      <div className="flex-1 overflow-auto no-scrollbar p-4 sm:p-8">
         <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
 
           {thin && hasBaseline && (

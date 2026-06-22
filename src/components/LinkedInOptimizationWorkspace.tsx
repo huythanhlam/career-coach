@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { LinkedInAnalysisResult, Improvement, DesignRecommendation } from "@/services/geminiService";
 import type { ScreenshotResult, ProfileRegion } from "@/services/linkedinScreenshotService";
 import { configurePdfWorker } from "@/lib/pdfWorker";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 configurePdfWorker(pdfjs);
 
@@ -48,6 +49,7 @@ export interface LinkedInOptimizationWorkspaceProps {
 export function LinkedInOptimizationWorkspace({
   result, isAnalyzing, screenshot, isCapturing, profileUrl, file, fileObjectUrl, onReset,
 }: LinkedInOptimizationWorkspaceProps) {
+  const isMobile = useIsMobile();
   const [step, setStep] = useState<Step>("design");
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export function LinkedInOptimizationWorkspace({
   return (
     <div className="flex flex-col h-full" style={{ background: "var(--background)" }}>
       {/* Header + step switcher */}
-      <header style={{ padding: "14px 28px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, gap: 16 }}>
+      <header style={{ padding: isMobile ? "12px 16px" : "14px 28px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, gap: 12, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
           <h2 className="font-display" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0 }}>LinkedIn Optimization</h2>
           <p style={{ fontSize: 12.5, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
@@ -85,9 +87,18 @@ export function LinkedInOptimizationWorkspace({
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 flex">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* ── Left pane ─────────────────────────────────────────────── */}
-        <div className="flex-1 min-w-0" style={{ borderRight: "1px solid var(--border)", background: "var(--muted)" }}>
+        <div
+          className="min-w-0 md:flex-1"
+          style={{
+            borderRight: isMobile ? "none" : "1px solid var(--border)",
+            borderBottom: isMobile ? "1px solid var(--border)" : "none",
+            background: "var(--muted)",
+            flex: isMobile ? "0 0 auto" : undefined,
+            height: isMobile ? "42vh" : undefined,
+          }}
+        >
           <ScrollArea className="h-full">
             <div style={{ padding: 24 }}>
               {step === "design" ? (
@@ -100,7 +111,7 @@ export function LinkedInOptimizationWorkspace({
         </div>
 
         {/* ── Right pane ────────────────────────────────────────────── */}
-        <div style={{ width: 440, flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div style={{ width: isMobile ? "100%" : 440, flex: isMobile ? "1 1 0%" : "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
           {isAnalyzing ? (
             <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
               {[80, 64, 64, 64, 56].map((h, i) => <div key={i} className="animate-pulse rounded-xl" style={{ height: h, background: "var(--muted)" }} />)}

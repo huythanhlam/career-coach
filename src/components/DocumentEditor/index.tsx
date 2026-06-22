@@ -288,7 +288,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
       />
 
       {/* Body */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
 
         {/* Style panel (left) */}
         {showStylePanel && (
@@ -315,8 +315,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
 
         {/* Analysis/custom sidebar (overrides AI chat when provided) */}
         {(rightSidebarContent ?? customSidebar) && (
-          <div className="flex flex-col shrink-0 print:hidden overflow-hidden"
-            style={{ width: 380, background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
+          <div className="w-full md:w-[380px] h-[55vh] md:h-auto flex flex-col shrink-0 print:hidden overflow-hidden border-t md:border-t-0"
+            style={{ background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
             {rightSidebarContent ?? customSidebar}
           </div>
         )}

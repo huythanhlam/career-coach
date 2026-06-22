@@ -66,7 +66,7 @@ function AuthModal({ onClose, pendingTab }: AuthModalProps) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-sm rounded-3xl p-8 relative"
+        className="w-full max-w-sm rounded-3xl p-6 sm:p-8 relative"
         style={{ background: "var(--background)", border: "1px solid var(--border)", boxShadow: "0 24px 80px rgba(0,0,0,0.15)" }}
       >
         <button
@@ -413,7 +413,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         </div>
 
         <h1
-          className="font-display text-5xl sm:text-6xl lg:text-7xl font-semibold leading-tight mb-6"
+          className="font-display text-4xl sm:text-6xl lg:text-7xl font-semibold leading-tight mb-6"
           style={{ color: "var(--foreground)" }}
         >
           Land your dream{" "}

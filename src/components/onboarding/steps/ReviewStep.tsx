@@ -138,7 +138,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
         {/* Personal Info */}
         <section>
           <SectionTitle>Personal Info</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { label: "Full Name", value: fullName, setter: setFullName, placeholder: "Jane Smith", colSpan: 1 },
               { label: "Preferred Name", value: preferredName, setter: setPreferredName, placeholder: "Jane", colSpan: 1 },
@@ -210,7 +210,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label style={labelStyle}>Job Title</label>
                     <ComboInput value={w.role} onChange={(v) => updateWork(w.id, "role", v)} options={JOB_TITLES} placeholder="Software Engineer" style={{ ...inputStyle, height: 38 }} />
@@ -279,7 +279,7 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="col-span-2">
                     <label style={labelStyle}>Institution</label>
                     <ComboInput value={e.university} onChange={(v) => updateEdu(e.id, "university", v)} options={UNIVERSITIES} placeholder="MIT" style={{ ...inputStyle, height: 38 }} />

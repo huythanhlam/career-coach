@@ -89,7 +89,7 @@ function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName, in
   const canSubmit = hasInitial ? true : saved.length > 0 && !!selectedId;
 
   return (
-    <div className="flex flex-col h-full w-full items-center justify-center p-8" style={{ background: "var(--muted)" }}>
+    <div className="flex flex-col h-full w-full items-center justify-center p-4 sm:p-8 overflow-y-auto" style={{ background: "var(--muted)" }}>
       <div className="w-full max-w-2xl flex flex-col gap-6">
         {/* Header */}
         <div className="flex items-center gap-3">

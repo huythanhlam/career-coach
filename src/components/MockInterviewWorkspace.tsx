@@ -686,7 +686,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
           </button>
         </header>
 
-        <div className="flex-1 overflow-auto no-scrollbar p-8">
+        <div className="flex-1 overflow-auto no-scrollbar p-4 sm:p-8">
           <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
             {s.scores ? (
               <div style={{ ...cardStyle, padding: 24 }}>
@@ -705,7 +705,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
             )}
 
             {(s.strengths?.length || s.improvements?.length) ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 16 }}>
                 {s.strengths?.length ? (
                   <div style={{ ...cardStyle, padding: 20 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
@@ -1005,7 +1005,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
               <Sparkles className="w-4 h-4" style={{ color: "var(--primary)" }} />
               <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Set up your session</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: setupFields.length > 1 ? "1fr 1fr" : "1fr", gap: 14 }}>
+            <div className={setupFields.length > 1 ? "grid grid-cols-1 sm:grid-cols-2" : "grid grid-cols-1"} style={{ gap: 14 }}>
               {setupFields.map((f) => (
                 <FieldSelect
                   key={f.id}

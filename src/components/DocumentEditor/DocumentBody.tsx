@@ -20,8 +20,8 @@ export function DocumentBody({
 }: DocumentBodyProps) {
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: "var(--muted)" }}>
-      <div style={{ padding: "32px 0 80px", display: "flex", justifyContent: "center" }}>
-        <div style={{ width: "100%", maxWidth: 816, minHeight: 1056, background: paperBg, boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px var(--border)", padding: "72px 96px" }}>
+      <div className="flex justify-center px-2 pt-4 pb-16 sm:px-0 sm:pt-8 sm:pb-20">
+        <div className="px-5 py-8 sm:px-24 sm:py-[72px]" style={{ width: "100%", maxWidth: 816, minHeight: 1056, background: paperBg, boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px var(--border)" }}>
           {headerHtml && (
             <div
               dangerouslySetInnerHTML={{ __html: headerHtml }}
