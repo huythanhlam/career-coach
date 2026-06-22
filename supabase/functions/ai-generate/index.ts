@@ -2,11 +2,13 @@ import { GoogleGenAI } from "npm:@google/genai";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-// Map Claude model names (sent by the frontend) to Gemini equivalents
+// Map Claude model names (sent by the frontend) to Gemini equivalents.
+// The legacy 1.5/2.0 targets were retired by Google; map the Claude tiers to
+// a current, supported model.
 function toGeminiModel(model: string): string {
-  if (model.includes("sonnet")) return "gemini-1.5-pro";
-  if (model.includes("haiku")) return "gemini-2.0-flash";
-  // Already a Gemini model name (e.g. "gemini-1.5-pro")
+  if (model.includes("sonnet")) return "gemini-3.1-flash-lite";
+  if (model.includes("haiku")) return "gemini-3.1-flash-lite";
+  // Already a Gemini model name (e.g. "gemini-2.5-flash")
   return model;
 }
 
