@@ -228,7 +228,7 @@ export function ProfileSettings() {
 
   function workFields(data: WorkExperience, onChange: (f: keyof WorkExperience, v: string | boolean) => void) {
     return (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div><label style={lStyle}>Job Title</label>
           <ComboInput style={iStyle} value={data.role} onChange={(v) => onChange("role", v)} options={JOB_TITLES} placeholder="Product Manager" /></div>
         <div><label style={lStyle}>Company</label>
@@ -253,7 +253,7 @@ export function ProfileSettings() {
 
   function eduFields(data: Education, onChange: (f: keyof Education, v: string) => void) {
     return (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="col-span-2"><label style={lStyle}>Institution</label>
           <ComboInput style={iStyle} value={data.university} onChange={(v) => onChange("university", v)} options={UNIVERSITIES} placeholder="MIT" /></div>
         <div><label style={lStyle}>Degree</label>
@@ -295,7 +295,7 @@ export function ProfileSettings() {
       </div>
 
       {/* ── Hero ────────────────────────────────────────────── */}
-      <div className="px-8 pt-14 pb-5 flex-shrink-0" style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}>
+      <div className="px-4 sm:px-8 pt-14 pb-5 flex-shrink-0" style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}>
         <div className="flex-1 min-w-0">
           <div className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
             {fullName || <span style={{ color: "var(--muted-foreground)" }}>Your Name</span>}
@@ -348,10 +348,10 @@ export function ProfileSettings() {
       </div>
 
       {/* ── Body columns ────────────────────────────────────── */}
-      <div className="flex-1 grid grid-cols-3 gap-0 min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-0 min-h-0">
 
         {/* Left — Skills */}
-        <div className="col-span-1 p-6 flex flex-col gap-6" style={{ borderRight: "1px solid var(--border)" }}>
+        <div className="col-span-1 p-6 flex flex-col gap-6 border-b lg:border-b-0 lg:border-r" style={{ borderColor: "var(--border)" }}>
           <section>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold tracking-widest uppercase" style={{ color: "var(--muted-foreground)" }}>Skills</h3>

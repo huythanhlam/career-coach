@@ -101,7 +101,7 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
       </div>
 
       {!hideTitleCompany && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 16 }}>
           <div>
             <label style={labelStyle}>Job Title</label>
             <ComboInput

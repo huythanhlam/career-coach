@@ -192,9 +192,9 @@ export function ResumeWorkspace({ initialResumeText, improvements, overallScore,
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Left mini toolbar */}
-        <div className="w-16 flex flex-col items-center py-6 gap-6 shrink-0 print:hidden"
+        <div className="w-full md:w-16 flex flex-row md:flex-col items-center justify-center md:justify-start gap-8 md:gap-6 py-3 md:py-6 shrink-0 print:hidden"
           style={{ background: "var(--foreground)" }}>
           {[
             { id: "suggestions" as const, icon: Eye, label: "Report" },
@@ -210,12 +210,12 @@ export function ResumeWorkspace({ initialResumeText, improvements, overallScore,
         </div>
 
         {/* Resume canvas */}
-        <div className="flex-1 overflow-y-auto no-scrollbar flex justify-center items-start py-10 px-4 sm:px-8 print:p-0"
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex justify-center items-start py-4 px-2 sm:py-10 sm:px-8 print:p-0"
           style={{ background: "var(--muted)" }}>
           <div
             ref={canvasRef}
             onMouseUp={handleCanvasMouseUp}
-            className="w-full max-w-[850px] p-10 sm:p-14 shrink-0 print:shadow-none print:m-0 print:p-0"
+            className="w-full max-w-[850px] p-5 sm:p-14 shrink-0 print:shadow-none print:m-0 print:p-0"
             style={{ background: "var(--card)", boxShadow: "0 4px 25px rgba(0,0,0,0.06)" }}>
             <ResumeRenderer
               markdownContent={getHighlightedMarkdown()}
@@ -263,7 +263,7 @@ export function ResumeWorkspace({ initialResumeText, improvements, overallScore,
         </div>
 
         {/* Right panel */}
-        <div className="w-full lg:w-[400px] flex flex-col shrink-0 print:hidden"
+        <div className="w-full md:w-[400px] h-[55vh] md:h-auto flex flex-col shrink-0 border-t md:border-t-0 print:hidden"
           style={{ background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
 
           {activeTab === "suggestions" ? (
@@ -432,10 +432,11 @@ export function ResumeWorkspace({ initialResumeText, improvements, overallScore,
           style={{
             position: "fixed",
             top: selectionToolbar.top - 8,
-            left: Math.max(8, selectionToolbar.left + selectionToolbar.width / 2 - 180),
+            left: Math.max(8, Math.min(selectionToolbar.left + selectionToolbar.width / 2 - 180, window.innerWidth - 368)),
             transform: "translateY(-100%)",
             zIndex: 100,
             width: 360,
+            maxWidth: "calc(100vw - 16px)",
             background: "var(--foreground)",
             borderRadius: 14,
             boxShadow: "0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12)",

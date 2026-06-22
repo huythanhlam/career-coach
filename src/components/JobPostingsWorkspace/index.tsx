@@ -200,7 +200,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
   };
 
   return (
-    <div className="flex-1 h-full overflow-y-auto no-scrollbar" style={{ background: "var(--background)", padding: "32px 40px 80px" }}>
+    <div className="flex-1 h-full overflow-y-auto no-scrollbar px-4 py-6 sm:px-10 sm:py-8 pb-20" style={{ background: "var(--background)" }}>
       <div style={{ maxWidth: 980, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}
         className="animate-in fade-in slide-in-from-bottom-4 duration-500">
 

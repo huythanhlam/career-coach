@@ -6,7 +6,7 @@ interface Props {
 
 export function ConsentStep({ onAgree }: Props) {
   return (
-    <div className="flex flex-col items-center text-center px-8 py-10 max-w-md mx-auto">
+    <div className="flex flex-col items-center text-center px-5 py-7 sm:px-8 sm:py-10 max-w-md mx-auto">
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
         style={{ background: "rgba(217,119,87,0.12)" }}

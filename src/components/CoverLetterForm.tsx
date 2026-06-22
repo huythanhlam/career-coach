@@ -168,7 +168,7 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
             Your Experience
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 10 }}>
             {sourceOptions.map((opt) => (
               <button
                 key={opt.id}
@@ -251,7 +251,7 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>
             Tone
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 10 }}>
             {toneOptions.map((opt) => (
               <button
                 key={opt.value}
@@ -279,7 +279,7 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>
             Template
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 8 }}>
             {TEMPLATES.map((tpl) => {
               const active = templateId === tpl.id;
               return (

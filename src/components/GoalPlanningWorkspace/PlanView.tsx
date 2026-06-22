@@ -87,7 +87,7 @@ export const PlanView = React.memo(function PlanView({
 }: PlanViewProps) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
-      <header style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+      <header style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap" }}>
         <button
           onClick={onBack}
           style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "1px solid var(--border)", borderRadius: 10, height: 36, padding: "0 12px", cursor: "pointer", color: "var(--foreground)", fontFamily: "inherit", fontSize: 13, fontWeight: 500 }}
@@ -166,9 +166,9 @@ export const PlanView = React.memo(function PlanView({
         </button>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Plan pane */}
-        <div className="flex-1 overflow-auto no-scrollbar" style={{ padding: 28 }}>
+        <div className="flex-1 min-h-0 overflow-auto no-scrollbar p-4 sm:p-7">
           {/* Milestones — the plan as a living checklist */}
           {planMarkdown.trim() && !isGenerating && (
             <div style={{ maxWidth: 720, margin: "0 auto 20px", ...cardStyle, overflow: "hidden" }}>
@@ -270,7 +270,7 @@ export const PlanView = React.memo(function PlanView({
         </div>
 
         {/* Coaching chat pane */}
-        <div className="w-[400px] h-full border-l border-border flex flex-col" style={{ background: "var(--card)" }}>
+        <div className="w-full lg:w-[400px] h-[55vh] lg:h-full border-t lg:border-t-0 lg:border-l border-border flex flex-col flex-shrink-0" style={{ background: "var(--card)" }}>
           <div className="flex items-center gap-3 border-b border-border" style={{ padding: "14px 18px", background: "var(--muted)" }}>
             <div className="w-[30px] h-[30px] rounded-[10px] flex items-center justify-center border" style={{ background: "rgba(217,119,87,0.10)", borderColor: "rgba(217,119,87,0.25)", color: "var(--primary)" }}>
               <Sparkles className="w-3.5 h-3.5" />

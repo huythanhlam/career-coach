@@ -218,7 +218,7 @@ export function MarketCompensationViz({ data, cachedAt, onRefresh, isRefreshing,
                   <CardDescription style={muteText}>{loc.equity}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-6 pt-2">
-                  <div className="grid grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <p className="text-xs font-medium mb-1" style={muteText}>Median Base</p>
                       <h3 className="text-3xl font-bold leading-tight" style={{ color: accent }}>{lfmt(loc.salaryBands.median)}</h3>
@@ -234,7 +234,7 @@ export function MarketCompensationViz({ data, cachedAt, onRefresh, isRefreshing,
                   {loc.totalCompensation && (
                     <div className="pt-4 mt-4" style={{ borderTop: "1px solid var(--border)" }}>
                       <p className="text-xs font-medium mb-2" style={muteText}>Total Compensation Estimate</p>
-                      <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm">
                         <div><div className="font-semibold" style={fgText}>{lfmt(loc.totalCompensation.baseMedian)}</div><div className="text-xs" style={muteText}>Base</div></div>
                         <div><div className="font-semibold" style={fgText}>{lfmt(loc.totalCompensation.bonusMedian)}</div><div className="text-xs" style={muteText}>Bonus</div></div>
                         <div><div className="font-semibold" style={fgText}>{lfmt(loc.totalCompensation.equityMedian + loc.totalCompensation.signOnMedian)}</div><div className="text-xs" style={muteText}>Equity</div></div>

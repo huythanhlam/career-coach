@@ -141,7 +141,7 @@ export function GoalPlanIntakeForm({
               Pick all that apply — the coach will build one plan that ties them together.
             </div>
           </div>
-          <div role="group" aria-label="Career goals" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div role="group" aria-label="Career goals" className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 10 }}>
             {GOAL_TYPES.map((opt) => {
               const active = Boolean(selected[opt.value]);
               return (

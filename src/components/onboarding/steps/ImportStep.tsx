@@ -63,7 +63,7 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
       </p>
 
       {/* Method Selection */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         {(["linkedin", "resume"] as const).map((m) => {
           const Icon = m === "linkedin" ? Briefcase : FileText;
           const label = m === "linkedin" ? "LinkedIn Profile" : "Resume / CV";

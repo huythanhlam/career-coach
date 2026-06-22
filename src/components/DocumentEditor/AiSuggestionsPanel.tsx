@@ -41,8 +41,8 @@ export const AiSuggestionsPanel = React.memo(function AiSuggestionsPanel({
   handleAiSubmit,
 }: AiSuggestionsPanelProps) {
   return (
-    <div className="flex flex-col shrink-0 print:hidden"
-      style={{ width: 340, background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
+    <div className="w-full md:w-[340px] h-[55vh] md:h-auto flex flex-col shrink-0 print:hidden border-t md:border-t-0"
+      style={{ background: "var(--card)", borderLeft: "1px solid var(--border)" }}>
       <div className="flex items-center gap-2 px-4 shrink-0"
         style={{ height: 46, borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
         <Sparkles style={{ width: 15, height: 15, color: "var(--primary)" }} />

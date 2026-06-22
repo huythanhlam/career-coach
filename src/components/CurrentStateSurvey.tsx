@@ -117,7 +117,7 @@ export function CurrentStateSurvey({ initial, isSaving, onSave, onCancel, showBa
               style={inputStyle}
             />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 14 }}>
             <div>
               <label htmlFor="survey-company" style={labelStyle}>Company</label>
               <ComboInput

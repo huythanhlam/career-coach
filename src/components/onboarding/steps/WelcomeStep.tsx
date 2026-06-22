@@ -7,7 +7,7 @@ interface Props {
 
 export function WelcomeStep({ onStart, onSkip }: Props) {
   return (
-    <div className="flex flex-col items-center text-center px-8 py-10 max-w-md mx-auto">
+    <div className="flex flex-col items-center text-center px-5 py-7 sm:px-8 sm:py-10 max-w-md mx-auto">
       <div className="relative mb-8">
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center"

@@ -293,7 +293,7 @@ export function StylePanelInline({ style, onChange, extraPanel, onClose }: Style
   };
 
   return (
-    <div style={{ width: 268, background: "var(--card)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto" }}>
+    <div className="w-full md:w-[268px] h-[45vh] md:h-auto border-b md:border-b-0 md:border-r" style={{ background: "var(--card)", borderColor: "var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto" }}>
       {/* Header */}
       <div style={{ height: 46, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderBottom: "1px solid var(--border)", background: "var(--muted)", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
