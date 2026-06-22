@@ -21,7 +21,6 @@ import { useUserProfile } from "@/context/UserProfileContext";
 
 export type ViewId =
   | "dashboard"
-  | "unified"
   | "linkedin"
   | "resume_generation"
   | "cover_letter"
@@ -35,7 +34,7 @@ export type ViewId =
   | "profile_settings"
   | "security_settings";
 
-export type WorkflowId = Exclude<ViewId, "unified" | "dashboard" | "profile_settings" | "security_settings" | "job_postings">;
+export type WorkflowId = Exclude<ViewId, "dashboard" | "profile_settings" | "security_settings" | "job_postings">;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -62,7 +61,6 @@ const navGroups: NavGroup[] = [
     name: "Plan",
     items: [
       { id: "dashboard",       label: "Overview",       icon: Grid },
-      { id: "unified",         label: "Strategy Engine", icon: Compass, badge: "AI" },
       { id: "goal_planning",   label: "Goal Planner",   icon: Target },
     ],
   },
@@ -149,7 +147,7 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
       {/* New plan CTA */}
       <div className="px-3 pb-3">
         <button
-          onClick={() => onSelectView("unified")}
+          onClick={() => onSelectView("goal_planning")}
           className="w-full h-10 bg-foreground text-background border-0 rounded-xl font-semibold text-[13px] cursor-pointer flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
         >
           <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />

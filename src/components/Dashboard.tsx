@@ -127,7 +127,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const recent = useMemo<Activity[]>(() => {
     const activity: Activity[] = [
       ...postings.map(p => ({ id: `job-${p.id}`, icon: Briefcase, title: `${STATUS_MAP[p.status].label} · ${p.title}`, sub: [p.company, p.location].filter(Boolean).join(" · "), ts: p.appliedAt ?? p.createdAt, view: "job_postings" as ViewId })),
-      ...analyses.map(a => ({ id: `an-${a.id}`, icon: Compass, title: "Strategy analysis", sub: a.jobInput || "Job analysis", ts: a.createdAt, view: "unified" as ViewId })),
+      ...analyses.map(a => ({ id: `an-${a.id}`, icon: LineChart, title: "Saved analysis", sub: a.jobInput || "Job analysis", ts: a.createdAt, view: "market" as ViewId })),
       ...(profile.savedResumes ?? []).map(r => ({ id: `r-${r.id}`, icon: FileText, title: "Resume saved", sub: r.name, ts: r.createdAt, view: "resume_generation" as ViewId })),
       ...(profile.savedCoverLetters ?? []).map(l => ({ id: `cl-${l.id}`, icon: Mail, title: "Cover letter", sub: [l.jobTitle, l.company].filter(Boolean).join(" · ") || l.name, ts: l.createdAt, view: "cover_letter" as ViewId })),
       ...(profile.savedCareerPlans ?? []).map(p => ({ id: `cp-${p.id}`, icon: Target, title: "Goal plan", sub: p.goalSummary || p.goalType, ts: p.createdAt, view: "goal_planning" as ViewId })),
@@ -169,8 +169,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   /* ── Suggested next actions ─────────────────────────────────────── */
   const actions: { icon: typeof Compass; label: string; note: string; view: ViewId }[] = [
-    { icon: Compass,   label: "Strategy Engine", note: "Match your resume to a job", view: "unified" },
     { icon: Target,    label: "Goal Planner",    note: "Map your next move",          view: "goal_planning" },
+    { icon: FileText,  label: "Resume Builder",  note: "Tailor your resume to a job",  view: "resume_generation" },
     { icon: LineChart, label: "Market Data",     note: "Check your pay range",         view: "market" },
     { icon: Users,     label: "Behavioral Sim",  note: "Practice interview answers",   view: "mock_behavioral" },
   ];
@@ -220,7 +220,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
             <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 22 }}>
               <button
-                onClick={() => go(firstTodo ? firstTodo.view : "unified")}
+                onClick={() => go(firstTodo ? firstTodo.view : "job_postings")}
                 style={{
                   height: 44, padding: "0 18px", background: "var(--primary)", color: "#FFF",
                   border: "1px solid var(--primary)", borderRadius: 14, fontFamily: "inherit",
@@ -228,7 +228,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(217,119,87,0.3)",
                 }}
               >
-                {firstTodo ? "Complete your profile" : "Open Strategy Engine"} <ArrowRight className="w-3.5 h-3.5" />
+                {firstTodo ? "Complete your profile" : "Browse job matches"} <ArrowRight className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => go("goal_planning")}
