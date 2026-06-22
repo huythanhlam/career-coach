@@ -29,6 +29,23 @@ export const isKokoroVoice = (v: string | undefined): boolean =>
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 
+/**
+ * Where we self-host the ONNX Runtime WASM artifacts. By default Transformers.js
+ * sets `wasmPaths` to its jsDelivr CDN and dynamically imports the runtime glue
+ * (`ort-wasm-simd-threaded.jsep.mjs`) cross-origin at session-init time. That
+ * import is blocked in restricted/offline/CSP-locked environments — failing with
+ * "no available backend found … Failed to fetch dynamically imported module" —
+ * and since BOTH the WebGPU and the WASM-CPU paths need that module, the fallback
+ * can't save it and every voice reports "Kokoro unavailable". vite.config.ts
+ * copies the artifacts into `public/ort/` so we can point the runtime at our own
+ * origin and never touch the CDN. Keep the trailing-slash base in sync with the
+ * Vite plugin's output dir.
+ */
+export function kokoroWasmBase(baseUrl: string): string {
+  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return `${base}ort/`;
+}
+
 /** Thrown when the model is still downloading/initializing — caller should fall back this turn. */
 export class KokoroLoadingError extends Error {}
 
@@ -40,21 +57,26 @@ let failed = false;
 let warmed = false;
 
 async function load() {
-  const { KokoroTTS } = await import("kokoro-js");
-  // Prefer WebGPU (much faster) with q4f16 weights — NOT fp16, which emits NaN
-  // (silent) audio for some voices, notably the default af_heart. But q4f16
-  // needs 4-bit WebGPU kernels that not every GPU/driver provides, and a failed
-  // GPU load otherwise bricks every voice ("Kokoro unavailable"). So fall back
-  // to the universally-supported WASM (CPU) q8 path if the GPU path can't load.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hasGpu = typeof navigator !== "undefined" && !!(navigator as any).gpu;
-  if (hasGpu) {
-    try {
-      return await KokoroTTS.from_pretrained(MODEL_ID, { dtype: "q4f16", device: "webgpu" });
-    } catch (e) {
-      console.warn("Kokoro: WebGPU load failed, falling back to WASM/CPU.", e);
-    }
+  const [{ KokoroTTS }, { env }] = await Promise.all([
+    import("kokoro-js"),
+    import("@huggingface/transformers"),
+  ]);
+  // Serve the ONNX runtime WASM from our own origin instead of the jsDelivr CDN
+  // (see kokoroWasmBase). Must be set before from_pretrained, which is when ORT
+  // resolves wasmPaths and dynamically imports the runtime glue. Transformers.js
+  // has already initialized the wasm flags by this point; we only override the
+  // path it pulls the artifacts from.
+  const wasm = env.backends?.onnx?.wasm;
+  if (wasm) {
+    wasm.wasmPaths = kokoroWasmBase(import.meta.env.BASE_URL);
   }
+  // Run on WASM (CPU) with q8 (8-bit) weights — deliberately NOT WebGPU. WebGPU's
+  // q4f16 (4-bit) weights make the voice audibly distorted, and kokoro-js's
+  // recommended WebGPU dtype, fp32, is a ~330 MB download. q8 is ~90 MB, sounds
+  // clean, runs in every browser, and the short interviewer lines synthesize fast
+  // enough on CPU — especially since the model is preloaded and warmed in the
+  // background (see preloadKokoro). The browser caches the weights after the
+  // first download, so it's a one-time cost per browser.
   return KokoroTTS.from_pretrained(MODEL_ID, { dtype: "q8", device: "wasm" });
 }
 
