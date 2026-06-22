@@ -12,7 +12,6 @@ import { Toaster } from "@/components/ui/toast";
 // entry chunk.
 const Dashboard = lazy(() => import("@/components/Dashboard").then((m) => ({ default: m.Dashboard })));
 const WorkflowView = lazy(() => import("@/components/WorkflowView").then((m) => ({ default: m.WorkflowView })));
-const UnifiedWorkspace = lazy(() => import("@/components/UnifiedWorkspace").then((m) => ({ default: m.UnifiedWorkspace })));
 const GlobalChatPanel = lazy(() => import("@/components/GlobalChatPanel").then((m) => ({ default: m.GlobalChatPanel })));
 const OnboardingWizard = lazy(() => import("@/components/onboarding/OnboardingWizard").then((m) => ({ default: m.OnboardingWizard })));
 const ConsentModal = lazy(() => import("@/components/ConsentModal").then((m) => ({ default: m.ConsentModal })));
@@ -25,7 +24,7 @@ const MFAChallengePage = lazy(() => import("@/components/MFAChallengePage").then
 /* ── URL hash <-> view sync ──────────────────────────────────────────
  * The hash (e.g. #/resume_generator) is the source of truth for navigation, so
  * refresh restores the view, links are shareable, and back/forward work. */
-const STATIC_VIEWS = ["dashboard", "unified", "job_postings", "profile_settings", "security_settings"] as const;
+const STATIC_VIEWS = ["dashboard", "job_postings", "profile_settings", "security_settings"] as const;
 
 function isValidView(v: string): v is ViewId {
   return v in workflowsConfig || (STATIC_VIEWS as readonly string[]).includes(v);
@@ -137,7 +136,6 @@ function AppInner() {
             <div className="flex-1 min-h-0 relative flex flex-col">
               <Suspense fallback={<Spinner />}>
                 {activeView === "dashboard" && <Dashboard onNavigate={handleSelectView} />}
-                {activeView === "unified" && <UnifiedWorkspace />}
                 {activeView === "job_postings" && <JobPostingsWorkspace onNavigate={handleSelectView} />}
                 {activeView === "profile_settings" && <ProfileSettings />}
                 {activeView === "security_settings" && <SecuritySettings />}
