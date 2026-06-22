@@ -56,6 +56,11 @@ function selfHostKokoroWasm(): Plugin {
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss(), selfHostKokoroWasm()],
+    // The Kokoro TTS worker (src/services/kokoroWorker.ts) dynamically imports
+    // kokoro-js + @huggingface/transformers, so its bundle must be code-split.
+    // Vite's default IIFE worker format can't code-split — emit ES module workers
+    // instead (the worker is already constructed with { type: "module" }).
+    worker: { format: 'es' },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
