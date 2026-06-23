@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { serializePost, parsePostFile, readingMinutes, parseBuildArgs, slugify } from "./lib.ts";
-import { toRow } from "./db.ts";
+import { toRow, toDraftRow } from "./db.ts";
 import type { BlogPost } from "../../src/types/blogPost.ts";
 
 const post: BlogPost = {
@@ -61,14 +61,26 @@ describe("slugify (re-exported from company-profiles)", () => {
 });
 
 describe("db.toRow", () => {
-  it("maps a post to a snake_case blog_posts row", () => {
+  it("maps a post to a published snake_case blog_posts row", () => {
     const row = toRow(post);
     expect(row.slug).toBe("how-to-write-a-resume");
     expect(row.hero_emoji).toBe("📝");
     expect(row.editor_score).toBe(88);
     expect(row.reading_minutes).toBe(4);
     expect(row.published).toBe(true);
+    expect(row.status).toBe("published");
     expect(row.tags).toEqual(["resume", "ats"]);
     expect(typeof row.updated_at).toBe("string");
+  });
+});
+
+describe("db.toDraftRow", () => {
+  it("maps a post to a queued/in-review row (not public)", () => {
+    const row = toDraftRow(post);
+    expect(row.published).toBe(false);
+    expect(row.status).toBe("review");
+    // same content fields as a published row
+    expect(row.slug).toBe("how-to-write-a-resume");
+    expect(row.editor_score).toBe(88);
   });
 });

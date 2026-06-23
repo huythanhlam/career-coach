@@ -67,6 +67,10 @@ export interface BlogPost {
   editorRounds?: number;
   generatedAt: string;
   publishedAt?: string;
+  /** Lifecycle: 'review' = queued draft (not public), 'published' = live. */
+  status?: "draft" | "review" | "published";
+  /** Whether the post is publicly visible. */
+  published?: boolean;
 }
 
 /** The JSON metadata block stored in each markdown file's leading HTML comment. */

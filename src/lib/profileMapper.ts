@@ -33,6 +33,9 @@ export function rowToProfile(row: Record<string, unknown>): UserProfile {
     linkedinScoreAt: (row.linkedin_score_at as string) ?? undefined,
     onboardingComplete: (row.onboarding_complete as boolean) ?? false,
     aiConsentGivenAt: (row.ai_consent_given_at as string) ?? undefined,
+    // Read-only: server-managed, like mfa_enrolled it is intentionally NOT written
+    // back in profileToRow (the RLS update policy blocks client changes anyway).
+    isAdmin: (row.is_admin as boolean) ?? false,
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
   };
