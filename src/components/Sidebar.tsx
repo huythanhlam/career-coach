@@ -15,6 +15,7 @@ import {
   Mail,
   ShieldCheck,
   Search,
+  BookOpen,
   X,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -31,10 +32,11 @@ export type ViewId =
   | "goal_planning"
   | "company_research"
   | "mock_behavioral"
+  | "blog"
   | "profile_settings"
   | "security_settings";
 
-export type WorkflowId = Exclude<ViewId, "dashboard" | "profile_settings" | "security_settings" | "job_postings">;
+export type WorkflowId = Exclude<ViewId, "dashboard" | "profile_settings" | "security_settings" | "job_postings" | "blog">;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -85,6 +87,12 @@ const navGroups: NavGroup[] = [
       { id: "company_research", label: "Research Company", icon: Building },
       { id: "market",           label: "Market Data",   icon: LineChart },
       { id: "salary",           label: "Negotiator",    icon: DollarSign },
+    ],
+  },
+  {
+    name: "Learn",
+    items: [
+      { id: "blog", label: "Career Blog", icon: BookOpen },
     ],
   },
 ];
