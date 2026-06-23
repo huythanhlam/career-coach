@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { Search, MapPin, X, Link2, Loader2 } from "lucide-react";
-import { suggestLocations, JOB_LEVELS, WORKPLACE_TYPES, type JobLevel, type Workplace } from "@/lib/jobFilters";
+import {
+  suggestLocations, JOB_LEVELS, WORKPLACE_TYPES, JOB_FAMILIES, INDUSTRIES,
+  type JobLevel, type Workplace, type JobFamily, type Industry,
+} from "@/lib/jobFilters";
 import { cardStyle, inputStyle, primaryBtn, ghostBtn, filterSelectStyle } from "./styles";
 
 /* ── URL import inline widget ─────────────────────────────────────────────── */
@@ -35,6 +38,8 @@ interface ScanControlsProps {
   location: string;
   level: JobLevel | "any";
   workplace: Workplace | "any";
+  family: JobFamily | "any";
+  industry: Industry | "any";
   loading: boolean;
   showImport: boolean;
   error: string;
@@ -42,14 +47,16 @@ interface ScanControlsProps {
   onLocation: (v: string) => void;
   onLevel: (v: JobLevel | "any") => void;
   onWorkplace: (v: Workplace | "any") => void;
+  onFamily: (v: JobFamily | "any") => void;
+  onIndustry: (v: Industry | "any") => void;
   onSearch: () => void;
   onShowImport: (show: boolean) => void;
   onUrlImport: (url: string) => Promise<void>;
 }
 
 export const ScanControls = React.memo(function ScanControls({
-  keyword, location, level, workplace, loading, showImport, error,
-  onKeyword, onLocation, onLevel, onWorkplace, onSearch, onShowImport, onUrlImport,
+  keyword, location, level, workplace, family, industry, loading, showImport, error,
+  onKeyword, onLocation, onLevel, onWorkplace, onFamily, onIndustry, onSearch, onShowImport, onUrlImport,
 }: ScanControlsProps) {
   return (
     <div style={{ ...cardStyle, padding: 16 }}>
@@ -90,8 +97,18 @@ export const ScanControls = React.memo(function ScanControls({
           <option value="any">Remote, hybrid or on-site</option>
           {WORKPLACE_TYPES.map((w) => <option key={w.value} value={w.value}>{w.label}</option>)}
         </select>
-        {(level !== "any" || workplace !== "any" || location.trim()) && (
-          <button onClick={() => { onLevel("any"); onWorkplace("any"); onLocation(""); }}
+        <select style={filterSelectStyle} value={family} onChange={(e) => onFamily(e.target.value as JobFamily | "any")}
+          title="Job family — the role's functional area">
+          <option value="any">Any job family</option>
+          {JOB_FAMILIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+        </select>
+        <select style={filterSelectStyle} value={industry} onChange={(e) => onIndustry(e.target.value as Industry | "any")}
+          title="Industry — the employer's sector">
+          <option value="any">Any industry</option>
+          {INDUSTRIES.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
+        </select>
+        {(level !== "any" || workplace !== "any" || family !== "any" || industry !== "any" || location.trim()) && (
+          <button onClick={() => { onLevel("any"); onWorkplace("any"); onFamily("any"); onIndustry("any"); onLocation(""); }}
             style={{ ...filterSelectStyle, width: "auto", cursor: "pointer", color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: 5 }}>
             <X className="w-3.5 h-3.5" /> Clear filters
           </button>

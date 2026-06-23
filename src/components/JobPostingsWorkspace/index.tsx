@@ -8,8 +8,8 @@ import {
 } from "@/services/jobScanService";
 import { scoreJobFit, canScoreProfile, RECOMMENDED_THRESHOLD, buildDefaultQuery, type FitFactor } from "@/services/jobRecommendation";
 import {
-  makeLocationMatcher, classifyLevel, classifyWorkplace,
-  type JobLevel, type Workplace,
+  makeLocationMatcher, classifyLevel, classifyWorkplace, classifyJobFamily, classifyIndustry,
+  type JobLevel, type Workplace, type JobFamily, type Industry,
 } from "@/lib/jobFilters";
 import { expandRoleQuery, roleSearchTerms } from "@/lib/roleSynonyms";
 import {
@@ -40,7 +40,7 @@ interface Props {
 }
 
 export function JobPostingsWorkspace({ onNavigate }: Props) {
-  const { profile, updateProfile } = useUserProfile();
+  const { profile, updateProfile, loading: profileLoading } = useUserProfile();
   const { postings, addPosting, updatePosting, deletePosting } = useJobPostings();
 
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -51,9 +51,13 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
   /* ── Search + filters ─────────────────────────────────────────────────── */
   const defaults = useMemo(() => buildDefaultQuery(profile), [profile]);
   const [keyword, setKeyword] = useState(defaults.keyword);
-  const [location, setLocation] = useState(defaults.location);
+  // Default the location filter to the United States when the user hasn't defined
+  // one — see the seeding effect below, which fills it in once the profile loads.
+  const [location, setLocation] = useState(defaults.location || "United States");
   const [level, setLevel] = useState<JobLevel | "any">("any");
   const [workplace, setWorkplace] = useState<Workplace | "any">("any");
+  const [family, setFamily] = useState<JobFamily | "any">("any");
+  const [industry, setIndustry] = useState<Industry | "any">("any");
   const [results, setResults] = useState<NewPosting[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -126,6 +130,17 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaults.keyword]);
 
+  // Once the profile finishes loading, seed the location filter with the user's
+  // saved target-role location, or default to the United States when none is set.
+  const locationSeeded = useRef(false);
+  useEffect(() => {
+    if (!locationSeeded.current && !profileLoading) {
+      locationSeeded.current = true;
+      setLocation(defaults.location || "United States");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileLoading, defaults.location]);
+
   const personalized = useMemo(() => canScoreProfile(profile), [profile]);
 
   const suggested = useMemo(() => {
@@ -141,11 +156,14 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
     const saved = new Set(postings.filter((p) => p.externalId).map((p) => `${p.source}:${p.externalId}`));
     const savedUrls = new Set(postings.filter((p) => p.url).map((p) => p.url));
 
-    const matchesLocation = makeLocationMatcher(location.trim());
-    const passesFacets = (j: { title: string; location?: string; description?: string; remote?: boolean }) => {
+    // No location defined → default to the United States rather than every country.
+    const matchesLocation = makeLocationMatcher(location.trim() || "United States");
+    const passesFacets = (j: { title: string; company?: string | null; location?: string; description?: string; remote?: boolean }) => {
       if (!matchesLocation(j.location, j.remote)) return false;
       if (level !== "any" && classifyLevel(j.title) !== level) return false;
       if (workplace !== "any" && classifyWorkplace(j) !== workplace) return false;
+      if (family !== "any" && classifyJobFamily(j.title) !== family) return false;
+      if (industry !== "any" && classifyIndustry({ company: j.company, title: j.title, description: j.description }) !== industry) return false;
       return true;
     };
     const fit = (j: { title: string; company?: string | null; description?: string | null }) =>
@@ -153,7 +171,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
 
     const fromPostings: ListItem[] = postings
       .filter((p) => p.status !== "suggested")
-      .filter((p) => passesFacets({ title: p.title, location: p.location, description: p.description, remote: p.remote }))
+      .filter((p) => passesFacets({ title: p.title, company: p.company, location: p.location, description: p.description, remote: p.remote }))
       .map((p) => {
         const { score, factors } = fit(p);
         return {
@@ -166,7 +184,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
       ? []
       : results
           .filter((j) => !(j.externalId && saved.has(`${j.source}:${j.externalId}`)) && !(j.url && savedUrls.has(j.url)))
-          .filter((j) => passesFacets({ title: j.title, location: j.location, description: j.description, remote: j.remote }))
+          .filter((j) => passesFacets({ title: j.title, company: j.company, location: j.location, description: j.description, remote: j.remote }))
           .map((j) => {
             const { score, factors } = fit(j);
             return {
@@ -181,7 +199,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
     return personalized
       ? [...fromPostings, ...fromResults].sort((a, b) => b.score - a.score || (a.posting ? 0 : 1) - (b.posting ? 0 : 1))
       : [...fromPostings, ...fromResults];
-  }, [postings, results, profile, personalized, savedOnly, location, level, workplace]);
+  }, [postings, results, profile, personalized, savedOnly, location, level, workplace, family, industry]);
 
   const detail = postings.find((p) => p.id === detailId) ?? null;
   const recommendedCount = items.filter((i) => i.score >= RECOMMENDED_THRESHOLD).length;
@@ -221,6 +239,8 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           location={location}
           level={level}
           workplace={workplace}
+          family={family}
+          industry={industry}
           loading={loading}
           showImport={showImport}
           error={error}
@@ -228,6 +248,8 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           onLocation={setLocation}
           onLevel={setLevel}
           onWorkplace={setWorkplace}
+          onFamily={setFamily}
+          onIndustry={setIndustry}
           onSearch={() => runSearch()}
           onShowImport={setShowImport}
           onUrlImport={async (url) => { setImportDraft(await importJobFromUrl(url)); }}
@@ -318,6 +340,8 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           searched={searched}
           level={level}
           workplace={workplace}
+          family={family}
+          industry={industry}
           location={location}
           personalized={personalized}
           recommendedCount={recommendedCount}

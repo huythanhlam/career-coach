@@ -333,3 +333,89 @@ export function classifyWorkplace(opts: { location?: string | null; description?
   if (opts.remote === true || /\bremote\b|\bwork from home\b|\bwfh\b|\bfully remote\b|\bremote first\b/.test(text)) return "remote";
   return "onsite";
 }
+
+/* ───────────────────────────── Job family / type ────────────────────────── */
+
+export type JobFamily =
+  | "engineering" | "data" | "design" | "product" | "marketing" | "sales"
+  | "finance" | "operations" | "people" | "legal" | "support" | "other";
+
+export const JOB_FAMILIES: { value: JobFamily; label: string }[] = [
+  { value: "engineering", label: "Engineering" },
+  { value: "data", label: "Data & Analytics" },
+  { value: "design", label: "Design" },
+  { value: "product", label: "Product" },
+  { value: "marketing", label: "Marketing" },
+  { value: "sales", label: "Sales & Business Dev" },
+  { value: "finance", label: "Finance & Accounting" },
+  { value: "operations", label: "Operations" },
+  { value: "people", label: "People & HR" },
+  { value: "legal", label: "Legal & Compliance" },
+  { value: "support", label: "Customer Support" },
+  { value: "other", label: "Other" },
+];
+
+/**
+ * Infer a job's functional family from its title. Ordered most-specific first so
+ * "Data Engineer" lands in Data (not Engineering); falls back to "other" when no
+ * family keyword matches. Title-only by design — it's the reliable signal.
+ */
+export function classifyJobFamily(title: string): JobFamily {
+  const t = " " + norm(title) + " ";
+  if (/\b(data scientist|data engineer|data analyst|machine learning|deep learning|ml|ai|analytics|statistician|business intelligence|bi)\b/.test(t)) return "data";
+  if (/\b(engineer|engineering|developer|programmer|swe|sde|devops|sre|sdet|qa|frontend|front end|backend|back end|full stack|fullstack)\b/.test(t)) return "engineering";
+  if (/\b(designer|design|ux|ui|creative|illustrator|animator)\b/.test(t)) return "design";
+  if (/\b(product manager|product owner|product lead|product management|head of product)\b/.test(t)) return "product";
+  if (/\b(sales|account executive|account manager|account director|business development|partnerships|sdr|bdr)\b/.test(t)) return "sales";
+  if (/\b(marketing|seo|sem|content|brand|growth|social media|communications|copywriter|pr)\b/.test(t)) return "marketing";
+  if (/\b(finance|financial|accountant|accounting|controller|auditor|treasury|bookkeeper)\b/.test(t)) return "finance";
+  if (/\b(recruiter|recruiting|talent|human resources|hr|people operations|people ops)\b/.test(t)) return "people";
+  if (/\b(legal|lawyer|attorney|counsel|paralegal|compliance)\b/.test(t)) return "legal";
+  if (/\b(customer support|customer success|customer service|support|help desk|technical support)\b/.test(t)) return "support";
+  if (/\b(operations|ops|logistics|supply chain|procurement|warehouse)\b/.test(t)) return "operations";
+  return "other";
+}
+
+/* ───────────────────────────── Industry ─────────────────────────────────── */
+
+export type Industry =
+  | "technology" | "finance" | "healthcare" | "retail" | "education" | "manufacturing"
+  | "media" | "energy" | "realestate" | "government" | "nonprofit" | "other";
+
+export const INDUSTRIES: { value: Industry; label: string }[] = [
+  { value: "technology", label: "Technology & Software" },
+  { value: "finance", label: "Finance & Insurance" },
+  { value: "healthcare", label: "Healthcare & Life Sciences" },
+  { value: "retail", label: "Retail & Consumer" },
+  { value: "education", label: "Education" },
+  { value: "manufacturing", label: "Manufacturing & Industrial" },
+  { value: "media", label: "Media & Entertainment" },
+  { value: "energy", label: "Energy & Utilities" },
+  { value: "realestate", label: "Real Estate & Construction" },
+  { value: "government", label: "Government & Public Sector" },
+  { value: "nonprofit", label: "Nonprofit" },
+  { value: "other", label: "Other" },
+];
+
+/**
+ * Infer the employer's industry from the company name, title, and description.
+ * Keyword/heuristic based and best-effort — industry is rarely stated explicitly,
+ * so the generic "technology" bucket is checked last (its keywords like "software"
+ * appear across many sectors) and undeterminable jobs fall back to "other".
+ */
+export function classifyIndustry(opts: { company?: string | null; title?: string | null; description?: string | null }): Industry {
+  const t = norm(`${opts.company ?? ""} ${opts.title ?? ""} ${opts.description ?? ""}`);
+  const has = (re: RegExp) => re.test(t);
+  if (has(/\b(hospital|clinic|clinical|pharmaceutical|pharma|biotech|biotechnology|life sciences|medical|medtech|healthcare|health care|patient|therapeutics|nursing)\b/)) return "healthcare";
+  if (has(/\b(bank|banking|insurance|investment|hedge fund|asset management|fintech|trading|brokerage|financial services|wealth management|venture capital|private equity)\b/)) return "finance";
+  if (has(/\b(university|college|education|edtech|academic|curriculum|e learning|elearning|lecturer|professor)\b/)) return "education";
+  if (has(/\b(retail|e commerce|ecommerce|consumer goods|apparel|fashion|merchandising|grocery|restaurant|hospitality|cpg)\b/)) return "retail";
+  if (has(/\b(manufacturing|automotive|aerospace|industrial|factory|machinery|semiconductor|electronics|robotics)\b/)) return "manufacturing";
+  if (has(/\b(media|entertainment|gaming|video game|publishing|advertising|film|music|streaming|broadcast|journalism)\b/)) return "media";
+  if (has(/\b(energy|oil|gas|renewable|solar|wind power|utilities|power grid|nuclear)\b/)) return "energy";
+  if (has(/\b(real estate|property management|construction|housing|proptech)\b/)) return "realestate";
+  if (has(/\b(government|public sector|federal|municipal|defense|military|civic)\b/)) return "government";
+  if (has(/\b(nonprofit|non profit|ngo|charity|foundation|humanitarian|philanthropy)\b/)) return "nonprofit";
+  if (has(/\b(software|saas|cloud|platform|technology|tech|cybersecurity|developer|api|data|ai|machine learning|internet|computing|digital)\b/)) return "technology";
+  return "other";
+}
