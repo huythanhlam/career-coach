@@ -1,7 +1,8 @@
 /**
  * Kokoro TTS, running 100% in the browser via ONNX (Transformers.js) — no API
- * key, no GPU, no server. Gives the interviewer a genuinely human voice and lets
- * the user pick among Kokoro's top-graded voices.
+ * key, no server (the GPU is used when available, otherwise the CPU). Gives the
+ * interviewer a genuinely human voice and lets the user pick among Kokoro's
+ * top-graded voices.
  *
  * This module is the MAIN-THREAD CLIENT. The model (~80MB) and all ONNX
  * inference live in a dedicated Web Worker (`kokoroWorker.ts`) so synthesis
@@ -45,8 +46,22 @@ let worker: Worker | null = null;
 let ready = false;
 let failed = false;
 let loadRequested = false;
+// Set once we've given up on WebGPU for this session and pinned the worker to CPU.
+let forceCpu = false;
+let readyTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Resolves when the worker reports the model ready; rejects if it can't load.
+// The worker has this long to report `ready` before we assume its WebGPU bring-up is
+// wedged (some drivers compile ORT's shader pipelines pathologically slowly, or hang),
+// terminate it, and respawn pinned to the CPU q8 path. Terminating is the only reliable
+// way to abandon stuck GPU work — it can't be cancelled from inside the worker.
+// Generous enough for a healthy GPU's first shader-compile + model download, short
+// enough that a stuck driver doesn't leave the interviewer mute for long. Kokoro
+// preloads on the setup screen, so this normally overlaps time the user already spends.
+const WORKER_READY_DEADLINE_MS = 30_000;
+
+// Resolves when whichever worker reports the model ready; rejects only if it can't
+// load at all. Created once and REUSED across respawns, so awaiters resolve when the
+// CPU worker becomes ready even if the original GPU worker was torn down.
 let readyPromise: Promise<void> | null = null;
 let resolveReady: (() => void) | null = null;
 let rejectReady: ((e: unknown) => void) | null = null;
@@ -62,24 +77,29 @@ function failPending(err: unknown) {
   pending.clear();
 }
 
-/** Lazily create the inference worker. Returns null where Workers aren't available (SSR/tests). */
-function getWorker(): Worker | null {
-  if (worker) return worker;
+function clearReadyTimer() {
+  if (readyTimer !== null) { clearTimeout(readyTimer); readyTimer = null; }
+}
+
+/** Build the inference worker and wire up its message/error handlers. */
+function spawnWorker(): Worker | null {
   if (failed || typeof Worker === "undefined") return null;
+  let w: Worker;
   try {
-    worker = new Worker(new URL("./kokoroWorker.ts", import.meta.url), { type: "module" });
+    w = new Worker(new URL("./kokoroWorker.ts", import.meta.url), { type: "module" });
   } catch {
     failed = true;
     return null;
   }
-  readyPromise = new Promise<void>((res, rej) => { resolveReady = res; rejectReady = rej; });
-  worker.onmessage = (e: MessageEvent<OutboundMsg>) => {
+  w.onmessage = (e: MessageEvent<OutboundMsg>) => {
     const msg = e.data;
     if (msg.type === "ready") {
       ready = true;
+      clearReadyTimer();
       resolveReady?.();
     } else if (msg.type === "loadfailed") {
       failed = true;
+      clearReadyTimer();
       const err = new Error("Kokoro unavailable");
       rejectReady?.(err);
       failPending(err);
@@ -91,22 +111,57 @@ function getWorker(): Worker | null {
       if (p) { pending.delete(msg.id); p.reject(new Error(msg.message)); }
     }
   };
-  worker.onerror = () => {
+  w.onerror = () => {
+    // A crash before the model is ready is just another way the GPU path can fail —
+    // respawn on CPU instead of giving up. After that (or once ready), it's fatal.
+    if (!ready && !failed && !forceCpu) { restartOnCpu(); return; }
     failed = true;
+    clearReadyTimer();
     const err = new Error("Kokoro worker crashed");
     rejectReady?.(err);
     failPending(err);
   };
+  return w;
+}
+
+/** Terminate a worker whose GPU bring-up wedged and respawn it pinned to CPU q8. */
+function restartOnCpu() {
+  clearReadyTimer();
+  forceCpu = true;
+  try { worker?.terminate(); } catch { /* ignore */ }
+  worker = null;
+  loadRequested = false;
+  // Drop any in-flight generates; this only fires during the initial bring-up it
+  // guards (the deadline is cleared once ready), when there are none in flight.
+  failPending(new Error("Kokoro restarted on CPU"));
+  ensureLoad();
+}
+
+/** Lazily create the inference worker. Returns null where Workers aren't available (SSR/tests). */
+function getWorker(): Worker | null {
+  if (worker) return worker;
+  worker = spawnWorker();
   return worker;
 }
 
 /** Ensure the worker exists and has been asked to load the model (idempotent). */
 function ensureLoad(): Worker | null {
+  if (!readyPromise) {
+    readyPromise = new Promise<void>((res, rej) => { resolveReady = res; rejectReady = rej; });
+  }
   const w = getWorker();
   if (!w) return null;
   if (!loadRequested) {
     loadRequested = true;
-    w.postMessage({ type: "load" });
+    w.postMessage({ type: "load", forceCpu });
+    // Only the WebGPU path can wedge, and the worker only takes it when the page is
+    // NOT cross-origin isolated (isolated → straight to multi-threaded q8 WASM). So
+    // arm the watchdog only then; isolated and already-forced-CPU loads can't wedge.
+    const isolated = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
+    if (!forceCpu && !isolated) {
+      clearReadyTimer();
+      readyTimer = setTimeout(() => { if (!ready && !failed) restartOnCpu(); }, WORKER_READY_DEADLINE_MS);
+    }
   }
   return w;
 }
@@ -136,8 +191,7 @@ export async function kokoroGenerate(
   opts: { waitForLoad?: boolean } = {},
 ): Promise<Blob> {
   if (failed) throw new Error("Kokoro unavailable");
-  const w = ensureLoad();
-  if (!w) throw new Error("Kokoro unavailable");
+  if (!ensureLoad()) throw new Error("Kokoro unavailable");
 
   if (!ready) {
     if (!opts.waitForLoad) throw new KokoroLoadingError("Kokoro model is loading");
@@ -145,6 +199,10 @@ export async function kokoroGenerate(
     await readyPromise;
   }
 
+  // Re-read the worker AFTER awaiting: a wedged GPU bring-up may have terminated the
+  // original worker and respawned a CPU one while we waited.
+  const w = worker;
+  if (!w) throw new Error("Kokoro unavailable");
   const id = nextId++;
   const { samples, sampleRate } = await new Promise<{ samples: Float32Array; sampleRate: number }>(
     (resolve, reject) => {
