@@ -12,6 +12,7 @@ import { ExtractingStep } from "./steps/ExtractingStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { DoneStep } from "./steps/DoneStep";
 import type { AccountType } from "@/types/userProfile";
+import { readPendingAccountType, clearPendingAccountType } from "@/lib/accountMode";
 
 type Step = "consent" | "welcome" | "account_type" | "import" | "extracting" | "review" | "done";
 type ImportInput =
@@ -26,21 +27,39 @@ export function OnboardingWizard() {
   const [extracted, setExtracted] = useState<Partial<UserProfile>>({});
   const [extractionError, setExtractionError] = useState<string | undefined>();
   const [savedPreferredName, setSavedPreferredName] = useState("");
-  const [accountType, setAccountType] = useState<AccountType>("seeker");
+  // A pending account type chosen on the landing page (e.g. the employer signup
+  // path) seeds the flow and lets us skip the in-app account-type question.
+  const [accountType, setAccountType] = useState<AccountType>(() => readPendingAccountType() ?? "seeker");
+  const cameInAsEmployer = accountType === "employer";
+
+  function finishAsEmployer() {
+    clearPendingAccountType();
+    updateProfile({ accountType: "employer", onboardingComplete: true });
+    setStep("done");
+  }
 
   function handleConsent() {
     updateProfile({ aiConsentGivenAt: new Date().toISOString() });
     setStep("welcome");
   }
 
+  function handleWelcomeStart() {
+    // Employer signups skip the account-type question and the seeker-only
+    // resume import; everyone else picks their role next.
+    if (cameInAsEmployer) finishAsEmployer();
+    else setStep("account_type");
+  }
+
   function handleSkip() {
-    updateProfile({ onboardingComplete: true });
+    clearPendingAccountType();
+    updateProfile({ accountType, onboardingComplete: true });
   }
 
   function handleAccountType(type: AccountType) {
     setAccountType(type);
     if (type === "employer") {
       // Employers skip the resume-import flow — that's seeker-specific.
+      clearPendingAccountType();
       updateProfile({ accountType: type, onboardingComplete: true });
       setStep("done");
     } else {
@@ -133,7 +152,7 @@ export function OnboardingWizard() {
             <ConsentStep onAgree={handleConsent} />
           )}
           {step === "welcome" && (
-            <WelcomeStep onStart={() => setStep("account_type")} onSkip={handleSkip} />
+            <WelcomeStep onStart={handleWelcomeStart} onSkip={handleSkip} accountType={accountType} />
           )}
           {step === "account_type" && (
             <AccountTypeStep onSelect={handleAccountType} />
@@ -162,7 +181,7 @@ export function OnboardingWizard() {
             />
           )}
           {step === "done" && (
-            <DoneStep name={savedPreferredName} onStart={handleDone} />
+            <DoneStep name={savedPreferredName} onStart={handleDone} accountType={accountType} />
           )}
         </div>
       </div>

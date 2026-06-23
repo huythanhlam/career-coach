@@ -13,6 +13,8 @@ import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS,
 import type { WorkExperience, Education } from "@/types/userProfile";
 import { generateId } from "@/types/userProfile";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { ModeSwitch } from "@/components/ModeSwitch";
+import { MODE_META } from "@/lib/accountMode";
 import type { TargetRole, TargetCompany } from "@/types/jobPosting";
 import { detectAtsFromUrl } from "@/services/jobScanService";
 
@@ -352,6 +354,17 @@ export function ProfileSettings() {
 
         {/* Left — Skills */}
         <div className="col-span-1 p-6 flex flex-col gap-6 border-b lg:border-b-0 lg:border-r" style={{ borderColor: "var(--border)" }}>
+          {/* Account mode — switch between the job-seeker and employer experiences */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold tracking-widest uppercase" style={{ color: "var(--muted-foreground)" }}>Account mode</h3>
+            </div>
+            <ModeSwitch size="md" />
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
+              You're in <span style={{ color: "var(--primary)", fontWeight: 600 }}>{MODE_META[profile.accountType === "employer" ? "employer" : "seeker"].modeLabel}</span>. Switch anytime — the sidebar and tools update to match.
+            </p>
+          </section>
+
           <section>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold tracking-widest uppercase" style={{ color: "var(--muted-foreground)" }}>Skills</h3>

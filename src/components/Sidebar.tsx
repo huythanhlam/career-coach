@@ -19,6 +19,8 @@ import {
   X,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { ModeSwitch } from "@/components/ModeSwitch";
+import { MODE_META, defaultViewForAccount } from "@/lib/accountMode";
 
 export type ViewId =
   | "dashboard"
@@ -147,8 +149,8 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
           <div className="font-display text-base font-semibold tracking-[-0.01em] text-foreground leading-[1.1] whitespace-nowrap">
             Career Coach <em className="not-italic text-primary">AI</em>
           </div>
-          <div className="text-[9px] text-muted-foreground font-bold tracking-[0.16em] uppercase mt-0.5 whitespace-nowrap">
-            Mentor mode
+          <div className="text-[9px] font-bold tracking-[0.16em] uppercase mt-0.5 whitespace-nowrap" style={{ color: "var(--primary)" }}>
+            {MODE_META[isEmployer ? "employer" : "seeker"].modeLabel}
           </div>
         </div>
         {/* Close (mobile only) */}
@@ -216,6 +218,12 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
 
       {/* User footer */}
       <div className="p-3 border-t border-border flex flex-col gap-1">
+        {/* Mode switch — flip between job-seeker and employer experiences */}
+        <div className="px-1 pb-2">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.16em] uppercase px-1 pb-1.5">Mode</div>
+          <ModeSwitch onSwitched={(type) => { onSelectView(defaultViewForAccount(type)); onClose?.(); }} />
+        </div>
+
         {/* Profile */}
         <button
           onClick={() => onSelectView("profile_settings")}
