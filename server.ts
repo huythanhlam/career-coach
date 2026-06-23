@@ -308,20 +308,29 @@ app.post('/api/stock-history', async (req, res) => {
   const win = STOCK_RANGE_MAP[range ?? '1Y'] ?? STOCK_RANGE_MAP['1Y'];
   const symbol = ticker.trim().toUpperCase();
   const yahooSymbol = symbol.replace(/\./g, '-'); // BRK.B → BRK-B
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${win.range}&interval=${win.interval}`;
+  const path = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${win.range}&interval=${win.interval}`;
 
   try {
     // Host is hardcoded + symbol is validated + range/interval are allowlisted,
-    // so plain fetch (with the browser UA Yahoo requires) is safe here.
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-        Accept: 'application/json',
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) {
-      res.status(502).json({ error: `Fetch failed: ${response.statusText}` });
+    // so plain fetch (with the browser UA Yahoo requires) is safe here. query1
+    // rate-limits readily when several windows are switched in quick succession,
+    // so fall back to the query2 mirror before giving up.
+    let response: Response | null = null;
+    for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
+      const r = await fetch(`https://${host}${path}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+          Accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (r.ok) {
+        response = r;
+        break;
+      }
+    }
+    if (!response) {
+      res.status(502).json({ error: 'Fetch failed' });
       return;
     }
 

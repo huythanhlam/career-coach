@@ -103,21 +103,34 @@ Deno.serve(async (req) => {
 
     // Yahoo symbols use "-" for class shares (e.g. BRK.B → BRK-B).
     const yahooSymbol = symbol.replace(/\./g, "-");
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${win.range}&interval=${win.interval}`;
+    const path = `/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${win.range}&interval=${win.interval}`;
 
-    let res;
-    try {
-      res = await safeFetchText(url, {
-        maxBytes: 2 * 1024 * 1024,
-        timeoutMs: 10_000,
-        headers: { "User-Agent": UA, "Accept": "application/json" },
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Fetch failed";
-      const status = msg === "URL not allowed" || msg === "Invalid URL" ? 400 : 502;
-      return json({ error: msg }, status, cors);
+    // query1 rate-limits readily when several windows are switched in quick
+    // succession; fall back to the query2 mirror so a window switch still loads.
+    let res: Awaited<ReturnType<typeof safeFetchText>> | null = null;
+    let lastErr = "Fetch failed";
+    for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+      try {
+        const r = await safeFetchText(`https://${host}${path}`, {
+          maxBytes: 2 * 1024 * 1024,
+          timeoutMs: 10_000,
+          headers: { "User-Agent": UA, "Accept": "application/json" },
+        });
+        if (r.ok) {
+          res = r;
+          break;
+        }
+        lastErr = `Fetch failed: ${r.statusText}`;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Fetch failed";
+        // Config errors (bad/blocked URL) won't differ by host — fail fast.
+        if (msg === "URL not allowed" || msg === "Invalid URL") {
+          return json({ error: msg }, 400, cors);
+        }
+        lastErr = msg;
+      }
     }
-    if (!res.ok) return json({ error: `Fetch failed: ${res.statusText}` }, 502, cors);
+    if (!res) return json({ error: lastErr }, 502, cors);
 
     const { points, currency } = parseYahoo(res.text, win.intraday);
     if (points.length < 2) return json({ error: "No price history for this ticker" }, 404, cors);

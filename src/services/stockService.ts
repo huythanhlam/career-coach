@@ -5,12 +5,16 @@ import { tickerForCompany } from "@/data/popularCompanies";
 // keyless `stock-history` Edge Function (Yahoo Finance). A short localStorage
 // cache keeps repeat views instant and avoids re-hitting the function.
 
-// Derive the endpoint from the AI gateway URL, like blsService — so it resolves
-// to the local Express gateway in dev (/api/ai/generate → /api/stock-history)
-// and the Supabase Edge Function in prod (/functions/v1/ai-generate → …).
-const STOCK_PROXY_URL = ((import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate")
-  .replace(/\/api\/ai\/generate\/?$/, "/api/stock-history")
-  .replace(/\/functions\/v1\/ai-generate\/?$/, "/functions/v1/stock-history");
+// In dev, always hit the local Express gateway so stocks are testable without a
+// deployed Edge Function — matching ttsService/linkedinScreenshotService. (A
+// VITE_API_URL pointing at a prod Supabase URL otherwise sends dev traffic
+// straight to production.) In prod, derive the endpoint from the AI gateway URL,
+// like blsService: /functions/v1/ai-generate → /functions/v1/stock-history.
+const STOCK_PROXY_URL = import.meta.env.DEV
+  ? "http://localhost:4000/api/stock-history"
+  : ((import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate")
+      .replace(/\/api\/ai\/generate\/?$/, "/api/stock-history")
+      .replace(/\/functions\/v1\/ai-generate\/?$/, "/functions/v1/stock-history");
 
 const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? "";
 
