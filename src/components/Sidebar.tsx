@@ -15,6 +15,7 @@ import {
   Mail,
   ShieldCheck,
   Search,
+  Building2,
   X,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -31,10 +32,14 @@ export type ViewId =
   | "goal_planning"
   | "company_research"
   | "mock_behavioral"
+  | "employer_studio"
   | "profile_settings"
   | "security_settings";
 
-export type WorkflowId = Exclude<ViewId, "dashboard" | "profile_settings" | "security_settings" | "job_postings">;
+export type WorkflowId = Exclude<
+  ViewId,
+  "dashboard" | "profile_settings" | "security_settings" | "job_postings" | "employer_studio"
+>;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -56,7 +61,7 @@ type NavGroup = {
   items: NavItem[];
 };
 
-const navGroups: NavGroup[] = [
+const seekerNavGroups: NavGroup[] = [
   {
     name: "Plan",
     items: [
@@ -89,8 +94,20 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+const employerNavGroups: NavGroup[] = [
+  {
+    name: "Hire",
+    items: [
+      { id: "employer_studio", label: "Employer Studio", icon: Building2, badge: "New" },
+    ],
+  },
+];
+
 export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: SidebarProps) {
   const { profile } = useUserProfile();
+
+  const isEmployer = profile.accountType === "employer";
+  const navGroups = isEmployer ? employerNavGroups : seekerNavGroups;
 
   const displayName = profile.preferredName || profile.fullName || "Your Profile";
   const initials = displayName
@@ -144,14 +161,14 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
         </button>
       </div>
 
-      {/* New plan CTA */}
+      {/* Primary CTA — role-aware */}
       <div className="px-3 pb-3">
         <button
-          onClick={() => onSelectView("goal_planning")}
+          onClick={() => onSelectView(isEmployer ? "employer_studio" : "goal_planning")}
           className="w-full h-10 bg-foreground text-background border-0 rounded-xl font-semibold text-[13px] cursor-pointer flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
         >
           <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-          New plan
+          {isEmployer ? "Employer Studio" : "New plan"}
         </button>
       </div>
 

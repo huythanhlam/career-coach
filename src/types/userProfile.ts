@@ -119,9 +119,13 @@ export interface UserProfile {
   linkedinScoreAt?: string;
   onboardingComplete: boolean;
   aiConsentGivenAt?: string;
+  /** Which side of the product this account uses. Defaults to 'seeker'. */
+  accountType?: AccountType;
   createdAt: string;
   updatedAt: string;
 }
+
+export type AccountType = "seeker" | "employer";
 
 export function createEmptyProfile(): UserProfile {
   const now = new Date().toISOString();
@@ -133,6 +137,7 @@ export function createEmptyProfile(): UserProfile {
     education: [],
     skills: [],
     onboardingComplete: false,
+    accountType: "seeker",
     createdAt: now,
     updatedAt: now,
   };

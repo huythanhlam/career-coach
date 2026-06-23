@@ -6,12 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import { uploadImportedResume, uploadLinkedInText } from "@/services/resumeStorageService";
 import { ConsentStep } from "./steps/ConsentStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
+import { AccountTypeStep } from "./steps/AccountTypeStep";
 import { ImportStep } from "./steps/ImportStep";
 import { ExtractingStep } from "./steps/ExtractingStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { DoneStep } from "./steps/DoneStep";
+import type { AccountType } from "@/types/userProfile";
 
-type Step = "consent" | "welcome" | "import" | "extracting" | "review" | "done";
+type Step = "consent" | "welcome" | "account_type" | "import" | "extracting" | "review" | "done";
 type ImportInput =
   | { type: "linkedin"; text: string; url?: string }
   | { type: "resume"; text: string };
@@ -24,6 +26,7 @@ export function OnboardingWizard() {
   const [extracted, setExtracted] = useState<Partial<UserProfile>>({});
   const [extractionError, setExtractionError] = useState<string | undefined>();
   const [savedPreferredName, setSavedPreferredName] = useState("");
+  const [accountType, setAccountType] = useState<AccountType>("seeker");
 
   function handleConsent() {
     updateProfile({ aiConsentGivenAt: new Date().toISOString() });
@@ -32,6 +35,18 @@ export function OnboardingWizard() {
 
   function handleSkip() {
     updateProfile({ onboardingComplete: true });
+  }
+
+  function handleAccountType(type: AccountType) {
+    setAccountType(type);
+    if (type === "employer") {
+      // Employers skip the resume-import flow — that's seeker-specific.
+      updateProfile({ accountType: type, onboardingComplete: true });
+      setStep("done");
+    } else {
+      updateProfile({ accountType: type });
+      setStep("import");
+    }
   }
 
   async function runExtraction(input: ImportInput) {
@@ -54,7 +69,7 @@ export function OnboardingWizard() {
   async function handleConfirm(profile: Partial<UserProfile>) {
     setSavedPreferredName(profile.preferredName ?? profile.fullName?.split(" ")[0] ?? "");
     const userId = session?.user?.id;
-    const updates: Partial<UserProfile> = { ...profile, onboardingComplete: true };
+    const updates: Partial<UserProfile> = { ...profile, accountType, onboardingComplete: true };
     if (userId && importInput) {
       try {
         if (importInput.type === "resume") {
@@ -76,7 +91,7 @@ export function OnboardingWizard() {
   }
 
   // Progress indicator dots (consent is a gate, not a numbered step)
-  const steps: Step[] = ["welcome", "import", "review", "done"];
+  const steps: Step[] = ["welcome", "account_type", "import", "review", "done"];
   const progressIndex = steps.indexOf(step === "extracting" ? "import" : step);
 
   return (
@@ -118,7 +133,10 @@ export function OnboardingWizard() {
             <ConsentStep onAgree={handleConsent} />
           )}
           {step === "welcome" && (
-            <WelcomeStep onStart={() => setStep("import")} onSkip={handleSkip} />
+            <WelcomeStep onStart={() => setStep("account_type")} onSkip={handleSkip} />
+          )}
+          {step === "account_type" && (
+            <AccountTypeStep onSelect={handleAccountType} />
           )}
           {step === "import" && (
             <ImportStep
