@@ -4,6 +4,14 @@ import {createReadStream, existsSync, readFileSync} from 'fs';
 import path from 'path';
 import {defineConfig, type Plugin} from 'vite';
 
+// Headers that make the page cross-origin isolated, which is what unlocks
+// SharedArrayBuffer and therefore multi-threaded ONNX (WASM) inference in the
+// Kokoro TTS worker. Kept in sync with vercel.json (production).
+const COOP_COEP = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
+};
+
 // Self-host the ONNX Runtime WASM artifacts that @huggingface/transformers (via
 // kokoro-js) would otherwise dynamically import from the jsDelivr CDN at runtime.
 // That cross-origin import is blocked in restricted/offline/CSP-locked
@@ -70,6 +78,16 @@ export default defineConfig(() => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      // Cross-origin isolation so SharedArrayBuffer is available → the Kokoro TTS
+      // worker can run ONNX inference multi-threaded (otherwise it's single-thread
+      // and synthesis is slower than playback, leaving long gaps between spoken
+      // sentences). COEP "credentialless" (not "require-corp") still lets the
+      // worker fetch the model from the Hugging Face CDN and keeps third-party
+      // <img>/fetch working. Mirror these in vercel.json for production.
+      headers: COOP_COEP,
+    },
+    preview: {
+      headers: COOP_COEP,
     },
     build: {
       rollupOptions: {
