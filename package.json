@@ -16,6 +16,7 @@
     "profiles:refresh": "tsx scripts/company-profiles/refresh.ts",
     "blog:build": "tsx scripts/blog/build.ts",
     "blog:sync": "tsx scripts/blog/sync.ts",
+    "jobs:verify-sources": "tsx scripts/verify-job-sources.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
