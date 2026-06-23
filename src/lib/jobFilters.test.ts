@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   makeLocationMatcher, jobCountryOf, suggestLocations, classifyLevel, classifyWorkplace,
+  classifyJobFamily, classifyIndustry,
 } from "./jobFilters";
 
 describe("jobCountryOf", () => {
@@ -102,5 +103,50 @@ describe("classifyWorkplace", () => {
 
   it("prefers hybrid over remote when both are mentioned", () => {
     expect(classifyWorkplace({ description: "Hybrid role with some remote flexibility" })).toBe("hybrid");
+  });
+});
+
+describe("classifyJobFamily", () => {
+  it("buckets titles into functional families", () => {
+    expect(classifyJobFamily("Senior Software Engineer")).toBe("engineering");
+    expect(classifyJobFamily("Backend Developer")).toBe("engineering");
+    expect(classifyJobFamily("Product Manager")).toBe("product");
+    expect(classifyJobFamily("UX Designer")).toBe("design");
+    expect(classifyJobFamily("Account Executive")).toBe("sales");
+    expect(classifyJobFamily("Growth Marketing Manager")).toBe("marketing");
+    expect(classifyJobFamily("Staff Accountant")).toBe("finance");
+    expect(classifyJobFamily("Technical Recruiter")).toBe("people");
+    expect(classifyJobFamily("Corporate Counsel")).toBe("legal");
+    expect(classifyJobFamily("Customer Success Manager")).toBe("support");
+    expect(classifyJobFamily("Operations Coordinator")).toBe("operations");
+    expect(classifyJobFamily("Lighthouse Keeper")).toBe("other");
+  });
+
+  it("routes data roles to Data even when 'engineer'/'analyst' appears", () => {
+    expect(classifyJobFamily("Data Engineer")).toBe("data");
+    expect(classifyJobFamily("Data Analyst")).toBe("data");
+    expect(classifyJobFamily("Machine Learning Scientist")).toBe("data");
+  });
+});
+
+describe("classifyIndustry", () => {
+  it("infers industry from company / title / description signals", () => {
+    expect(classifyIndustry({ company: "Acme Software", description: "Build SaaS cloud apps" })).toBe("technology");
+    expect(classifyIndustry({ company: "First National Bank" })).toBe("finance");
+    expect(classifyIndustry({ description: "Join our hospital's clinical team caring for patients" })).toBe("healthcare");
+    expect(classifyIndustry({ company: "Shopwell Retail", description: "e-commerce merchandising" })).toBe("retail");
+    expect(classifyIndustry({ company: "State University", title: "Lecturer" })).toBe("education");
+    expect(classifyIndustry({ company: "AeroBuild", description: "aerospace manufacturing factory" })).toBe("manufacturing");
+    expect(classifyIndustry({ company: "Pixel Studio", description: "video game studio" })).toBe("media");
+    expect(classifyIndustry({ company: "SunPower", description: "renewable solar energy" })).toBe("energy");
+    expect(classifyIndustry({ description: "commercial real estate and property management" })).toBe("realestate");
+    expect(classifyIndustry({ company: "City of Springfield", description: "public sector government role" })).toBe("government");
+    expect(classifyIndustry({ company: "Hope Foundation", description: "nonprofit charity" })).toBe("nonprofit");
+    expect(classifyIndustry({})).toBe("other");
+  });
+
+  it("prefers a specific industry over the generic technology bucket", () => {
+    // A fintech bank mentions software, but should resolve to finance, not tech.
+    expect(classifyIndustry({ company: "PayBank", description: "fintech platform, modern software stack" })).toBe("finance");
   });
 });

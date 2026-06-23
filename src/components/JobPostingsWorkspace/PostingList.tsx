@@ -196,6 +196,8 @@ interface PostingListProps {
   searched: boolean;
   level: string;
   workplace: string;
+  family: string;
+  industry: string;
   location: string;
   personalized: boolean;
   recommendedCount: number;
@@ -208,7 +210,7 @@ interface PostingListProps {
 }
 
 export const PostingList = React.memo(function PostingList({
-  items, loading, savedOnly, searched, level, workplace, location,
+  items, loading, savedOnly, searched, level, workplace, family, industry, location,
   personalized, recommendedCount, savingKey,
   onOpen, onSave, onToggleFav, onStatus, onToggleSavedOnly,
 }: PostingListProps) {
@@ -240,7 +242,7 @@ export const PostingList = React.memo(function PostingList({
           <div style={{ padding: "56px 20px", textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>
             {loading ? "Finding jobs that fit your profile…"
               : savedOnly ? "No saved jobs yet — search above and save the ones you like."
-              : (level !== "any" || workplace !== "any" || location.trim()) ? "No jobs match these filters — try clearing the location, level, or workplace filter."
+              : (level !== "any" || workplace !== "any" || family !== "any" || industry !== "any" || location.trim()) ? "No jobs match these filters — try clearing the location, level, workplace, family, or industry filter."
               : searched ? "No jobs to show — try a different search."
               : "Search by job title above to see roles ranked for you."}
           </div>
