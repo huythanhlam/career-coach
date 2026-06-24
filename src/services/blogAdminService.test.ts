@@ -30,6 +30,8 @@ import {
   setPublished,
   deletePost,
   loadAdminPost,
+  schedulePost,
+  cancelSchedule,
 } from "./blogAdminService";
 
 const draft = {
@@ -132,6 +134,39 @@ describe("setPublished", () => {
     const patch = q.update.mock.calls[0][0];
     expect(patch).toMatchObject({ published: false, status: "review" });
     expect(patch.published_at).toBeUndefined();
+  });
+});
+
+describe("setPublished", () => {
+  it("clears scheduled_for when publishing (a scheduled post going live now)", async () => {
+    const q = makeQuery();
+    fromMock.mockReturnValue(q);
+    await setPublished("s", true);
+    expect(q.update.mock.calls[0][0]).toMatchObject({ published: true, status: "published", scheduled_for: null });
+  });
+});
+
+describe("schedulePost", () => {
+  it("marks the post scheduled with the given time, not yet public", async () => {
+    const q = makeQuery();
+    fromMock.mockReturnValue(q);
+    const when = new Date(Date.now() + 86_400_000).toISOString();
+    await schedulePost("s", when);
+    expect(q.update.mock.calls[0][0]).toMatchObject({
+      status: "scheduled",
+      scheduled_for: when,
+      published: false,
+    });
+    expect(q.eq).toHaveBeenCalledWith("slug", "s");
+  });
+});
+
+describe("cancelSchedule", () => {
+  it("clears the schedule and returns the post to review", async () => {
+    const q = makeQuery();
+    fromMock.mockReturnValue(q);
+    await cancelSchedule("s");
+    expect(q.update.mock.calls[0][0]).toMatchObject({ status: "review", scheduled_for: null });
   });
 });
 

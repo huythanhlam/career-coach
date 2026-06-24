@@ -13,6 +13,8 @@ import {
   X,
   ShieldAlert,
   ExternalLink,
+  CalendarClock,
+  CalendarX,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import {
@@ -20,8 +22,16 @@ import {
   savePost,
   setPublished as setPublishedSvc,
   deletePost,
+  schedulePost,
+  cancelSchedule,
   type EditablePost,
 } from "@/services/blogAdminService";
+import {
+  toDatetimeLocalValue,
+  fromDatetimeLocalValue,
+  isFutureISO,
+  formatScheduleDateTime,
+} from "@/lib/calendar";
 import type { BlogPost, BlogSource } from "@/types/blogPost";
 
 const CATEGORIES = [
@@ -80,9 +90,12 @@ export function BlogEditor({
   const [form, setForm] = useState<EditablePost | null>(null);
   const [tagsText, setTagsText] = useState("");
 
-  const [busy, setBusy] = useState<null | "save" | "publish" | "delete">(null);
+  const [busy, setBusy] = useState<null | "save" | "publish" | "delete" | "schedule">(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+
+  // Schedule panel: the datetime-local value being edited.
+  const [scheduleValue, setScheduleValue] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -106,6 +119,7 @@ export function BlogEditor({
             sources: p.sources,
           });
           setTagsText(p.tags.join(", "));
+          setScheduleValue(toDatetimeLocalValue(p.scheduledFor));
         }
         setLoading(false);
       })
@@ -179,6 +193,45 @@ export function BlogEditor({
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update publish state.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleSchedule = async () => {
+    if (!post) return;
+    if (dirty) {
+      setError("Save your changes before scheduling.");
+      return;
+    }
+    const iso = fromDatetimeLocalValue(scheduleValue);
+    if (!iso || !isFutureISO(iso)) {
+      setError("Pick a future date and time to schedule.");
+      return;
+    }
+    setBusy("schedule");
+    setError(null);
+    try {
+      await schedulePost(slug, iso);
+      setPost({ ...post, status: "scheduled", scheduledFor: iso, published: false });
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to schedule.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleCancelSchedule = async () => {
+    if (!post) return;
+    setBusy("schedule");
+    setError(null);
+    try {
+      await cancelSchedule(slug);
+      setPost({ ...post, status: "review", scheduledFor: undefined });
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to cancel the schedule.");
     } finally {
       setBusy(null);
     }
@@ -377,6 +430,50 @@ export function BlogEditor({
                     {form.content || "_Nothing to preview yet._"}
                   </Markdown>
                 </div>
+              </div>
+            </div>
+
+            {/* Schedule */}
+            <div className="rounded-xl border px-4 py-3 mb-6" style={{ background: "var(--paper)", borderColor: "var(--border)" }}>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <CalendarClock className="w-4 h-4" style={{ color: "#8B5CF6" }} />
+                <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Schedule</span>
+                {post.status === "scheduled" && post.scheduledFor && (
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.15)", color: "#8B5CF6" }}>
+                    Auto-publishes {formatScheduleDateTime(post.scheduledFor)}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Pick a future date and time to auto-publish this post. It stays a draft until then.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="datetime-local"
+                  value={scheduleValue}
+                  onChange={(e) => setScheduleValue(e.target.value)}
+                  className="rounded-lg border px-2 py-1.5 text-sm"
+                  style={{ background: "var(--background)", borderColor: "var(--border)", color: "var(--foreground)" }}
+                />
+                <button
+                  onClick={handleSchedule}
+                  disabled={busy !== null}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-50"
+                  style={{ background: "#8B5CF6" }}
+                >
+                  {busy === "schedule" ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarClock className="w-4 h-4" />}
+                  {post.status === "scheduled" ? "Reschedule" : "Schedule"}
+                </button>
+                {post.status === "scheduled" && (
+                  <button
+                    onClick={handleCancelSchedule}
+                    disabled={busy !== null}
+                    className="inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl border disabled:opacity-50 hover:bg-muted"
+                    style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                  >
+                    <CalendarX className="w-4 h-4" /> Cancel schedule
+                  </button>
+                )}
               </div>
             </div>
 

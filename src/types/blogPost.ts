@@ -67,8 +67,13 @@ export interface BlogPost {
   editorRounds?: number;
   generatedAt: string;
   publishedAt?: string;
-  /** Lifecycle: 'review' = queued draft (not public), 'published' = live. */
-  status?: "draft" | "review" | "published";
+  /**
+   * Lifecycle: 'draft'/'review' = queued (not public), 'scheduled' = queued with
+   * a `scheduledFor` time at which the publisher cron flips it live, 'published' = live.
+   */
+  status?: "draft" | "review" | "published" | "scheduled";
+  /** When a scheduled post is set to auto-publish (UTC ISO); only set while status='scheduled'. */
+  scheduledFor?: string;
   /** Whether the post is publicly visible. */
   published?: boolean;
 }

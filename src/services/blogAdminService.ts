@@ -101,16 +101,45 @@ export async function savePost(slug: string, patch: EditablePost): Promise<void>
 
 /**
  * Publish or unpublish a post. Publishing flips it live and stamps published_at
- * the first time; unpublishing returns it to the queued ("review") state.
+ * the first time; unpublishing returns it to the queued ("review") state. Either
+ * way the post is no longer scheduled, so scheduled_for is cleared.
  */
 export async function setPublished(slug: string, published: boolean): Promise<void> {
   const patch: Record<string, unknown> = {
     published,
     status: published ? "published" : "review",
+    scheduled_for: null,
     updated_at: new Date().toISOString(),
   };
   if (published) patch.published_at = new Date().toISOString();
   const { error } = await supabase.from("blog_posts").update(patch).eq("slug", slug);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Schedule (or reschedule) a post to auto-publish at `whenISO`. Marks it
+ * status='scheduled', not yet public; the publisher cron flips it live once
+ * scheduled_for passes. Caller validates that whenISO is in the future.
+ */
+export async function schedulePost(slug: string, whenISO: string): Promise<void> {
+  const { error } = await supabase
+    .from("blog_posts")
+    .update({
+      status: "scheduled",
+      scheduled_for: whenISO,
+      published: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("slug", slug);
+  if (error) throw new Error(error.message);
+}
+
+/** Cancel a post's schedule, returning it to the queued ("review") state. */
+export async function cancelSchedule(slug: string): Promise<void> {
+  const { error } = await supabase
+    .from("blog_posts")
+    .update({ status: "review", scheduled_for: null, updated_at: new Date().toISOString() })
+    .eq("slug", slug);
   if (error) throw new Error(error.message);
 }
 

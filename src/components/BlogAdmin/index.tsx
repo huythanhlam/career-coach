@@ -17,10 +17,11 @@ import { useBlogAdminPosts } from "@/hooks/useBlogPosts";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { BLOG_SCHEDULE, nextRun, humanizeUntil } from "@/config/blogSchedule";
 import { slugify } from "@/lib/blogDraft";
-import { createDraftFromTopic } from "@/services/blogAdminService";
+import { createDraftFromTopic, schedulePost, cancelSchedule } from "@/services/blogAdminService";
 import type { BlogPost } from "@/types/blogPost";
 import seedTopics from "../../../data/blog/_topics.json";
 import { BlogEditor } from "./BlogEditor";
+import { ScheduledView } from "./ScheduledView";
 
 const CATEGORY_COLORS: Record<string, string> = {
   resume: "#D97757",
@@ -145,7 +146,7 @@ export function BlogAdmin() {
   const { profile } = useUserProfile();
   const editSlug = useEditSlug();
   const [refreshKey, setRefreshKey] = useState(0);
-  const { queued, published, loading } = useBlogAdminPosts(refreshKey);
+  const { scheduled, queued, published, loading } = useBlogAdminPosts(refreshKey);
 
   // Generating a draft from a backlog topic, ahead of the scheduled run.
   const [genTitle, setGenTitle] = useState<string | null>(null);
@@ -194,6 +195,15 @@ export function BlogAdmin() {
     }
   };
 
+  const handleReschedule = async (slug: string, whenISO: string) => {
+    await schedulePost(slug, whenISO);
+    setRefreshKey((k) => k + 1);
+  };
+  const handleCancelSchedule = async (slug: string) => {
+    await cancelSchedule(slug);
+    setRefreshKey((k) => k + 1);
+  };
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "var(--background)" }}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -228,7 +238,8 @@ export function BlogAdmin() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+          <StatCard icon={CalendarClock} label="Scheduled" value={loading ? "—" : scheduled.length} tint="#8B5CF6" />
           <StatCard icon={FileText} label="Queued (in review)" value={loading ? "—" : queued.length} tint="#E8B948" />
           <StatCard icon={CheckCircle2} label="Published" value={loading ? "—" : published.length} tint="#2F6B4F" />
           <StatCard icon={ListChecks} label="Backlog topics" value={backlog.length} tint="#3B82F6" />
@@ -250,6 +261,18 @@ export function BlogAdmin() {
           </div>
         ) : (
           <>
+            <Section title="Scheduled · auto-publishing" count={scheduled.length}>
+              <p className="text-xs text-muted-foreground mb-3 px-1">
+                Posts set to publish automatically at a specific time. Switch between list and calendar to find when each goes live; reschedule or cancel any of them.
+              </p>
+              <ScheduledView
+                posts={scheduled}
+                onEdit={goToEditor}
+                onReschedule={handleReschedule}
+                onCancel={handleCancelSchedule}
+              />
+            </Section>
+
             <Section title="Queued · awaiting review" count={queued.length}>
               {queued.length === 0 ? (
                 <p className="text-sm text-muted-foreground px-1">
