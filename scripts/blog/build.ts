@@ -18,7 +18,8 @@ import { parseBuildArgs, sleep } from "./lib.ts";
 import { DIR, POSTS_DIR, ensureDir, loadSeedTopics, existingSlugs, writePost } from "./posts.ts";
 import { sourceIdeas } from "./agents/ideator.ts";
 import { runEditorialPipeline } from "./pipeline.ts";
-import { getAdmin, loadPublishedSlugs } from "./db.ts";
+import { getAdmin, loadPublishedSlugs, upsertDrafts } from "./db.ts";
+import type { BlogPost } from "../../src/types/blogPost.ts";
 
 const DELAY_MS = 600; // polite gap between briefs (multiple Gemini calls each)
 const DEFAULT_TOTAL = 3;
@@ -61,6 +62,7 @@ async function main() {
   console.log(`Got ${briefs.length} brief(s). Drafting + editing (cap ${total})…`);
 
   let written = 0;
+  const approved: BlogPost[] = [];
   for (const brief of briefs) {
     if (written >= total) break;
     if (known.has(brief.slug)) continue;
@@ -77,6 +79,7 @@ async function main() {
 
     known.add(post.slug);
     written++;
+    approved.push(post);
     if (args.dryRun) {
       console.log(`    ✓ [dry-run] ${post.slug} — ${post.readingMinutes} min, editor ${post.editorScore}/100, ${post.sources.length} sources`);
     } else {
@@ -84,6 +87,18 @@ async function main() {
       console.log(`    ✓ wrote ${path} (editor ${post.editorScore}/100, ${post.editorRounds} round(s))`);
     }
     await sleep(DELAY_MS);
+  }
+
+  // Mirror approved drafts into the DB as queued/in-review (published = false) so
+  // they appear in the in-app Blog Admin view before the review PR merges. The
+  // PR merge → sync.ts flips them to published. Skipped on dry-run / no DB env.
+  if (!args.dryRun && admin && approved.length) {
+    try {
+      const n = await upsertDrafts(admin, approved);
+      console.log(`• Mirrored ${n} draft(s) to blog_posts as 'review' (queued).`);
+    } catch (e) {
+      console.warn(`• Could not mirror drafts to DB: ${e instanceof Error ? e.message : e}`);
+    }
   }
 
   console.log(`Done: ${written} post(s) ${args.dryRun ? "generated (dry-run)" : `written to ${POSTS_DIR}`}.`);

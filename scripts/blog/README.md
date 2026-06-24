@@ -21,8 +21,25 @@ gate on top of the Editor.
 schedule → build.ts → data/blog/posts/*.md → PR (review) → merge → sync.ts → blog_posts table → public blog UI
 ```
 
-- **build** opens a PR (`blog-content-build.yml`, weekly + manual dispatch).
-- **sync** publishes on merge (`blog-content-sync.yml`, push to main).
+- **build** opens a PR (`blog-content-build.yml`, weekly + manual dispatch). When
+  Supabase service-role env is present it also mirrors each approved draft into
+  `blog_posts` as `published=false, status='review'` so the in-app **Blog Admin**
+  view shows them as *queued* before the PR merges. (Live posts are never
+  un-published by a re-run — already-published slugs are skipped.)
+- **sync** publishes on merge (`blog-content-sync.yml`, push to main) — flips the
+  posts to `published=true, status='published'`.
+
+## In-app Blog Admin view
+
+Admins see a **Blog Admin** sidebar entry (`#/blog_admin`) showing the schedule +
+next run, queued/in-review drafts, published posts, and the upcoming topic
+backlog — no need to leave the site. Visibility is gated by `profiles.is_admin`
+(server-managed, like `mfa_enrolled`). Enable yourself once after applying the
+`20260623000001_blog_admin.sql` migration:
+
+```sql
+update public.profiles set is_admin = true where email = 'you@example.com';
+```
 
 ## Commands
 

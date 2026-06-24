@@ -33,10 +33,11 @@ export type ViewId =
   | "company_research"
   | "mock_behavioral"
   | "blog"
+  | "blog_admin"
   | "profile_settings"
   | "security_settings";
 
-export type WorkflowId = Exclude<ViewId, "dashboard" | "profile_settings" | "security_settings" | "job_postings" | "blog">;
+export type WorkflowId = Exclude<ViewId, "dashboard" | "profile_settings" | "security_settings" | "job_postings" | "blog" | "blog_admin">;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -99,6 +100,11 @@ const navGroups: NavGroup[] = [
 
 export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: SidebarProps) {
   const { profile } = useUserProfile();
+
+  // Admins get an extra "Admin" group with the Blog Admin view.
+  const visibleGroups: NavGroup[] = profile.isAdmin
+    ? [...navGroups, { name: "Admin", items: [{ id: "blog_admin", label: "Blog Admin", icon: ShieldCheck }] }]
+    : navGroups;
 
   const displayName = profile.preferredName || profile.fullName || "Your Profile";
   const initials = displayName
@@ -165,7 +171,7 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
 
       {/* Navigation */}
       <nav className="flex-1 overflow-auto px-3 pb-3 no-scrollbar">
-        {navGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.name} className="mb-3.5">
             <div className="text-[10px] font-bold text-muted-foreground tracking-[0.22em] uppercase px-[10px] pt-2 pb-1.5">
               {group.name}

@@ -22,11 +22,12 @@ const LandingPage = lazy(() => import("@/components/LandingPage").then((m) => ({
 const MFAChallengePage = lazy(() => import("@/components/MFAChallengePage").then((m) => ({ default: m.MFAChallengePage })));
 const BlogPage = lazy(() => import("@/components/BlogPage").then((m) => ({ default: m.BlogPage })));
 const PublicBlogShell = lazy(() => import("@/components/BlogPage/PublicBlogShell").then((m) => ({ default: m.PublicBlogShell })));
+const BlogAdmin = lazy(() => import("@/components/BlogAdmin").then((m) => ({ default: m.BlogAdmin })));
 
 /* ── URL hash <-> view sync ──────────────────────────────────────────
  * The hash (e.g. #/resume_generator) is the source of truth for navigation, so
  * refresh restores the view, links are shareable, and back/forward work. */
-const STATIC_VIEWS = ["dashboard", "job_postings", "blog", "profile_settings", "security_settings"] as const;
+const STATIC_VIEWS = ["dashboard", "job_postings", "blog", "blog_admin", "profile_settings", "security_settings"] as const;
 
 function isValidView(v: string): v is ViewId {
   return v in workflowsConfig || (STATIC_VIEWS as readonly string[]).includes(v);
@@ -151,6 +152,7 @@ function AppInner() {
                 {activeView === "dashboard" && <Dashboard onNavigate={handleSelectView} />}
                 {activeView === "job_postings" && <JobPostingsWorkspace onNavigate={handleSelectView} />}
                 {activeView === "blog" && <BlogPage />}
+                {activeView === "blog_admin" && <BlogAdmin />}
                 {activeView === "profile_settings" && <ProfileSettings />}
                 {activeView === "security_settings" && <SecuritySettings />}
 

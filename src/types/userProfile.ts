@@ -119,6 +119,8 @@ export interface UserProfile {
   linkedinScoreAt?: string;
   onboardingComplete: boolean;
   aiConsentGivenAt?: string;
+  /** Server-managed admin flag (read-only on the client). Gates the Blog Admin view. */
+  isAdmin?: boolean;
   createdAt: string;
   updatedAt: string;
 }
