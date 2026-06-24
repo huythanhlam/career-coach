@@ -16,11 +16,15 @@ import {
   Mail,
   ShieldCheck,
   Search,
+  Building2,
+  BookOpen,
   Rocket,
   Mic,
   X,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
+import { ModeSwitch } from "@/components/ModeSwitch";
+import { MODE_META, defaultViewForAccount } from "@/lib/accountMode";
 
 export type ViewId =
   | "dashboard"
@@ -34,13 +38,19 @@ export type ViewId =
   | "goal_planning"
   | "company_research"
   | "mock_behavioral"
+  | "employer_studio"
+  | "blog"
+  | "blog_admin"
   | "networking"
   | "negotiation"
   | "autopilot"
   | "profile_settings"
   | "security_settings";
 
-export type WorkflowId = Exclude<ViewId, "dashboard" | "profile_settings" | "security_settings" | "job_postings">;
+export type WorkflowId = Exclude<
+  ViewId,
+  "dashboard" | "profile_settings" | "security_settings" | "job_postings" | "employer_studio" | "blog" | "blog_admin"
+>;
 
 interface SidebarProps {
   activeView: ViewId;
@@ -62,7 +72,7 @@ type NavGroup = {
   items: NavItem[];
 };
 
-const navGroups: NavGroup[] = [
+const seekerNavGroups: NavGroup[] = [
   {
     name: "Plan",
     items: [
@@ -96,10 +106,32 @@ const navGroups: NavGroup[] = [
       { id: "salary",           label: "Negotiator",    icon: DollarSign },
     ],
   },
+  {
+    name: "Learn",
+    items: [
+      { id: "blog", label: "Career Blog", icon: BookOpen },
+    ],
+  },
+];
+
+const employerNavGroups: NavGroup[] = [
+  {
+    name: "Hire",
+    items: [
+      { id: "employer_studio", label: "Employer Studio", icon: Building2, badge: "New" },
+    ],
+  },
 ];
 
 export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: SidebarProps) {
   const { profile } = useUserProfile();
+
+  const isEmployer = profile.accountType === "employer";
+  const baseGroups = isEmployer ? employerNavGroups : seekerNavGroups;
+  // Admins get an extra "Admin" group with the Blog Admin view, in either mode.
+  const visibleGroups: NavGroup[] = profile.isAdmin
+    ? [...baseGroups, { name: "Admin", items: [{ id: "blog_admin", label: "Blog Admin", icon: ShieldCheck }] }]
+    : baseGroups;
 
   const displayName = profile.preferredName || profile.fullName || "Your Profile";
   const initials = displayName
@@ -139,8 +171,8 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
           <div className="font-display text-base font-semibold tracking-[-0.01em] text-foreground leading-[1.1] whitespace-nowrap">
             Career Coach <em className="not-italic text-primary">AI</em>
           </div>
-          <div className="text-[9px] text-muted-foreground font-bold tracking-[0.16em] uppercase mt-0.5 whitespace-nowrap">
-            Mentor mode
+          <div className="text-[9px] font-bold tracking-[0.16em] uppercase mt-0.5 whitespace-nowrap" style={{ color: "var(--primary)" }}>
+            {MODE_META[isEmployer ? "employer" : "seeker"].modeLabel}
           </div>
         </div>
         {/* Close (mobile only) */}
@@ -153,20 +185,20 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
         </button>
       </div>
 
-      {/* New plan CTA */}
+      {/* Primary CTA — role-aware */}
       <div className="px-3 pb-3">
         <button
-          onClick={() => onSelectView("goal_planning")}
+          onClick={() => onSelectView(isEmployer ? "employer_studio" : "goal_planning")}
           className="w-full h-10 bg-foreground text-background border-0 rounded-xl font-semibold text-[13px] cursor-pointer flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
         >
           <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-          New plan
+          {isEmployer ? "Employer Studio" : "New plan"}
         </button>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-auto px-3 pb-3 no-scrollbar">
-        {navGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.name} className="mb-3.5">
             <div className="text-[10px] font-bold text-muted-foreground tracking-[0.22em] uppercase px-[10px] pt-2 pb-1.5">
               {group.name}
@@ -208,6 +240,12 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
 
       {/* User footer */}
       <div className="p-3 border-t border-border flex flex-col gap-1">
+        {/* Mode switch — flip between job-seeker and employer experiences */}
+        <div className="px-1 pb-2">
+          <div className="text-[10px] font-bold text-muted-foreground tracking-[0.16em] uppercase px-1 pb-1.5">Mode</div>
+          <ModeSwitch onSwitched={(type) => { onSelectView(defaultViewForAccount(type)); onClose?.(); }} />
+        </div>
+
         {/* Profile */}
         <button
           onClick={() => onSelectView("profile_settings")}

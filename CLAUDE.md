@@ -12,6 +12,8 @@ npm run lint       # typecheck (tsc --noEmit) — there is no eslint; "lint" mea
 npm test           # vitest run (full suite, ~2s)
 npx vitest run <file>   # single test file — prefer this while iterating
 npm run profiles:build  # company-profiles data pipeline (see scripts/company-profiles/README.md)
+npm run blog:build      # auto-curate blog posts via the 3-agent editorial pipeline (see scripts/blog/README.md)
+npm run blog:sync       # publish committed blog posts into blog_posts (run after a blog PR merges)
 ```
 
 In remote/cloud sessions, run `npm ci` first — containers start without `node_modules`.
@@ -31,6 +33,8 @@ For non-trivial features (new workflow, schema change, new pipeline), write a sh
 - Frontend Gemini client: `src/services/geminiService.ts`.
 - Supabase: RLS protects all user data. Migrations in `supabase/migrations/` are timestamped (`YYYYMMDDNNNNNN_name.sql`); never edit an already-applied migration — add a new one. Generated DB types: `supabase/types.ts`.
 - Company-profiles pipeline (deterministic, non-AI data): `scripts/company-profiles/` with per-source fetchers in `sources/`.
+- Blog content pipeline (AI-generated): `scripts/blog/` — a 3-agent editorial team (Ideator → Writer → Editor in `agents/`, orchestrated by `pipeline.ts`). Runs in CI and calls Gemini **directly** with `GEMINI_API_KEY` (server-side, like the Edge Function); the "calls go through the gateway" rule is for frontend code only. Drafts are committed as markdown to `data/blog/posts/`, reviewed via PR, then `blog:sync` publishes them to the public `blog_posts` table. Blog UI: `src/components/BlogPage/` (public — also rendered for logged-out visitors outside the auth gate).
+- Blog admin: an in-app, admin-only view (`src/components/BlogAdmin/`, `#/blog_admin`) shows the schedule (mirrors the build cron via `src/config/blogSchedule.ts`), queued/in-review drafts, published posts, and the topic backlog. Gated by `profiles.is_admin` (server-managed like `mfa_enrolled`; read via the `current_user_is_admin()` SECURITY DEFINER helper + the `blog_posts_admin_select` RLS policy). `blog:build` mirrors approved drafts into `blog_posts` as `status='review', published=false` so they show as queued before the PR merges.
 - Sidebar view IDs/types live in `src/components/workflows.ts` — distinct file from `src/config/workflows.ts`.
 
 ## Environment variables

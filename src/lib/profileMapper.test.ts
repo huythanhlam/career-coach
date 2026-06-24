@@ -80,6 +80,13 @@ describe("rowToProfile", () => {
     expect(typeof profile.createdAt).toBe("string");
   });
 
+  it("defaults a missing account_type to 'seeker' and round-trips 'employer'", () => {
+    expect(rowToProfile({}).accountType).toBe("seeker");
+    expect(rowToProfile({ account_type: "employer" }).accountType).toBe("employer");
+    const row = profileToRow({ ...createEmptyProfile(), accountType: "employer" }, "u1");
+    expect(row.account_type).toBe("employer");
+  });
+
   it("normalizes legacy 'Present' work history on read", () => {
     const profile = rowToProfile({
       work_history: [

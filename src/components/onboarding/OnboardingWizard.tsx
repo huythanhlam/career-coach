@@ -6,12 +6,15 @@ import { useAuth } from "@/context/AuthContext";
 import { uploadImportedResume, uploadLinkedInText } from "@/services/resumeStorageService";
 import { ConsentStep } from "./steps/ConsentStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
+import { AccountTypeStep } from "./steps/AccountTypeStep";
 import { ImportStep } from "./steps/ImportStep";
 import { ExtractingStep } from "./steps/ExtractingStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { DoneStep } from "./steps/DoneStep";
+import type { AccountType } from "@/types/userProfile";
+import { readPendingAccountType, clearPendingAccountType } from "@/lib/accountMode";
 
-type Step = "consent" | "welcome" | "import" | "extracting" | "review" | "done";
+type Step = "consent" | "welcome" | "account_type" | "import" | "extracting" | "review" | "done";
 type ImportInput =
   | { type: "linkedin"; text: string; url?: string }
   | { type: "resume"; text: string };
@@ -24,14 +27,45 @@ export function OnboardingWizard() {
   const [extracted, setExtracted] = useState<Partial<UserProfile>>({});
   const [extractionError, setExtractionError] = useState<string | undefined>();
   const [savedPreferredName, setSavedPreferredName] = useState("");
+  // A pending account type chosen on the landing page (e.g. the employer signup
+  // path) seeds the flow and lets us skip the in-app account-type question.
+  const [accountType, setAccountType] = useState<AccountType>(() => readPendingAccountType() ?? "seeker");
+  const cameInAsEmployer = accountType === "employer";
+
+  function finishAsEmployer() {
+    clearPendingAccountType();
+    updateProfile({ accountType: "employer", onboardingComplete: true });
+    setStep("done");
+  }
 
   function handleConsent() {
     updateProfile({ aiConsentGivenAt: new Date().toISOString() });
     setStep("welcome");
   }
 
+  function handleWelcomeStart() {
+    // Employer signups skip the account-type question and the seeker-only
+    // resume import; everyone else picks their role next.
+    if (cameInAsEmployer) finishAsEmployer();
+    else setStep("account_type");
+  }
+
   function handleSkip() {
-    updateProfile({ onboardingComplete: true });
+    clearPendingAccountType();
+    updateProfile({ accountType, onboardingComplete: true });
+  }
+
+  function handleAccountType(type: AccountType) {
+    setAccountType(type);
+    if (type === "employer") {
+      // Employers skip the resume-import flow — that's seeker-specific.
+      clearPendingAccountType();
+      updateProfile({ accountType: type, onboardingComplete: true });
+      setStep("done");
+    } else {
+      updateProfile({ accountType: type });
+      setStep("import");
+    }
   }
 
   async function runExtraction(input: ImportInput) {
@@ -54,7 +88,7 @@ export function OnboardingWizard() {
   async function handleConfirm(profile: Partial<UserProfile>) {
     setSavedPreferredName(profile.preferredName ?? profile.fullName?.split(" ")[0] ?? "");
     const userId = session?.user?.id;
-    const updates: Partial<UserProfile> = { ...profile, onboardingComplete: true };
+    const updates: Partial<UserProfile> = { ...profile, accountType, onboardingComplete: true };
     if (userId && importInput) {
       try {
         if (importInput.type === "resume") {
@@ -76,7 +110,7 @@ export function OnboardingWizard() {
   }
 
   // Progress indicator dots (consent is a gate, not a numbered step)
-  const steps: Step[] = ["welcome", "import", "review", "done"];
+  const steps: Step[] = ["welcome", "account_type", "import", "review", "done"];
   const progressIndex = steps.indexOf(step === "extracting" ? "import" : step);
 
   return (
@@ -118,7 +152,10 @@ export function OnboardingWizard() {
             <ConsentStep onAgree={handleConsent} />
           )}
           {step === "welcome" && (
-            <WelcomeStep onStart={() => setStep("import")} onSkip={handleSkip} />
+            <WelcomeStep onStart={handleWelcomeStart} onSkip={handleSkip} accountType={accountType} />
+          )}
+          {step === "account_type" && (
+            <AccountTypeStep onSelect={handleAccountType} />
           )}
           {step === "import" && (
             <ImportStep
@@ -144,7 +181,7 @@ export function OnboardingWizard() {
             />
           )}
           {step === "done" && (
-            <DoneStep name={savedPreferredName} onStart={handleDone} />
+            <DoneStep name={savedPreferredName} onStart={handleDone} accountType={accountType} />
           )}
         </div>
       </div>
