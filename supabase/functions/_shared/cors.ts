@@ -28,6 +28,16 @@ const IS_LOCAL_STACK = /localhost|127\.0\.0\.1|\/\/kong\b/.test(
 const ALLOW_LIST = CONFIGURED.length > 0 ? CONFIGURED : IS_LOCAL_STACK ? ["*"] : [];
 
 if (ALLOW_LIST.length === 0) {
+  if (!IS_LOCAL_STACK) {
+    // Hard fail in production: a missing ALLOWED_ORIGIN would silently allow
+    // `Access-Control-Allow-Origin: null` responses — ambiguous and risky.
+    // Throwing here causes every cold-start invocation to return 500 until
+    // the secret is set, surfacing the misconfiguration immediately.
+    throw new Error(
+      "ALLOWED_ORIGIN secret is not configured. " +
+        "Set it to your app's origin(s) before deploying (e.g. https://app.example.com).",
+    );
+  }
   console.warn(
     "ALLOWED_ORIGIN is not set — all cross-origin browser requests will be blocked. " +
       "Set the ALLOWED_ORIGIN secret to your app's origin(s).",

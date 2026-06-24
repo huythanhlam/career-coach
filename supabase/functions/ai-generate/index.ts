@@ -44,18 +44,30 @@ async function verifyUser(authHeader: string | null) {
   return error ? null : user;
 }
 
-// Best-effort per-user rate limit. Module scope persists across warm invocations
-// (so it meaningfully throttles abuse of the paid Gemini quota); a hard global
-// limit would need a shared store (e.g. Upstash).
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 20;
-const hits = new Map<string, number[]>();
-function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(key, recent);
-  return recent.length > MAX_PER_WINDOW;
+
+// Service-role client for distributed rate limiting via the ai_rate_limits table.
+// Using a DB counter rather than a module-scope Map means the limit is enforced
+// globally across all Edge Function instances (cold starts no longer reset the counter).
+const serviceClient = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
+
+async function isRateLimited(userId: string): Promise<boolean> {
+  const windowKey = Math.floor(Date.now() / WINDOW_MS);
+  const { data, error } = await serviceClient.rpc("check_ai_rate_limit", {
+    p_user_id: userId,
+    p_window_key: windowKey,
+    p_max_hits: MAX_PER_WINDOW,
+  });
+  if (error) {
+    // Fail open on DB errors so infra hiccups don't lock out users.
+    console.warn("Rate limit check failed:", error.message);
+    return false;
+  }
+  return data === true;
 }
 
 Deno.serve(async (req) => {
@@ -66,7 +78,7 @@ Deno.serve(async (req) => {
 
   const user = await verifyUser(req.headers.get("Authorization"));
   if (!user) return json({ error: "Unauthorized" }, 401, cors);
-  if (isRateLimited(user.id)) {
+  if (await isRateLimited(user.id)) {
     return json({ error: "Too many requests — please wait a moment and try again." }, 429, cors);
   }
 
