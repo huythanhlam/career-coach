@@ -40,11 +40,20 @@ function isBlogRoute(): boolean {
   return h === "blog" || h.startsWith("blog/");
 }
 
+/** True for the Blog Admin editor sub-route (`#/blog_admin/edit/<slug>`). */
+function isBlogAdminSubRoute(): boolean {
+  const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
+  return h.startsWith("blog_admin/");
+}
+
 function viewFromHash(): ViewId | null {
   const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
   // Collapse post permalinks (`blog/<slug>`) onto the single "blog" view; the
   // BlogPage reads the slug from the hash itself.
   if (isBlogRoute()) return "blog";
+  // Likewise, the Blog Admin editor sub-route stays on the "blog_admin" view;
+  // BlogAdmin reads the slug from the hash.
+  if (isBlogAdminSubRoute()) return "blog_admin";
   return isValidView(h) ? h : null;
 }
 
@@ -96,7 +105,7 @@ function AppInner() {
     localStorage.removeItem("pendingTab");
     // Canonicalize the initial URL without adding a history entry. Skip blog
     // routes so a post permalink (`#/blog/<slug>`) survives a refresh.
-    if (!isBlogRoute()) history.replaceState(null, "", `#/${activeView}`);
+    if (!isBlogRoute() && !isBlogAdminSubRoute()) history.replaceState(null, "", `#/${activeView}`);
 
     const applyHash = () => {
       const v = viewFromHash() ?? "dashboard";

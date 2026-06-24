@@ -6,7 +6,7 @@ import type { BlogPost } from "@/types/blogPost";
 // published into `blog_posts` (RLS: anon + authenticated can read published
 // rows), so these work for logged-out visitors too.
 
-function rowToPost(row: Record<string, unknown>): BlogPost {
+export function rowToPost(row: Record<string, unknown>): BlogPost {
   return {
     slug: row.slug as string,
     title: row.title as string,

@@ -51,16 +51,14 @@ After apply: `notify pgrst, 'reload schema';` (documented in the migration / rol
 
 > Generation creates rows via the **service role** (see Part 2), so the admin INSERT policy is not strictly required for the chosen flow — but it is included so the editor can also create rows directly if generation is unavailable, and to keep the policy set coherent. Low cost, removes a future foot-gun.
 
-### Part 2 — Generation endpoint (`blog-generate`)
+### Part 2 — Generation (client-orchestrated through the existing gateway)
 
-A new server endpoint that turns `{ title, category }` into a draft row. **Option #1 (trimmed synchronous):** run **Writer once + Editor once**, skipping Ideator (topic is already chosen) and the multi-round loop. ~2 Gemini calls; comfortably within timeouts; the admin supplies further editorial judgment by editing.
+**Implementation note — simpler than originally specced:** the Writer/Editor agents are just *system + prompt → text(+sources)* calls, which the existing AI gateway already does (`postToGatewayRaw` in `geminiService.ts`; dev → `server.ts`, prod → the `ai-generate` Edge Function). So **no new endpoint or Edge Function is needed.** `geminiService.generateBlogDraft({title, category})` orchestrates the trimmed pass client-side:
 
-- **Dev:** new route in `server.ts` (`POST /api/blog/generate`).
-- **Prod:** new Supabase Edge Function `supabase/functions/blog-generate` (Deno).
-- **Auth:** admin-only. The endpoint verifies the caller is an admin server-side via `current_user_is_admin()` (using the caller's JWT) before doing any work; generation/writes use the service role.
-- **Shared prompts:** extract the Writer and Editor **prompt templates + response parsing** out of `scripts/blog/agents/` into a runtime-agnostic module (pure strings + pure parse functions, no Node/Deno APIs) that both the Node CI pipeline and the Deno Edge function import. The Gemini *call* stays per-runtime (CI keeps `scripts/blog/gemini.ts`; Edge uses `fetch` to the Gemini REST API). This avoids duplicating prompt logic.
-- **Behavior:** slugify the title (reuse existing `slugify`); if the slug already exists, return a conflict the UI surfaces ("a post for this topic already exists — open it"). Otherwise insert a row: `status='draft'`, `published=false`, `model`, `generated_at=now()`, `editor_score`/`editor_rounds`/`reading_minutes` from the run. Return `{ slug }`.
-- **Latency/UX:** synchronous request with a "Generating…" state on the clicked topic. If latency proves too high in practice, fall back to Writer-only (documented). Async/polling is explicitly out of scope (YAGNI for an admin-only, low-frequency action).
+- **Option #1 (trimmed):** Writer once (search-grounded, `MODELS.RESEARCH`) + Editor once. Skips Ideator (topic already chosen) and the multi-round loop. The Editor's `polishedContent` is applied if it approves; we never gate on the decision (the admin edits regardless). `editorRounds = 1`.
+- **Shared prompts:** the Writer/Editor **system prompts** moved to `src/config/blogPrompts.ts` (re-exported from `scripts/blog/prompts.ts`) so frontend and CI share one source. The pure prompt-building + response parsing the frontend needs lives in `src/lib/blogDraft.ts` (`buildWriterPrompt`/`parseWriterDraft`/`buildEditorPrompt`/`parseEditorVerdict`/`briefFromTopic`), mirroring `scripts/blog/agents/` (kept in sync via comment).
+- **Persistence:** `blogAdminService.createDraftFromTopic` slugifies the title; if a row with that slug exists it returns `exists` (UI opens it instead of overwriting); otherwise it **inserts directly under admin RLS** (`status='draft'`, `published=false`, provenance fields). No service role needed.
+- **Latency/UX:** synchronous, with a "Drafting…" state on the clicked topic; ~2 gateway calls. Async/polling is out of scope (YAGNI).
 
 ### Part 3 — Client service
 
@@ -90,8 +88,8 @@ In `src/components/BlogAdmin/index.tsx`:
 
 ```
 Admin clicks backlog topic
-  → client generateBlogDraft({title,category})
-  → blog-generate endpoint (admin check) → Writer + Editor (shared prompts) → insert draft row (service role) → {slug}
+  → geminiService.generateBlogDraft({title,category}) → gateway: Writer (search) + Editor → assembled draft
+  → blogAdminService.createDraftFromTopic → insert draft row under admin RLS (status='draft', published=false) → {slug}
   → route to #/blog_admin/edit/<slug>
   → BlogEditor loads row (admin RLS select) → admin edits → Save (admin RLS update)
   → Publish toggle (published=true, status='published') → public page now serves it
@@ -107,7 +105,7 @@ Admin clicks backlog topic
 ## Rollout / prerequisites
 
 - **Prod prerequisite (separate from this feature's code):** the deployed Supabase project (`odqotbyqxdyskoiuijah`) currently denies `authenticated` access to `profiles` (missing grant) and has a stale PostgREST schema cache — admins can't even load their profile, so `isAdmin` reads false. That must be fixed (grant + `notify pgrst, 'reload schema'`) for any admin feature to work in prod. This migration adds the analogous `blog_posts` grants so the same gap doesn't recur there.
-- New Edge Function `blog-generate` must be deployed with `GEMINI_API_KEY` available server-side.
+- No new Edge Function: generation reuses the existing AI gateway, so the prod `ai-generate` Edge Function (and its `GEMINI_API_KEY`) already covers it. Dev needs `server.ts` running as usual.
 
 ## Non-goals (YAGNI)
 

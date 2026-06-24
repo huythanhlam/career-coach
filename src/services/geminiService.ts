@@ -4,6 +4,16 @@ import { supabase } from "@/lib/supabaseClient";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 import { parseJsonObject, parseJsonArray, parseLooseJsonObject } from "@/lib/looseJson";
 import { MODELS } from "@/config/models";
+import type { BlogSource } from "@/types/blogPost";
+import { writerSystem, editorSystem } from "@/config/blogPrompts";
+import {
+  briefFromTopic,
+  buildWriterPrompt,
+  parseWriterDraft,
+  buildEditorPrompt,
+  parseEditorVerdict,
+  readingMinutes,
+} from "@/lib/blogDraft";
 
 const GATEWAY_URL =
   (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate";
@@ -177,6 +187,85 @@ export async function generateWorkflowData(
   enableSearch: boolean = false
 ) {
   return postToGateway({ systemInstruction, prompt, model, enableSearch });
+}
+
+// ─── Blog draft generation (admin authoring) ────────────────────────────────
+
+/** A freshly generated draft, ready to persist as a `blog_posts` row. */
+export interface GeneratedBlogDraft {
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  tags: string[];
+  content: string;
+  sources: BlogSource[];
+  heroEmoji?: string;
+  model: string;
+  readingMinutes: number;
+  editorScore: number;
+  editorRounds: number;
+}
+
+/** Thrown when generation can't produce a usable draft (so callers show the message). */
+export class BlogGenerationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BlogGenerationError";
+  }
+}
+
+/**
+ * Generate a blog draft for a backlog topic, ahead of the scheduled build. Runs
+ * a trimmed editorial pass through the gateway — Writer (search-grounded) then a
+ * single Editor review whose copy-edit is applied if it approves. The admin edits
+ * the result before publishing, so we never gate on the editor's decision.
+ */
+export async function generateBlogDraft(topic: {
+  title: string;
+  category: string;
+}): Promise<GeneratedBlogDraft> {
+  const brief = briefFromTopic(topic.title, topic.category);
+
+  const { text: writerText, sources } = await postToGatewayRaw({
+    systemInstruction: writerSystem,
+    prompt: buildWriterPrompt(brief),
+    model: MODELS.RESEARCH,
+    enableSearch: true,
+  });
+  const draft = parseWriterDraft(writerText, brief, sources as BlogSource[]);
+  if (!draft) {
+    // On failure postToGatewayRaw returns a human-readable error as `text` (not
+    // JSON), so parseWriterDraft yields null — surface that message.
+    const looksLikeMessage = writerText && !writerText.trimStart().startsWith("{");
+    throw new BlogGenerationError(
+      looksLikeMessage ? writerText : "The writer couldn't produce a draft. Please try again."
+    );
+  }
+
+  const { text: editorText } = await postToGatewayRaw({
+    systemInstruction: editorSystem,
+    prompt: buildEditorPrompt(draft),
+    model: MODELS.RESEARCH,
+    enableSearch: false,
+  });
+  const verdict = parseEditorVerdict(editorText);
+  const content = verdict.polishedContent ?? draft.content;
+
+  return {
+    slug: draft.slug,
+    title: draft.title,
+    excerpt: draft.excerpt,
+    category: draft.category,
+    tags: draft.tags,
+    content,
+    sources: draft.sources,
+    heroEmoji: draft.heroEmoji,
+    model: MODELS.RESEARCH,
+    readingMinutes: readingMinutes(content),
+    editorScore: verdict.score,
+    editorRounds: 1,
+  };
 }
 
 const RESUME_ANALYSIS_SYSTEM = `You are an expert resume reviewer and applicant-tracking-system (ATS) specialist who has screened thousands of resumes across many industries. You give honest, specific, prioritized feedback, tailored to the candidate's field and — when provided — the target job. Output only the requested JSON: no prose, no explanations, no code fences; begin with "{" and end with "}".`;
