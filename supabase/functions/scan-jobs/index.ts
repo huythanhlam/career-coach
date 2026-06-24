@@ -278,10 +278,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   // Internal server-to-server calls (the weekly cron orchestrator) carry a shared
-  // secret and skip per-user auth + rate limiting.
+  // secret via Authorization header and skip per-user auth + rate limiting.
   const cronSecret = Deno.env.get("CRON_SECRET");
-  const internal = !!cronSecret && req.headers.get("x-internal-key") === cronSecret;
-  if (!internal) {
+  const isCron = !!cronSecret && req.headers.get("Authorization") === `Bearer ${cronSecret}`;
+  if (!isCron) {
     const user = await verifyUser(req.headers.get("Authorization"));
     if (!user) return json({ error: "Unauthorized" }, 401, cors);
     if (isRateLimited(user.id)) {

@@ -2,40 +2,41 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { safeFetchText } from "../_shared/safe-fetch.ts";
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+// Use Deno's built-in DOMParser for HTML extraction.
+// This replaces regex-based stripping which is bypassable by polyglot payloads.
+const parser = new DOMParser();
+
+function domToText(el: Element): string {
+  const BLOCK_TAGS = new Set(["p", "li", "br", "h1", "h2", "h3", "h4", "h5", "h6", "div", "section", "tr"]);
+  let out = "";
+  for (const node of el.childNodes) {
+    if (node.nodeType === 3) {
+      out += node.textContent;
+    } else if (node.nodeType === 1) {
+      const tag = (node as Element).tagName.toLowerCase();
+      if (tag === "br") { out += "\n"; continue; }
+      out += domToText(node as Element);
+      if (BLOCK_TAGS.has(tag)) out += "\n";
+    }
+  }
+  return out;
 }
 
 function innerText(html: string): string {
-  return decodeEntities(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/p>/gi, "\n")
-      .replace(/<\/li>/gi, "\n")
-      .replace(/<\/h[1-6]>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/[ \t]{2,}/g, " ")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim()
-  );
+  const doc = parser.parseFromString(html, "text/html");
+  doc.querySelectorAll("script, style").forEach((el) => el.remove());
+  return domToText(doc.body ?? doc.documentElement)
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** 1. Try JSON-LD JobPosting schema — used by Greenhouse, Lever, Ashby, Workday, etc. */
 function extractFromJsonLd(html: string): string | null {
-  const scriptRe = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = scriptRe.exec(html)) !== null) {
+  const doc = parser.parseFromString(html, "text/html");
+  for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
     try {
-      const data = JSON.parse(m[1]);
+      const data = JSON.parse(script.textContent ?? "");
       const nodes = Array.isArray(data) ? data : [data];
       for (const node of nodes) {
         if (node["@type"] !== "JobPosting") continue;
@@ -73,30 +74,19 @@ function extractFromJsonLd(html: string): string | null {
 
 /** 2. Extract the largest semantic content block: <main>, <article>, or the densest <section>/<div> */
 function extractFromSemanticHtml(html: string): string {
-  // Strip nav, header, footer, aside, scripts, styles first
-  const cleaned = html
-    .replace(/<(nav|header|footer|aside|script|style|noscript)[\s\S]*?<\/\1>/gi, "")
-    .replace(/<!--[\s\S]*?-->/g, "");
+  const doc = parser.parseFromString(html, "text/html");
+  doc.querySelectorAll("nav, header, footer, aside, script, style, noscript").forEach((el) => el.remove());
 
-  // Try <main> first, then <article>
   for (const tag of ["main", "article"]) {
-    const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
-    const match = re.exec(cleaned);
-    if (match) {
-      const text = innerText(match[1]);
+    const el = doc.querySelector(tag);
+    if (el) {
+      const text = domToText(el as Element).replace(/\s{2,}/g, " ").trim();
       if (text.length > 200) return text.slice(0, 8000);
     }
   }
 
-  // Fallback: find the block element with the most text
-  const blockRe = /<(section|div)[^>]*>([\s\S]{300,}?)<\/\1>/gi;
-  let best = "";
-  let bm: RegExpExecArray | null;
-  while ((bm = blockRe.exec(cleaned)) !== null) {
-    const t = innerText(bm[2]);
-    if (t.length > best.length) best = t;
-  }
-  return best.slice(0, 8000) || innerText(cleaned).slice(0, 8000);
+  // Fallback: body text
+  return domToText(doc.body ?? doc.documentElement).replace(/\s{2,}/g, " ").trim().slice(0, 8000);
 }
 
 async function verifyUser(authHeader: string | null) {
