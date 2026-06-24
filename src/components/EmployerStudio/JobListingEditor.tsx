@@ -25,6 +25,7 @@ export function JobListingEditor({ listing, companyId, companyName, onSave, onCa
   const [genError, setGenError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<ReturnType<typeof validateListingDraft>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const setNum = (key: "salaryMin" | "salaryMax", raw: string) =>
@@ -67,8 +68,11 @@ export function JobListingEditor({ listing, companyId, companyName, onSave, onCa
     setErrors(v);
     if (Object.keys(v).length > 0) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await onSave(draft);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Couldn't save the listing. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -172,6 +176,8 @@ export function JobListingEditor({ listing, companyId, companyName, onSave, onCa
           <AITextField label="Responsibilities" value={draft.responsibilities ?? ""} onChange={(v) => set("responsibilities", v)} placeholder="What they'll own day to day…" rows={5} context={fullContext || (draft.responsibilities ?? "")} />
           <AITextField label="Requirements" value={draft.requirements ?? ""} onChange={(v) => set("requirements", v)} placeholder="Must-have and nice-to-have qualifications…" rows={5} context={fullContext || (draft.requirements ?? "")} />
         </div>
+
+        {saveError && <div style={{ fontSize: 13, color: "var(--destructive, #ef4444)" }}>{saveError}</div>}
 
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={handleSave} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer" }}>

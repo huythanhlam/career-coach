@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { describeDbError } from "@/lib/supabaseError";
 import type { EmployerJobListing, ListingStatus, PromoAssets } from "@/types/employerListing";
 import { findBoostTier } from "@/types/boostOrder";
 
@@ -88,14 +89,17 @@ export function useEmployerListings(companyId?: string) {
   }, [user?.id, companyId]);
 
   const addListing = useCallback(
-    async (listing: NewJobListing): Promise<EmployerJobListing | null> => {
-      if (!user) return null;
+    async (listing: NewJobListing): Promise<EmployerJobListing> => {
+      if (!user) throw new Error("You must be signed in to create a listing.");
       const { data, error } = await supabase
         .from("employer_job_listings")
         .insert({ user_id: user.id, status: "draft", ...listingToRow(listing) })
         .select()
         .single();
-      if (error || !data) return null;
+      if (error || !data) {
+        console.error("addListing failed:", error);
+        throw new Error(describeDbError(error));
+      }
       const mapped = rowToListing(data);
       setListings((prev) => [mapped, ...prev]);
       return mapped;
@@ -105,12 +109,14 @@ export function useEmployerListings(companyId?: string) {
 
   const updateListing = useCallback(async (id: string, patch: Partial<EmployerJobListing>) => {
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-    await supabase.from("employer_job_listings").update(listingToRow(patch)).eq("id", id);
+    const { error } = await supabase.from("employer_job_listings").update(listingToRow(patch)).eq("id", id);
+    if (error) console.error("updateListing failed:", error);
   }, []);
 
   const deleteListing = useCallback(async (id: string) => {
     setListings((prev) => prev.filter((l) => l.id !== id));
-    await supabase.from("employer_job_listings").delete().eq("id", id);
+    const { error } = await supabase.from("employer_job_listings").delete().eq("id", id);
+    if (error) console.error("deleteListing failed:", error);
   }, []);
 
   /**
@@ -126,7 +132,7 @@ export function useEmployerListings(companyId?: string) {
       const now = Date.now();
       const expiresAt = new Date(now + tier.days * 24 * 60 * 60 * 1000).toISOString();
 
-      await supabase.from("employer_boost_orders").insert({
+      const { error: orderError } = await supabase.from("employer_boost_orders").insert({
         user_id: user.id,
         listing_id: id,
         tier: tier.tier,
@@ -136,6 +142,10 @@ export function useEmployerListings(companyId?: string) {
         status: "paid",
         expires_at: expiresAt,
       });
+      if (orderError) {
+        console.error("boostListing (order) failed:", orderError);
+        throw new Error(describeDbError(orderError));
+      }
 
       // Boosting a listing publishes it so it can surface to seekers.
       const patch: Partial<EmployerJobListing> = {
@@ -144,7 +154,8 @@ export function useEmployerListings(companyId?: string) {
         status: "published",
       };
       setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-      await supabase.from("employer_job_listings").update(listingToRow(patch)).eq("id", id);
+      const { error: updateError } = await supabase.from("employer_job_listings").update(listingToRow(patch)).eq("id", id);
+      if (updateError) console.error("boostListing (update) failed:", updateError);
       return listings.find((l) => l.id === id) ? { ...listings.find((l) => l.id === id)!, ...patch } : null;
     },
     [user, listings],

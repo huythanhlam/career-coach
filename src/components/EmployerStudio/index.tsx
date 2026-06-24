@@ -60,7 +60,7 @@ export function EmployerStudio(_props: Props) {
             toast("Company profile saved.", "success");
           } else {
             const created = await addProfile(draft as NewCompanyProfile);
-            if (created) setSelectedCompanyId(created.id);
+            setSelectedCompanyId(created.id);
             toast("Company created.", "success");
           }
           setMode({ kind: "dashboard" });
@@ -250,8 +250,12 @@ export function EmployerStudio(_props: Props) {
           listing={liveBoostTarget}
           onClose={() => setBoostTarget(null)}
           onConfirm={async (tierId) => {
-            await boostListing(liveBoostTarget.id, tierId);
-            toast("Listing boosted — it's now featured.", "success");
+            try {
+              await boostListing(liveBoostTarget.id, tierId);
+              toast("Listing boosted — it's now featured.", "success");
+            } catch (e) {
+              toast(e instanceof Error ? e.message : "Couldn't boost the listing.", "error");
+            }
           }}
         />
       )}

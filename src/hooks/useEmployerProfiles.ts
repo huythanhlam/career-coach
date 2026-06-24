@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { describeDbError } from "@/lib/supabaseError";
 import type { EmployerCompanyProfile } from "@/types/employerProfile";
 
 // Employer-owned company profiles. Mirrors the optimistic CRUD + snake/camel
@@ -74,14 +75,17 @@ export function useEmployerProfiles() {
   }, [user?.id]);
 
   const addProfile = useCallback(
-    async (profile: NewCompanyProfile): Promise<EmployerCompanyProfile | null> => {
-      if (!user) return null;
+    async (profile: NewCompanyProfile): Promise<EmployerCompanyProfile> => {
+      if (!user) throw new Error("You must be signed in to create a company.");
       const { data, error } = await supabase
         .from("employer_company_profiles")
         .insert({ user_id: user.id, ...companyToRow(profile) })
         .select()
         .single();
-      if (error || !data) return null;
+      if (error || !data) {
+        console.error("addProfile failed:", error);
+        throw new Error(describeDbError(error));
+      }
       const mapped = rowToCompany(data);
       setProfiles((prev) => [mapped, ...prev]);
       return mapped;
@@ -91,13 +95,15 @@ export function useEmployerProfiles() {
 
   const updateProfile = useCallback(async (id: string, patch: Partial<EmployerCompanyProfile>) => {
     setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    await supabase.from("employer_company_profiles").update(companyToRow(patch)).eq("id", id);
+    const { error } = await supabase.from("employer_company_profiles").update(companyToRow(patch)).eq("id", id);
+    if (error) console.error("updateProfile failed:", error);
   }, []);
 
   const deleteProfile = useCallback(async (id: string) => {
     setProfiles((prev) => prev.filter((p) => p.id !== id));
     // FK cascade removes this company's listings and their boost orders too.
-    await supabase.from("employer_company_profiles").delete().eq("id", id);
+    const { error } = await supabase.from("employer_company_profiles").delete().eq("id", id);
+    if (error) console.error("deleteProfile failed:", error);
   }, []);
 
   return { profiles, loading, addProfile, updateProfile, deleteProfile };

@@ -37,6 +37,8 @@ export function CompanyProfileEditor({ company, onSave, onCancel }: Props) {
     setError(null);
     try {
       await onSave(draft);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save the company. Please try again.");
     } finally {
       setSaving(false);
     }
