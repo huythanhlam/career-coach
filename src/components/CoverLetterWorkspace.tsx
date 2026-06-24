@@ -43,16 +43,18 @@ export function CoverLetterWorkspace({
   ].filter(Boolean).join(" - ");
 
   const buildLetterheadHtml = (): string => {
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-    const contacts = [profile.email, profile.phone, profile.linkedin].filter(Boolean).join(" &nbsp;·&nbsp; ");
-    const company = initialFormData?.companyName ?? "";
-    const role = initialFormData?.jobTitle ?? "";
+    const contacts = [profile.email, profile.phone, profile.linkedin].filter(Boolean).map(esc).join(" &nbsp;·&nbsp; ");
+    const company = esc(initialFormData?.companyName ?? "");
+    const role = esc(initialFormData?.jobTitle ?? "");
     const accentColor = "#D97757"; // terracotta — matches default; template CSS overrides via h1 color
 
     return `
 <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:10px;border-bottom:2px solid ${accentColor};margin-bottom:16px;">
   <div>
-    <div style="font-size:18pt;font-weight:700;line-height:1.2;margin:0;">${profile.fullName ?? ""}</div>
+    <div style="font-size:18pt;font-weight:700;line-height:1.2;margin:0;">${esc(profile.fullName ?? "")}</div>
     ${contacts ? `<div style="font-size:9pt;color:#666;margin-top:3px;line-height:1.4;">${contacts}</div>` : ""}
   </div>
   <div style="text-align:right;font-size:9pt;color:#666;line-height:1.6;">
