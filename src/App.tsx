@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense, type ReactNode } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, type ReactNode } from "react";
 import { Sidebar, type ViewId } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { workflowsConfig } from "@/config/workflows";
@@ -17,6 +17,7 @@ const OnboardingWizard = lazy(() => import("@/components/onboarding/OnboardingWi
 const ConsentModal = lazy(() => import("@/components/ConsentModal").then((m) => ({ default: m.ConsentModal })));
 const ProfileSettings = lazy(() => import("@/components/ProfileSettings").then((m) => ({ default: m.ProfileSettings })));
 const JobPostingsWorkspace = lazy(() => import("@/components/JobPostingsWorkspace").then((m) => ({ default: m.JobPostingsWorkspace })));
+const EmployerStudio = lazy(() => import("@/components/EmployerStudio").then((m) => ({ default: m.EmployerStudio })));
 const SecuritySettings = lazy(() => import("@/components/SecuritySettings").then((m) => ({ default: m.SecuritySettings })));
 const LandingPage = lazy(() => import("@/components/LandingPage").then((m) => ({ default: m.LandingPage })));
 const MFAChallengePage = lazy(() => import("@/components/MFAChallengePage").then((m) => ({ default: m.MFAChallengePage })));
@@ -27,7 +28,7 @@ const BlogAdmin = lazy(() => import("@/components/BlogAdmin").then((m) => ({ def
 /* ── URL hash <-> view sync ──────────────────────────────────────────
  * The hash (e.g. #/resume_generator) is the source of truth for navigation, so
  * refresh restores the view, links are shareable, and back/forward work. */
-const STATIC_VIEWS = ["dashboard", "job_postings", "blog", "blog_admin", "profile_settings", "security_settings"] as const;
+const STATIC_VIEWS = ["dashboard", "job_postings", "employer_studio", "blog", "blog_admin", "profile_settings", "security_settings"] as const;
 
 function isValidView(v: string): v is ViewId {
   return v in workflowsConfig || (STATIC_VIEWS as readonly string[]).includes(v);
@@ -110,6 +111,17 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Employers land in the Studio, not the seeker dashboard. Runs once the profile
+  // resolves, and only when the user hasn't navigated somewhere explicitly.
+  const employerRedirected = useRef(false);
+  useEffect(() => {
+    if (employerRedirected.current) return;
+    if (profile.accountType === "employer" && !viewFromHash() && activeView === "dashboard") {
+      employerRedirected.current = true;
+      window.location.hash = "/employer_studio";
+    }
+  }, [profile.accountType, activeView]);
+
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans text-foreground">
@@ -151,6 +163,7 @@ function AppInner() {
               <Suspense fallback={<Spinner />}>
                 {activeView === "dashboard" && <Dashboard onNavigate={handleSelectView} />}
                 {activeView === "job_postings" && <JobPostingsWorkspace onNavigate={handleSelectView} />}
+                {activeView === "employer_studio" && <EmployerStudio onNavigate={handleSelectView} />}
                 {activeView === "blog" && <BlogPage />}
                 {activeView === "blog_admin" && <BlogAdmin />}
                 {activeView === "profile_settings" && <ProfileSettings />}

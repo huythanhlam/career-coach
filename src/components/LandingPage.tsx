@@ -4,6 +4,8 @@ import {
   FileText,
   LineChart,
   Building,
+  Building2,
+  Briefcase,
   DollarSign,
   Users,
   PenTool,
@@ -16,24 +18,32 @@ import {
   Menu,
   Zap,
   Target,
+  Megaphone,
+  Rocket,
   TrendingUp,
   Mail,
   ArrowRight,
 } from "lucide-react";
+import type { AccountType } from "@/types/userProfile";
+import { setPendingAccountType } from "@/lib/accountMode";
 
 type AuthMode = "sign_in" | "sign_up" | "forgot_password";
 
 interface AuthModalProps {
   onClose: () => void;
   pendingTab?: string;
+  intent?: AccountType;
 }
 
-function AuthModal({ onClose, pendingTab }: AuthModalProps) {
+function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>("sign_up");
+  const [accountIntent, setAccountIntent] = useState<AccountType>(intent);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  const isEmployer = accountIntent === "employer";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +53,8 @@ function AuthModal({ onClose, pendingTab }: AuthModalProps) {
     if (pendingTab) {
       localStorage.setItem("pendingTab", pendingTab);
     }
+    // Carry the chosen account type through signup → onboarding.
+    setPendingAccountType(accountIntent);
 
     if (mode === "sign_in") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -83,11 +95,49 @@ function AuthModal({ onClose, pendingTab }: AuthModalProps) {
             </div>
             <span className="font-semibold text-sm">TechCoach AI</span>
           </div>
+
+          {/* Account intent — a clear, distinct path for candidates vs employers */}
+          {mode !== "forgot_password" && (
+            <div role="group" aria-label="Account type" className="flex gap-1 p-1 rounded-xl mb-4" style={{ background: "var(--muted)", border: "1px solid var(--border)" }}>
+              {([
+                { type: "seeker" as AccountType, icon: Briefcase, label: "I'm a candidate" },
+                { type: "employer" as AccountType, icon: Building2, label: "I'm an employer" },
+              ]).map(({ type, icon: Icon, label }) => {
+                const active = accountIntent === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setAccountIntent(type)}
+                    aria-pressed={active}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-colors"
+                    style={{
+                      height: 34,
+                      background: active ? "var(--card)" : "transparent",
+                      color: active ? "var(--primary)" : "var(--muted-foreground)",
+                      boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                    }}
+                  >
+                    <Icon className="w-3.5 h-3.5" /> {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <h2 className="font-display text-2xl font-semibold text-foreground">
-            {mode === "sign_in" ? "Welcome back" : mode === "sign_up" ? "Start for free" : "Reset password"}
+            {mode === "sign_in"
+              ? "Welcome back"
+              : mode === "forgot_password"
+                ? "Reset password"
+                : isEmployer ? "Hire with TechCoach AI" : "Start for free"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {mode === "sign_in" ? "Sign in to your account" : mode === "sign_up" ? "Create your free account" : "Enter your email to reset"}
+            {mode === "sign_in"
+              ? "Sign in to your account"
+              : mode === "forgot_password"
+                ? "Enter your email to reset"
+                : isEmployer ? "Create your employer account — post jobs and reach candidates" : "Create your free account"}
           </p>
         </div>
 
@@ -311,12 +361,14 @@ interface LandingPageProps {
 export function LandingPage({ onSignIn }: LandingPageProps) {
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | undefined>(undefined);
+  const [authIntent, setAuthIntent] = useState<AccountType>("seeker");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
   const [contactSent, setContactSent] = useState(false);
 
-  function openAuth(tab?: string) {
+  function openAuth(tab?: string, intent: AccountType = "seeker") {
     setPendingTab(tab);
+    setAuthIntent(intent);
     setAuthOpen(true);
     setMobileMenuOpen(false);
   }
@@ -345,7 +397,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            {["Features", "How It Works", "Testimonials", "About", "Contact"].map((label) => (
+            {["Features", "How It Works", "Testimonials", "About"].map((label) => (
               <a
                 key={label}
                 href={`#${label.toLowerCase().replace(/ /g, "-")}`}
@@ -354,6 +406,12 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 {label}
               </a>
             ))}
+            <a
+              href="#for-employers"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Building2 className="w-3.5 h-3.5" /> For Employers
+            </a>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -398,12 +456,26 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 {label}
               </a>
             ))}
+            <a
+              href="#for-employers"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm text-muted-foreground hover:text-foreground py-1"
+            >
+              For Employers
+            </a>
             <button
               onClick={() => openAuth()}
               className="w-full text-sm font-semibold py-2.5 rounded-xl text-white"
               style={{ background: "var(--primary)" }}
             >
               Get Started Free
+            </button>
+            <button
+              onClick={() => openAuth(undefined, "employer")}
+              className="w-full text-sm font-semibold py-2.5 rounded-xl"
+              style={{ background: "var(--muted)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            >
+              Post a job
             </button>
           </div>
         )}
@@ -536,6 +608,82 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               </span>
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* ── For Employers ── */}
+      <section id="for-employers" className="py-24 max-w-6xl mx-auto px-4 sm:px-6">
+        <div
+          className="rounded-3xl border overflow-hidden"
+          style={{ background: "var(--card)", borderColor: "rgba(217,119,87,0.30)" }}
+        >
+          <div className="grid md:grid-cols-2 gap-10 p-8 sm:p-12 items-center">
+            <div>
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-5"
+                style={{ background: "rgba(217,119,87,0.1)", color: "var(--primary)", border: "1px solid rgba(217,119,87,0.2)" }}
+              >
+                <Building2 className="w-3 h-3" /> For Employers
+              </div>
+              <h2 className="font-display text-4xl font-semibold mb-4" style={{ color: "var(--foreground)" }}>
+                Hiring? Post jobs and reach candidates
+              </h2>
+              <p className="text-muted-foreground leading-relaxed mb-6">
+                Set up your company profile, write compelling job listings with AI, and promote and
+                boost them to get in front of the right people — all in a dedicated Employer Studio.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  { icon: PenTool, text: "AI-drafted job descriptions and company profiles" },
+                  { icon: Megaphone, text: "Generate promo content for every listing" },
+                  { icon: Rocket, text: "Boost listings to feature them with candidates" },
+                ].map(({ icon: Icon, text }) => (
+                  <li key={text} className="flex items-start gap-3 text-sm">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: "rgba(217,119,87,0.12)" }}
+                    >
+                      <Icon className="w-3.5 h-3.5" style={{ color: "var(--primary)" }} />
+                    </div>
+                    <span className="mt-1">{text}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => openAuth(undefined, "employer")}
+                  className="inline-flex items-center justify-center gap-2 font-semibold px-6 py-3 rounded-xl text-white hover:opacity-90 transition-opacity"
+                  style={{ background: "var(--primary)" }}
+                >
+                  Create employer account <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => openAuth(undefined, "employer")}
+                  className="inline-flex items-center justify-center gap-2 font-medium px-6 py-3 rounded-xl transition-colors hover:bg-muted"
+                  style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}
+                >
+                  Post a job
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: "Company profiles", value: "AI-built", icon: Building2, color: "var(--primary)" },
+                { label: "Job listings", value: "From a brief", icon: FileText, color: "var(--forest)" },
+                { label: "Promotion", value: "1-click", icon: Megaphone, color: "#3B82F6" },
+                { label: "Boosted reach", value: "Featured", icon: Rocket, color: "#E8B948" },
+              ].map(({ label, value, icon: Icon, color }) => (
+                <div key={label} className="rounded-2xl p-5 border" style={{ background: "var(--background)", borderColor: "var(--border)" }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${color}18` }}>
+                    <Icon className="w-4 h-4" style={{ color }} />
+                  </div>
+                  <div className="font-display text-lg font-bold" style={{ color: "var(--foreground)" }}>{value}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -787,6 +935,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         <AuthModal
           onClose={() => setAuthOpen(false)}
           pendingTab={pendingTab}
+          intent={authIntent}
         />
       )}
     </div>

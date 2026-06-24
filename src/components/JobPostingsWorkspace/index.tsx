@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, ArrowRight, Bell, Plus, X } from "lucide-react";
+import { Sparkles, ArrowRight, Bell, Plus, X, Star, Check } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useJobPostings, type NewPosting } from "@/hooks/useJobPostings";
+import { useFeaturedListings, type FeaturedListing } from "@/hooks/useFeaturedListings";
 import { TailorResumeWorkspace } from "@/components/TailorResumeWorkspace";
 import {
   searchAggregators, scanJobs, importJobFromUrl, type ImportedJobDraft,
@@ -42,7 +43,9 @@ interface Props {
 export function JobPostingsWorkspace({ onNavigate }: Props) {
   const { profile, updateProfile, loading: profileLoading } = useUserProfile();
   const { postings, addPosting, updatePosting, deletePosting } = useJobPostings();
+  const { listings: featured } = useFeaturedListings();
 
+  const [savedFeatured, setSavedFeatured] = useState<Set<string>>(new Set());
   const [detailId, setDetailId] = useState<string | null>(null);
   const [savedOnly, setSavedOnly] = useState(false);
   const [tailorPosting, setTailorPosting] = useState<JobPosting | null>(null);
@@ -217,6 +220,21 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
     if (then === "tailor" && p) { setPreview(null); setTailorPosting(p); }
   };
 
+  // Save a boosted employer listing into the seeker's own board. Saved as a
+  // 'manual' posting (the job_postings source enum is ats|web|manual) keyed by
+  // the employer listing id for dedupe.
+  const saveFeatured = async (l: FeaturedListing) => {
+    await addPosting({
+      title: l.title,
+      company: l.companyName,
+      location: l.location,
+      description: l.description,
+      source: "manual",
+      externalId: `emp:${l.id}`,
+    });
+    setSavedFeatured((prev) => new Set(prev).add(l.id));
+  };
+
   return (
     <div className="flex-1 h-full overflow-y-auto no-scrollbar px-4 py-6 sm:px-10 sm:py-8 pb-20" style={{ background: "var(--background)" }}>
       <div style={{ maxWidth: 980, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}
@@ -311,6 +329,46 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
                   {showAllSuggested ? "Show fewer" : `Show all ${suggested.length} suggestions`}
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Featured opportunities — boosted listings posted by employers */}
+        {featured.length > 0 && !savedOnly && (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <h3 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Star className="w-4.5 h-4.5" style={{ width: 18, height: 18, color: "var(--primary)" }} fill="currentColor" />
+                Featured opportunities
+                <span style={{ fontSize: 14, color: "var(--muted-foreground)", fontWeight: 500 }}>· {featured.length}</span>
+              </h3>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Boosted roles from employers hiring now</span>
+            </div>
+            <div style={{ ...cardStyle, padding: 0, overflow: "hidden", border: "1px solid rgba(217,119,87,0.30)" }}>
+              {featured.map((l, i) => {
+                const saved = savedFeatured.has(l.id);
+                return (
+                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: i === featured.length - 1 ? "none" : "1px solid var(--border)" }}>
+                    <CompanyLogo company={l.companyName} url={undefined} size={36} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="font-display" style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {[l.companyName, l.location].filter(Boolean).join(" · ") || "—"}
+                      </div>
+                    </div>
+                    {saved ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--forest, #2F6B4F)" }}>
+                        <Check className="w-3.5 h-3.5" /> Saved
+                      </span>
+                    ) : (
+                      <button onClick={() => saveFeatured(l)}
+                        style={{ height: 34, padding: "0 14px", borderRadius: 9, flexShrink: 0, border: "1px solid var(--primary)", background: "var(--primary)", color: "#FFF", fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <Plus className="w-3.5 h-3.5" /> Save
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
