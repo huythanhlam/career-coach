@@ -121,6 +121,8 @@ export interface UserProfile {
   aiConsentGivenAt?: string;
   /** Which side of the product this account uses. Defaults to 'seeker'. */
   accountType?: AccountType;
+  /** Server-managed admin flag (read-only on the client). Gates the Blog Admin view. */
+  isAdmin?: boolean;
   createdAt: string;
   updatedAt: string;
 }

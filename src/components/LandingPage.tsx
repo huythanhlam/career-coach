@@ -415,6 +415,12 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
+            <a
+              href="#/blog"
+              className="text-sm font-medium px-4 py-2 rounded-xl transition-colors hover:bg-muted"
+            >
+              Blog
+            </a>
             <button
               onClick={() => openAuth()}
               className="text-sm font-medium px-4 py-2 rounded-xl transition-colors hover:bg-muted"
@@ -912,6 +918,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+              <a href="#/blog" className="hover:text-foreground transition-colors">Blog</a>
               <a href="#about" className="hover:text-foreground transition-colors">About</a>
               <a href="#contact" className="hover:text-foreground transition-colors">Contact</a>
               <button onClick={() => openAuth()} className="hover:text-foreground transition-colors">Sign In</button>

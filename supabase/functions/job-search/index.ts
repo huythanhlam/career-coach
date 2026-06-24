@@ -2,11 +2,19 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { safeFetchText } from "../_shared/safe-fetch.ts";
 import { htmlToMarkdown } from "../_shared/html.ts";
+import { inferFamily, museCategoriesForQuery } from "../_shared/jobTaxonomy.ts";
 
 // ── Targeted Job Postings: keyless aggregator search ───────────────────────
-// Role-only discovery across many employers using public, NO-KEY job APIs:
-// Workable's global search + Remotive. Results are full postings the user can save
-// directly. Skews remote/tech, but needs no company list and no API key.
+// Role-only discovery across many employers using public, NO-KEY job APIs. Two
+// kinds of source, unified into one ranked list:
+//   • Keyword search — Workable global, Remotive, Jobicy, Arbeitnow. Queried by
+//     the role text and filtered by title relevance (skews remote/tech).
+//   • Category search — The Muse (400k+ postings spanning every job family but
+//     with NO keyword endpoint). We translate the role into a Muse category so
+//     non-tech families (legal, healthcare, finance, HR, customer service, …)
+//     return real inventory instead of coming up empty.
+// All results are full postings the user can save directly; no company list and
+// no API key required.
 
 interface NormalizedJob {
   title: string;
@@ -18,6 +26,10 @@ interface NormalizedJob {
   remote: boolean | null;
   source: "web";
   provider: string;
+  // True for category-sourced rows (The Muse): they're matched to the query's
+  // job family rather than by title keywords, so they bypass the title-relevance
+  // threshold and are kept only when their title lands in the target family.
+  categorySourced?: boolean;
 }
 
 function str(v: unknown): string | null {
@@ -114,6 +126,89 @@ async function fromWorkableGlobal(query: string): Promise<NormalizedJob[]> {
   return out.filter((j) => j.title && j.url);
 }
 
+/**
+ * Jobicy — keyless remote-jobs API with a free-text `tag` search across many
+ * non-tech functions (legal, finance, HR, sales, customer support, marketing).
+ */
+async function fromJobicy(query: string): Promise<NormalizedJob[]> {
+  const data = await fetchJson(
+    `https://jobicy.com/api/v2/remote-jobs?count=50&tag=${encodeURIComponent(query)}`,
+  ) as { jobs?: Record<string, unknown>[] };
+  return (data.jobs ?? []).map((j) => ({
+    title: str(j.jobTitle) ?? "",
+    company: str(j.companyName),
+    location: str(j.jobGeo) ?? "Remote",
+    description: typeof j.jobDescription === "string" ? htmlToMarkdown(j.jobDescription) : (str(j.jobExcerpt) ?? ""),
+    url: str(j.url),
+    externalId: j.id != null ? `jobicy:${j.id}` : null,
+    remote: true,
+    source: "web" as const,
+    provider: "Jobicy",
+  })).filter((j) => j.title && j.url);
+}
+
+/**
+ * Arbeitnow — keyless job board (Europe-heavy) with a free-text `search` param.
+ * Broadens international and non-tech coverage; location relevance is enforced
+ * client-side by the caller's location matcher.
+ */
+async function fromArbeitnow(query: string): Promise<NormalizedJob[]> {
+  const data = await fetchJson(
+    `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(query)}`,
+  ) as { data?: Record<string, unknown>[] };
+  return (data.data ?? []).map((j) => ({
+    title: str(j.title) ?? "",
+    company: str(j.company_name),
+    location: str(j.location),
+    description: typeof j.description === "string" ? htmlToMarkdown(j.description) : "",
+    url: str(j.url),
+    externalId: str(j.slug) ? `arbeitnow:${str(j.slug)}` : null,
+    remote: typeof j.remote === "boolean" ? j.remote : null,
+    source: "web" as const,
+    provider: "Arbeitnow",
+  })).filter((j) => j.title && j.url);
+}
+
+/**
+ * The Muse — category-sourced. The public jobs API has no keyword search, so we
+ * fetch the category the role maps to (see museCategoriesForQuery) across a
+ * couple of pages. Rows are tagged categorySourced so the ranker keeps them by
+ * family match rather than title keywords. This is what gives every dropdown
+ * family — especially the non-tech ones — real postings.
+ */
+async function fromTheMuse(query: string): Promise<NormalizedJob[]> {
+  const categories = museCategoriesForQuery(query);
+  if (categories.length === 0) return [];
+  const out: NormalizedJob[] = [];
+  for (const category of categories.slice(0, 2)) {
+    for (let page = 0; page < 2; page++) {
+      const url = `https://www.themuse.com/api/public/jobs?category=${encodeURIComponent(category)}&page=${page}`;
+      const data = await fetchJson(url) as { results?: Record<string, unknown>[] };
+      const results = data.results ?? [];
+      for (const j of results) {
+        const locations = Array.isArray(j.locations)
+          ? (j.locations as Record<string, unknown>[]).map((l) => str(l.name)).filter(Boolean)
+          : [];
+        const location = locations.join(", ") || null;
+        out.push({
+          title: str(j.name) ?? "",
+          company: str((j.company as Record<string, unknown>)?.name),
+          location,
+          description: typeof j.contents === "string" ? htmlToMarkdown(j.contents) : "",
+          url: str((j.refs as Record<string, unknown>)?.landing_page),
+          externalId: j.id != null ? `muse:${j.id}` : null,
+          remote: location ? /\b(remote|flexible)\b/i.test(location) : null,
+          source: "web" as const,
+          provider: "The Muse",
+          categorySourced: true,
+        });
+      }
+      if (results.length < 20) break; // last page
+    }
+  }
+  return out.filter((j) => j.title && j.url);
+}
+
 function json(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }
@@ -166,13 +261,20 @@ Deno.serve(async (req) => {
       .filter((k: unknown): k is string => typeof k === "string")
       .map((k: string) => k.toLowerCase());
 
+    // The family the role maps to — used to keep category-sourced (Muse) rows
+    // relevant: we only keep a category row when its title lands in this family.
+    const targetFamily = inferFamily(query);
+
     const settled = await Promise.allSettled([
       fromWorkableGlobal(query),
       fromRemotive(query),
+      fromJobicy(query),
+      fromArbeitnow(query),
+      fromTheMuse(query),
     ]);
 
     // Collect, dedupe (by url/id AND company+title across sources), drop excluded
-    // titles, keep only relevant titles, then rank best-first.
+    // titles, keep relevant ones, then rank best-first.
     const scored: { job: NormalizedJob; score: number }[] = [];
     const errors: string[] = [];
     const seen = new Set<string>();
@@ -184,10 +286,24 @@ Deno.serve(async (req) => {
           const key = job.url ?? job.externalId ?? job.title;
           const ctKey = `${(job.company ?? "").toLowerCase()}|${t}`;
           if ((key && seen.has(key)) || seen.has(ctKey)) continue;
-          if (key) seen.add(key);
-          seen.add(ctKey);
           const score = titleScore(job.title, query, terms);
-          if (score >= threshold) scored.push({ job, score });
+          if (job.categorySourced) {
+            // Category rows (Muse) match the user's intent by family, not by
+            // keyword — their titles rarely contain the exact query word (search
+            // "lawyer" → "Senior Counsel"). Keep them when the title lands in the
+            // target family; when the query was too generic to map to a family
+            // (targetFamily === "other") trust the category fetch as-is. Floor the
+            // score at 1 so exact keyword matches still rank above them.
+            if (targetFamily !== "other" && inferFamily(job.title) !== targetFamily) continue;
+            if (key) seen.add(key);
+            seen.add(ctKey);
+            scored.push({ job, score: Math.max(score, 1) });
+          } else {
+            if (score < threshold) continue;
+            if (key) seen.add(key);
+            seen.add(ctKey);
+            scored.push({ job, score });
+          }
         }
       } else {
         errors.push(s.reason instanceof Error ? s.reason.message : "provider failed");

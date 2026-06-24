@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Search,
   Building2,
+  BookOpen,
   X,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -35,12 +36,14 @@ export type ViewId =
   | "company_research"
   | "mock_behavioral"
   | "employer_studio"
+  | "blog"
+  | "blog_admin"
   | "profile_settings"
   | "security_settings";
 
 export type WorkflowId = Exclude<
   ViewId,
-  "dashboard" | "profile_settings" | "security_settings" | "job_postings" | "employer_studio"
+  "dashboard" | "profile_settings" | "security_settings" | "job_postings" | "employer_studio" | "blog" | "blog_admin"
 >;
 
 interface SidebarProps {
@@ -94,6 +97,12 @@ const seekerNavGroups: NavGroup[] = [
       { id: "salary",           label: "Negotiator",    icon: DollarSign },
     ],
   },
+  {
+    name: "Learn",
+    items: [
+      { id: "blog", label: "Career Blog", icon: BookOpen },
+    ],
+  },
 ];
 
 const employerNavGroups: NavGroup[] = [
@@ -109,7 +118,11 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
   const { profile } = useUserProfile();
 
   const isEmployer = profile.accountType === "employer";
-  const navGroups = isEmployer ? employerNavGroups : seekerNavGroups;
+  const baseGroups = isEmployer ? employerNavGroups : seekerNavGroups;
+  // Admins get an extra "Admin" group with the Blog Admin view, in either mode.
+  const visibleGroups: NavGroup[] = profile.isAdmin
+    ? [...baseGroups, { name: "Admin", items: [{ id: "blog_admin", label: "Blog Admin", icon: ShieldCheck }] }]
+    : baseGroups;
 
   const displayName = profile.preferredName || profile.fullName || "Your Profile";
   const initials = displayName
@@ -176,7 +189,7 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
 
       {/* Navigation */}
       <nav className="flex-1 overflow-auto px-3 pb-3 no-scrollbar">
-        {navGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.name} className="mb-3.5">
             <div className="text-[10px] font-bold text-muted-foreground tracking-[0.22em] uppercase px-[10px] pt-2 pb-1.5">
               {group.name}

@@ -21,18 +21,31 @@ const EmployerStudio = lazy(() => import("@/components/EmployerStudio").then((m)
 const SecuritySettings = lazy(() => import("@/components/SecuritySettings").then((m) => ({ default: m.SecuritySettings })));
 const LandingPage = lazy(() => import("@/components/LandingPage").then((m) => ({ default: m.LandingPage })));
 const MFAChallengePage = lazy(() => import("@/components/MFAChallengePage").then((m) => ({ default: m.MFAChallengePage })));
+const BlogPage = lazy(() => import("@/components/BlogPage").then((m) => ({ default: m.BlogPage })));
+const PublicBlogShell = lazy(() => import("@/components/BlogPage/PublicBlogShell").then((m) => ({ default: m.PublicBlogShell })));
+const BlogAdmin = lazy(() => import("@/components/BlogAdmin").then((m) => ({ default: m.BlogAdmin })));
 
 /* ── URL hash <-> view sync ──────────────────────────────────────────
  * The hash (e.g. #/resume_generator) is the source of truth for navigation, so
  * refresh restores the view, links are shareable, and back/forward work. */
-const STATIC_VIEWS = ["dashboard", "job_postings", "employer_studio", "profile_settings", "security_settings"] as const;
+const STATIC_VIEWS = ["dashboard", "job_postings", "employer_studio", "blog", "blog_admin", "profile_settings", "security_settings"] as const;
 
 function isValidView(v: string): v is ViewId {
   return v in workflowsConfig || (STATIC_VIEWS as readonly string[]).includes(v);
 }
 
+/** True for any blog hash (`#/blog` or `#/blog/<slug>`). The blog is public, so
+ *  this is also used to route logged-out visitors to it (see AuthGate). */
+function isBlogRoute(): boolean {
+  const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
+  return h === "blog" || h.startsWith("blog/");
+}
+
 function viewFromHash(): ViewId | null {
   const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
+  // Collapse post permalinks (`blog/<slug>`) onto the single "blog" view; the
+  // BlogPage reads the slug from the hash itself.
+  if (isBlogRoute()) return "blog";
   return isValidView(h) ? h : null;
 }
 
@@ -82,8 +95,9 @@ function AppInner() {
 
   useEffect(() => {
     localStorage.removeItem("pendingTab");
-    // Canonicalize the initial URL without adding a history entry.
-    history.replaceState(null, "", `#/${activeView}`);
+    // Canonicalize the initial URL without adding a history entry. Skip blog
+    // routes so a post permalink (`#/blog/<slug>`) survives a refresh.
+    if (!isBlogRoute()) history.replaceState(null, "", `#/${activeView}`);
 
     const applyHash = () => {
       const v = viewFromHash() ?? "dashboard";
@@ -150,6 +164,8 @@ function AppInner() {
                 {activeView === "dashboard" && <Dashboard onNavigate={handleSelectView} />}
                 {activeView === "job_postings" && <JobPostingsWorkspace onNavigate={handleSelectView} />}
                 {activeView === "employer_studio" && <EmployerStudio onNavigate={handleSelectView} />}
+                {activeView === "blog" && <BlogPage />}
+                {activeView === "blog_admin" && <BlogAdmin />}
                 {activeView === "profile_settings" && <ProfileSettings />}
                 {activeView === "security_settings" && <SecuritySettings />}
 
@@ -236,14 +252,34 @@ function FullscreenSpinner() {
   );
 }
 
+/** Re-render on hash changes so the public blog route is picked up live. */
+function useBlogRoute(): boolean {
+  const [onBlog, setOnBlog] = useState(isBlogRoute());
+  useEffect(() => {
+    const sync = () => setOnBlog(isBlogRoute());
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  return onBlog;
+}
+
 function AuthGate() {
   const { session, loading, authStep, mfaFactorId, completeMfaChallenge } = useAuth();
+  const onBlogRoute = useBlogRoute();
 
   if (loading) return <FullscreenSpinner />;
 
   let content: ReactNode;
   if (!session) {
-    content = <LandingPage />;
+    // The blog is public: logged-out visitors landing on a blog URL get the
+    // blog (with minimal public chrome) instead of the marketing landing page.
+    content = onBlogRoute ? (
+      <PublicBlogShell>
+        <BlogPage />
+      </PublicBlogShell>
+    ) : (
+      <LandingPage />
+    );
   } else if (authStep === "mfa_challenge" && mfaFactorId) {
     content = (
       <MFAChallengePage
