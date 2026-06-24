@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
   Clock,
@@ -9,25 +9,19 @@ import {
   ExternalLink,
   Loader2,
   ShieldAlert,
+  PenLine,
+  Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { useBlogAdminPosts } from "@/hooks/useBlogPosts";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { BLOG_SCHEDULE, nextRun, humanizeUntil } from "@/config/blogSchedule";
+import { slugify } from "@/lib/blogDraft";
+import { createDraftFromTopic, schedulePost, cancelSchedule } from "@/services/blogAdminService";
 import type { BlogPost } from "@/types/blogPost";
 import seedTopics from "../../../data/blog/_topics.json";
-
-// Mirror the pipeline's slugify (scripts/blog/lib → company-profiles slugify) so
-// we can best-effort match backlog topics against existing post slugs.
-function slugify(s: string): string {
-  return (s ?? "")
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
+import { BlogEditor } from "./BlogEditor";
+import { ScheduledView } from "./ScheduledView";
 
 const CATEGORY_COLORS: Record<string, string> = {
   resume: "#D97757",
@@ -44,6 +38,29 @@ const color = (c: string) => CATEGORY_COLORS[c] ?? CATEGORY_COLORS.general;
 const pretty = (c: string) => c.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 const fmtDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
+
+/** Read the `blog_admin/edit/<slug>` sub-route from the hash, live across navigation. */
+function useEditSlug(): string | null {
+  const read = () => {
+    const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
+    const m = /^blog_admin\/edit\/(.+)$/.exec(h);
+    return m ? m[1] : null;
+  };
+  const [slug, setSlug] = useState<string | null>(read);
+  useEffect(() => {
+    const on = () => setSlug(read());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  return slug;
+}
+
+const goToEditor = (slug: string) => {
+  window.location.hash = `/blog_admin/edit/${slug}`;
+};
+const goToDashboard = () => {
+  window.location.hash = `/blog_admin`;
+};
 
 function StatCard({ icon: Icon, label, value, tint }: { icon: React.ElementType; label: string; value: string | number; tint: string }) {
   return (
@@ -68,10 +85,19 @@ function CategoryTag({ category }: { category: string }) {
   );
 }
 
-function PostRow({ post, queued }: { post: BlogPost; queued: boolean }) {
+function PostRow({ post, queued, onEdit }: { post: BlogPost; queued: boolean; onEdit: (slug: string) => void }) {
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 rounded-xl border"
+      role="button"
+      tabIndex={0}
+      onClick={() => onEdit(post.slug)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit(post.slug);
+        }
+      }}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors hover:border-[var(--primary)]"
       style={{ background: "var(--paper)", borderColor: "var(--border)" }}
     >
       <span className="text-xl flex-shrink-0">{post.heroEmoji || "📝"}</span>
@@ -87,12 +113,13 @@ function PostRow({ post, queued }: { post: BlogPost; queued: boolean }) {
         </div>
       </div>
       {queued ? (
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: "rgba(232,185,72,0.15)", color: "#B7791F" }}>
-          In review
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 inline-flex items-center gap-1" style={{ background: "rgba(232,185,72,0.15)", color: "#B7791F" }}>
+          <PenLine className="w-3 h-3" /> Edit
         </span>
       ) : (
         <a
           href={`#/blog/${post.slug}`}
+          onClick={(e) => e.stopPropagation()}
           className="text-xs font-semibold inline-flex items-center gap-1 flex-shrink-0 hover:underline"
           style={{ color: "var(--primary)" }}
         >
@@ -117,8 +144,13 @@ function Section({ title, count, children }: { title: string; count: number; chi
 
 export function BlogAdmin() {
   const { profile } = useUserProfile();
+  const editSlug = useEditSlug();
   const [refreshKey, setRefreshKey] = useState(0);
-  const { queued, published, loading } = useBlogAdminPosts(refreshKey);
+  const { scheduled, queued, published, loading } = useBlogAdminPosts(refreshKey);
+
+  // Generating a draft from a backlog topic, ahead of the scheduled run.
+  const [genTitle, setGenTitle] = useState<string | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const next = useMemo(() => nextRun(), []);
   const backlog = useMemo(() => {
@@ -138,6 +170,39 @@ export function BlogAdmin() {
       </div>
     );
   }
+
+  if (editSlug) {
+    return (
+      <BlogEditor
+        slug={editSlug}
+        onClose={goToDashboard}
+        onChanged={() => setRefreshKey((k) => k + 1)}
+      />
+    );
+  }
+
+  const handleTopic = async (t: { title: string; category: string }) => {
+    setGenTitle(t.title);
+    setGenError(null);
+    try {
+      const res = await createDraftFromTopic(t);
+      setRefreshKey((k) => k + 1);
+      goToEditor(res.slug);
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : "Couldn't draft this topic. Please try again.");
+    } finally {
+      setGenTitle(null);
+    }
+  };
+
+  const handleReschedule = async (slug: string, whenISO: string) => {
+    await schedulePost(slug, whenISO);
+    setRefreshKey((k) => k + 1);
+  };
+  const handleCancelSchedule = async (slug: string) => {
+    await cancelSchedule(slug);
+    setRefreshKey((k) => k + 1);
+  };
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "var(--background)" }}>
@@ -173,11 +238,22 @@ export function BlogAdmin() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
+          <StatCard icon={CalendarClock} label="Scheduled" value={loading ? "—" : scheduled.length} tint="#8B5CF6" />
           <StatCard icon={FileText} label="Queued (in review)" value={loading ? "—" : queued.length} tint="#E8B948" />
           <StatCard icon={CheckCircle2} label="Published" value={loading ? "—" : published.length} tint="#2F6B4F" />
           <StatCard icon={ListChecks} label="Backlog topics" value={backlog.length} tint="#3B82F6" />
         </div>
+
+        {genError && (
+          <div
+            className="rounded-xl border px-4 py-3 mb-6 text-sm flex items-start gap-2"
+            style={{ background: "rgba(220,38,38,0.08)", borderColor: "rgba(220,38,38,0.3)", color: "#B91C1C" }}
+          >
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>{genError}</span>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
@@ -185,14 +261,26 @@ export function BlogAdmin() {
           </div>
         ) : (
           <>
+            <Section title="Scheduled · auto-publishing" count={scheduled.length}>
+              <p className="text-xs text-muted-foreground mb-3 px-1">
+                Posts set to publish automatically at a specific time. Switch between list and calendar to find when each goes live; reschedule or cancel any of them.
+              </p>
+              <ScheduledView
+                posts={scheduled}
+                onEdit={goToEditor}
+                onReschedule={handleReschedule}
+                onCancel={handleCancelSchedule}
+              />
+            </Section>
+
             <Section title="Queued · awaiting review" count={queued.length}>
               {queued.length === 0 ? (
                 <p className="text-sm text-muted-foreground px-1">
-                  Nothing queued. The next scheduled run will draft new posts and open a review PR.
+                  Nothing queued. Draft a topic below now, or wait for the next scheduled run.
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {queued.map((p) => <PostRow key={p.slug} post={p} queued />)}
+                  {queued.map((p) => <PostRow key={p.slug} post={p} queued onEdit={goToEditor} />)}
                 </div>
               )}
             </Section>
@@ -202,27 +290,44 @@ export function BlogAdmin() {
                 <p className="text-sm text-muted-foreground px-1">No published posts yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {published.map((p) => <PostRow key={p.slug} post={p} queued={false} />)}
+                  {published.map((p) => <PostRow key={p.slug} post={p} queued={false} onEdit={goToEditor} />)}
                 </div>
               )}
             </Section>
 
             <Section title="Upcoming topic backlog" count={backlog.length}>
               <p className="text-xs text-muted-foreground mb-3 px-1">
-                Evergreen seed topics not yet covered. Each run also discovers timely trending topics via web search.
+                Evergreen seed topics not yet covered. Click one to draft it with AI now — ahead of the schedule —
+                then edit and publish it yourself. Each scheduled run also discovers timely trending topics via web search.
               </p>
               <div className="flex flex-wrap gap-2">
-                {backlog.map((t) => (
-                  <span
-                    key={t.title}
-                    className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border"
-                    style={{ background: "var(--paper)", borderColor: "var(--border)", color: "var(--foreground)" }}
-                  >
-                    {t.title}
-                    <CategoryTag category={t.category} />
-                  </span>
-                ))}
+                {backlog.map((t) => {
+                  const isGenerating = genTitle === t.title;
+                  return (
+                    <button
+                      key={t.title}
+                      onClick={() => handleTopic(t)}
+                      disabled={genTitle !== null}
+                      className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors hover:border-[var(--primary)] disabled:opacity-50"
+                      style={{ background: "var(--paper)", borderColor: "var(--border)", color: "var(--foreground)" }}
+                      title="Draft this topic now"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "var(--primary)" }} />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--primary)" }} />
+                      )}
+                      {isGenerating ? "Drafting…" : t.title}
+                      {!isGenerating && <CategoryTag category={t.category} />}
+                    </button>
+                  );
+                })}
               </div>
+              {genTitle && (
+                <p className="text-xs text-muted-foreground mt-3 px-1">
+                  Researching and drafting “{genTitle}” — this takes a moment. You'll drop into the editor when it's ready.
+                </p>
+              )}
             </Section>
           </>
         )}
