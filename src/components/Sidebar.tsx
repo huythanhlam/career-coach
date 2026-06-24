@@ -7,6 +7,7 @@ import {
   DollarSign,
   Building,
   Users,
+  Handshake,
   Compass,
   Grid,
   Plus,
@@ -17,6 +18,8 @@ import {
   Search,
   Building2,
   BookOpen,
+  Rocket,
+  Mic,
   X,
 } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -38,6 +41,9 @@ export type ViewId =
   | "employer_studio"
   | "blog"
   | "blog_admin"
+  | "networking"
+  | "negotiation"
+  | "autopilot"
   | "profile_settings"
   | "security_settings";
 
@@ -78,15 +84,18 @@ const seekerNavGroups: NavGroup[] = [
     name: "Apply",
     items: [
       { id: "job_postings",      label: "Job Postings",   icon: Search, badge: "New" },
+      { id: "autopilot",         label: "Application Autopilot", icon: Rocket, badge: "New" },
       { id: "resume_generation", label: "Resume Builder", icon: FileText },
       { id: "cover_letter",      label: "Cover Letter",   icon: Mail },
       { id: "linkedin",          label: "LinkedIn Optimization", icon: Briefcase },
+      { id: "networking",        label: "Networking",     icon: Handshake, badge: "New" },
     ],
   },
   {
     name: "Practice",
     items: [
       { id: "mock_behavioral", label: "Mock Interview",  icon: Users },
+      { id: "negotiation",     label: "Negotiation Practice", icon: Mic, badge: "New" },
     ],
   },
   {
