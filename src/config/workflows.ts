@@ -606,4 +606,48 @@ RULES:
       "Strengthen the connection to the job description.",
     ],
   },
+
+  // These three render fully custom workspaces via dedicated WorkflowView
+  // branches (like company_research / mock_behavioral), so no generic form
+  // fields are used — systemInstruction/generatePrompt only satisfy the
+  // WorkflowConfig interface.
+  networking: {
+    id: "networking",
+    title: "Networking & Referrals",
+    description: "Find the right people at a target company and draft outreach that gets replies.",
+    fields: [],
+    systemInstruction: `${basePersona}\n\nWorkflow: Networking & Referrals`,
+    generatePrompt: () => "",
+    suggestedPrompts: [
+      "Who should I reach out to at this company?",
+      "Draft a referral request for this role.",
+      "Write a warm LinkedIn note to a hiring manager.",
+    ],
+  },
+  negotiation: {
+    id: "negotiation",
+    title: "Negotiation Practice",
+    description: "Roleplay a salary negotiation against an AI recruiter, then get scored feedback.",
+    fields: [],
+    systemInstruction: `${basePersona}\n\nWorkflow: Negotiation Practice`,
+    generatePrompt: () => "",
+    suggestedPrompts: [
+      "Practice negotiating my offer.",
+      "How should I respond if they say the budget is fixed?",
+      "Help me anchor on a higher number.",
+    ],
+  },
+  autopilot: {
+    id: "autopilot",
+    title: "Application Autopilot",
+    description: "Generate tailored resume + cover-letter packages for your saved jobs, ready to review and approve.",
+    fields: [],
+    systemInstruction: `${basePersona}\n\nWorkflow: Application Autopilot`,
+    generatePrompt: () => "",
+    suggestedPrompts: [
+      "Generate application packages for my saved jobs.",
+      "Tailor my resume for these postings.",
+      "Draft cover letters for my top matches.",
+    ],
+  },
 };

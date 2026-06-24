@@ -1,10 +1,13 @@
 import { useState, useCallback, useRef } from "react";
-import { Scissors, Sparkles, CheckCircle2, X, Loader2, Save, FileText, ArrowLeft, Undo2, EyeOff, Eye } from "lucide-react";
+import { Scissors, Sparkles, CheckCircle2, X, Loader2, Save, FileText, ArrowLeft, Undo2, EyeOff, Eye, Scan } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentEditor, type DocumentEditorHandle } from "@/components/DocumentEditor";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { tailorResume, type TailorSuggestion } from "@/services/geminiService";
+import { screenResume } from "@/services/screeningSimulator";
+import type { ScreeningResult } from "@/types/screening";
+import { ScreeningVerdictView } from "@/components/ScreeningVerdict";
 import { uploadResume, downloadResume } from "@/services/resumeStorageService";
 import { JobDetailsSection, type JobDetailsValue } from "@/components/JobDetailsSection";
 
@@ -30,63 +33,70 @@ const typeLabels: Record<TailorSuggestion['type'], string> = {
 
 // ─── Setup screen ──────────────────────────────────────────────────────────────
 
+type SetupAction = "tailor" | "screen";
+
 interface SetupScreenProps {
   onStart: (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => void;
+  /** Run the recruiter's-eye screen instead of tailoring. */
+  onScreen: (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => void;
   onBack?: () => void;
   initialResumeText?: string;
   initialResumeName?: string;
   initialJobDetails?: JobDetailsValue;
 }
 
-function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName, initialJobDetails }: SetupScreenProps) {
+function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResumeName, initialJobDetails }: SetupScreenProps) {
   const { profile } = useUserProfile();
   const { session } = useAuth();
   const [selectedId, setSelectedId] = useState<string>("");
   const [jobDetails, setJobDetails] = useState<JobDetailsValue>(
     initialJobDetails ?? { jobTitle: "", companyName: "", jobDescription: "" }
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [pending, setPending] = useState<SetupAction | null>(null);
   const [error, setError] = useState("");
 
   // When a resume was pre-loaded via file upload, skip the picker
   const hasInitial = !!(initialResumeText && initialResumeName);
   const saved = profile.savedResumes ?? [];
 
-  const handleSubmit = async () => {
+  const run = async (action: SetupAction) => {
     if (!jobDetails.jobDescription.trim()) { setError("Please paste the job description."); return; }
+    const dispatch = action === "tailor" ? onStart : onScreen;
 
-    if (hasInitial) {
+    // Resolve the resume text: either the pre-loaded upload or a downloaded saved variant.
+    let resumeText = initialResumeText;
+    let resumeName = initialResumeName;
+    if (!hasInitial) {
+      if (!selectedId) { setError("Please select a resume."); return; }
+      const resume = saved.find(r => r.id === selectedId);
+      if (!resume || !session?.user?.id) return;
+      resumeName = resume.name;
       setError("");
-      setIsLoading(true);
+      setPending(action);
       try {
-        await onStart(initialResumeText!, initialResumeName!, jobDetails);
+        resumeText = await downloadResume(resume.storagePath);
       } catch (err) {
-        setError("Failed to analyze resume. Please try again.");
+        setError("Failed to load resume. Please try again.");
         console.error(err);
-      } finally {
-        setIsLoading(false);
+        setPending(null);
+        return;
       }
-      return;
     }
 
-    if (!selectedId) { setError("Please select a resume."); return; }
-    const resume = saved.find(r => r.id === selectedId);
-    if (!resume || !session?.user?.id) return;
-
     setError("");
-    setIsLoading(true);
+    setPending(action);
     try {
-      const text = await downloadResume(resume.storagePath);
-      await onStart(text, resume.name, jobDetails);
+      await dispatch(resumeText!, resumeName!, jobDetails);
     } catch (err) {
-      setError("Failed to load resume. Please try again.");
+      setError(action === "tailor" ? "Failed to analyze resume. Please try again." : "Failed to screen resume. Please try again.");
       console.error(err);
     } finally {
-      setIsLoading(false);
+      setPending(null);
     }
   };
 
   const canSubmit = hasInitial ? true : saved.length > 0 && !!selectedId;
+  const isLoading = pending !== null;
 
   return (
     <div className="flex flex-col h-full w-full items-center justify-center p-4 sm:p-8 overflow-y-auto" style={{ background: "var(--muted)" }}>
@@ -167,24 +177,44 @@ function SetupScreen({ onStart, onBack, initialResumeText, initialResumeName, in
           <p className="text-sm px-1" style={{ color: "var(--primary)" }}>{error}</p>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading || !canSubmit}
-          className="h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-opacity"
-          style={{
-            background: "var(--primary)",
-            color: "#fff",
-            opacity: isLoading || !canSubmit ? 0.5 : 1,
-            cursor: isLoading || !canSubmit ? "not-allowed" : "pointer",
-            border: "none",
-          }}
-        >
-          {isLoading ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing…</>
-          ) : (
-            <><Sparkles className="w-4 h-4" /> Tailor Resume</>
-          )}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => run("screen")}
+            disabled={isLoading || !canSubmit}
+            className="flex-1 h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-opacity"
+            style={{
+              background: "var(--card)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+              opacity: isLoading || !canSubmit ? 0.5 : 1,
+              cursor: isLoading || !canSubmit ? "not-allowed" : "pointer",
+            }}
+          >
+            {pending === "screen" ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Screening…</>
+            ) : (
+              <><Scan className="w-4 h-4" /> Screen my resume</>
+            )}
+          </button>
+          <button
+            onClick={() => run("tailor")}
+            disabled={isLoading || !canSubmit}
+            className="flex-1 h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-opacity"
+            style={{
+              background: "var(--primary)",
+              color: "#fff",
+              opacity: isLoading || !canSubmit ? 0.5 : 1,
+              cursor: isLoading || !canSubmit ? "not-allowed" : "pointer",
+              border: "none",
+            }}
+          >
+            {pending === "tailor" ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing…</>
+            ) : (
+              <><Sparkles className="w-4 h-4" /> Tailor Resume</>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -483,6 +513,7 @@ export function TailorResumeWorkspace({ onBack, initialResumeText, initialResume
   const [state, setState] = useState<
     | { phase: 'setup' }
     | { phase: 'results'; resumeName: string; resumeText: string; suggestions: TailorSuggestion[] }
+    | { phase: 'screening'; resumeName: string; resumeText: string; jobDetails: JobDetailsValue; result: ScreeningResult }
   >({ phase: 'setup' });
 
   const handleStart = useCallback(async (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => {
@@ -493,15 +524,49 @@ export function TailorResumeWorkspace({ onBack, initialResumeText, initialResume
     setState({ phase: 'results', resumeName, resumeText, suggestions });
   }, []);
 
+  const handleScreen = useCallback(async (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => {
+    const result = await screenResume(resumeText, jobDetails.jobDescription, {
+      jobTitle: jobDetails.jobTitle,
+      companyName: jobDetails.companyName,
+    });
+    setState({ phase: 'screening', resumeName, resumeText, jobDetails, result });
+  }, []);
+
   if (state.phase === 'setup') {
     return (
       <SetupScreen
         onStart={handleStart}
+        onScreen={handleScreen}
         onBack={onBack}
         initialResumeText={initialResumeText}
         initialResumeName={initialResumeName}
         initialJobDetails={initialJobDetails}
       />
+    );
+  }
+
+  if (state.phase === 'screening') {
+    return (
+      <div className="flex flex-col h-full w-full items-center overflow-y-auto p-4 sm:p-8" style={{ background: "var(--muted)" }}>
+        <div className="w-full max-w-2xl flex flex-col gap-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setState({ phase: 'setup' })} className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70" style={{ color: "var(--muted-foreground)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}>
+              <Scan className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-display text-xl font-semibold" style={{ color: "var(--foreground)" }}>Recruiter's-eye screen</h1>
+              <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>How a recruiter would judge {state.resumeName} for this role in their first pass.</p>
+            </div>
+          </div>
+          <ScreeningVerdictView
+            result={state.result}
+            onTailor={() => handleStart(state.resumeText, state.resumeName, state.jobDetails)}
+          />
+        </div>
+      </div>
     );
   }
 

@@ -3,6 +3,9 @@ import { configurePdfWorker } from "@/lib/pdfWorker";
 import { WorkflowId, type ViewId } from "@/components/Sidebar";
 import { GoalPlanningWorkspace } from "@/components/GoalPlanningWorkspace";
 import { MockInterviewWorkspace } from "@/components/MockInterviewWorkspace";
+import { NetworkingWorkspace } from "@/components/NetworkingWorkspace";
+import { NegotiationRoleplayWorkspace } from "@/components/NegotiationRoleplayWorkspace";
+import { AutopilotWorkspace } from "@/components/AutopilotWorkspace";
 import { LinkedInWorkflow } from "./workflows/LinkedInWorkflow";
 import { ResumeWorkflow } from "./workflows/ResumeWorkflow";
 import { CoverLetterWorkflow } from "./workflows/CoverLetterWorkflow";
@@ -30,6 +33,30 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
     return (
       <div className="flex-1 flex flex-col h-full relative">
         <MockInterviewWorkspace workflowId={workflowId} />
+      </div>
+    );
+  }
+
+  if (workflowId === "networking") {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <NetworkingWorkspace />
+      </div>
+    );
+  }
+
+  if (workflowId === "negotiation") {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <NegotiationRoleplayWorkspace />
+      </div>
+    );
+  }
+
+  if (workflowId === "autopilot") {
+    return (
+      <div className="flex-1 flex flex-col h-full relative">
+        <AutopilotWorkspace />
       </div>
     );
   }
