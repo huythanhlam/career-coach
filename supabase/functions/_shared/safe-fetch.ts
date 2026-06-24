@@ -40,8 +40,18 @@ export function isPrivateIp(ip: string): boolean {
   if (lower === "::1" || lower === "::") return true;
   if (lower.startsWith("fe80")) return true;         // link-local
   if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // unique-local
-  if (lower.startsWith("::ffff:")) {                 // IPv4-mapped
-    return isPrivateIp(lower.replace("::ffff:", ""));
+  // IPv4-mapped IPv6: handles both dotted-decimal (::ffff:127.0.0.1) and the
+  // hex form URL parsers normalise to (::ffff:7f00:1). A plain replace only
+  // catches the dotted form; parse the hex form explicitly.
+  if (lower.startsWith("::ffff:")) {
+    const rest = lower.slice(7);
+    const hexMapped = rest.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hexMapped) {
+      const hi = parseInt(hexMapped[1], 16);
+      const lo = parseInt(hexMapped[2], 16);
+      return isPrivateIp(`${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`);
+    }
+    return isPrivateIp(rest); // dotted-decimal form
   }
   return false;
 }

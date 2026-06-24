@@ -182,6 +182,16 @@ app.post('/api/tts', async (req, res) => {
 // reject private IPs, follow redirects manually (re-validating each hop), and
 // cap the response body size.
 function isPrivateIp(ip: string): boolean {
+  // Expand hex-form IPv4-mapped IPv6 (e.g. ::ffff:7f00:1 → 127.0.0.1).
+  // Node.js URL normalises ::ffff:127.0.0.1 to ::ffff:7f00:1 so a plain
+  // startsWith('::ffff:') + dotted-decimal strip doesn't catch the hex form.
+  const hexMapped = ip.toLowerCase().match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hexMapped) {
+    const hi = parseInt(hexMapped[1], 16);
+    const lo = parseInt(hexMapped[2], 16);
+    const dotted = `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
+    return isPrivateIp(dotted);
+  }
   const v4 = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (v4) {
     const [a, b] = v4.slice(1).map(Number);
@@ -418,6 +428,8 @@ app.post('/api/screenshot', async (req, res) => {
 });
 
 const PORT = 4000;
-app.listen(PORT, () => {
+// Bind to loopback only — this gateway shells out to the developer's Claude CLI
+// and must never be reachable from other machines on the local network.
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`TechCoach AI — Claude Gateway running at http://localhost:${PORT}`);
 });
