@@ -27,10 +27,18 @@ describe("yoeToTier", () => {
 });
 
 describe("marketCacheKey", () => {
-  it("normalizes case and whitespace", () => {
+  it("normalizes case, whitespace, and canonicalizes the location", () => {
     expect(
       marketCacheKey({ role: "  Software Engineer ", location: "  Austin ", yoe: "5" }),
-    ).toBe("software engineer|austin|3-5");
+    ).toBe("software engineer|austin, tx|3-5");
+  });
+
+  it("collapses equivalent location spellings to one key", () => {
+    const a = marketCacheKey({ role: "SWE", location: "Austin, TX", yoe: "5" });
+    const b = marketCacheKey({ role: "SWE", location: "Austin, Texas", yoe: "5" });
+    const c = marketCacheKey({ role: "SWE", location: "austin tx", yoe: "5" });
+    expect(a).toBe(b);
+    expect(b).toBe(c);
   });
 
   it("is order-independent for the two locations", () => {

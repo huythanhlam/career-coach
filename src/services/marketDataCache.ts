@@ -7,6 +7,7 @@
  * the LLM every time. Entries older than TTL_DAYS are treated as stale.
  */
 import { supabase } from "@/lib/supabaseClient";
+import { normalizeLocation } from "@/lib/locations";
 import type { MarketCompData } from "@/components/MarketCompensationViz";
 
 const TTL_DAYS = 30;
@@ -38,11 +39,15 @@ export function yoeToTier(yoe: string | number | undefined): string {
 const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
 
 /**
- * Build a stable cache key. Comparison locations are order-normalized so
- * "SF vs Austin" and "Austin vs SF" resolve to the same entry.
+ * Build a stable cache key. Locations are canonicalized (so "Austin, TX" and
+ * "Austin, Texas" share an entry) and order-normalized (so "SF vs Austin" and
+ * "Austin vs SF" resolve to the same entry).
  */
 export function marketCacheKey(parts: MarketCacheParts): string {
-  const locs = [norm(parts.location), norm(parts.secondaryLocation)].filter(Boolean).sort();
+  const locs = [parts.location, parts.secondaryLocation]
+    .map((l) => normalizeLocation(l).toLowerCase())
+    .filter(Boolean)
+    .sort();
   return `${norm(parts.role)}|${locs.join("+")}|${yoeToTier(parts.yoe)}`;
 }
 
@@ -135,8 +140,8 @@ export async function putCachedMarketData(
     await supabase.rpc("upsert_market_data_cache", {
       p_cache_key: key,
       p_role: parts.role,
-      p_location: parts.location,
-      p_secondary_location: parts.secondaryLocation ?? null,
+      p_location: normalizeLocation(parts.location),
+      p_secondary_location: parts.secondaryLocation ? normalizeLocation(parts.secondaryLocation) || null : null,
       p_yoe_tier: yoeToTier(parts.yoe),
       p_data: data,
     });

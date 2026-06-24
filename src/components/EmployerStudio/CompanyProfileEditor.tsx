@@ -2,9 +2,18 @@ import React, { useState } from "react";
 import { ArrowLeft, Building2, Loader2, Save } from "lucide-react";
 import type { EmployerCompanyProfile, CompanyCopyField } from "@/types/employerProfile";
 import { COMPANY_SIZES } from "@/types/employerProfile";
+import { INDUSTRIES } from "@/lib/jobFilters";
+import { normalizeLocation } from "@/lib/locations";
 import { generateCompanyCopy } from "@/services/employerService";
 import { AITextField } from "./AIFieldButton";
-import { cardStyle, inputStyle, labelStyle, primaryBtn, ghostBtn } from "./styles";
+import { SelectWithOther } from "./SelectWithOther";
+import { LocationInput } from "@/components/ui/LocationInput";
+import { validateCompanyDraft, type CompanyDraftErrors } from "./validation";
+import { cardStyle, inputStyle, labelStyle, errorTextStyle, fieldStyle, primaryBtn, ghostBtn } from "./styles";
+
+// Canonical industries as dropdown options; the built-in "Other…" choice replaces
+// the list's own "Other" so a custom industry can be typed in.
+const INDUSTRY_OPTIONS = INDUSTRIES.filter((i) => i.value !== "other").map((i) => ({ value: i.label, label: i.label }));
 
 interface Props {
   company: EmployerCompanyProfile | null; // null = creating a new company
@@ -17,7 +26,8 @@ type Draft = Partial<EmployerCompanyProfile>;
 export function CompanyProfileEditor({ company, onSave, onCancel }: Props) {
   const [draft, setDraft] = useState<Draft>(company ?? { name: "" });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<CompanyDraftErrors>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -29,16 +39,17 @@ export function CompanyProfileEditor({ company, onSave, onCancel }: Props) {
   });
 
   const handleSave = async () => {
-    if (!draft.name?.trim()) {
-      setError("A company name is required.");
-      return;
-    }
+    const cleaned: Draft = { ...draft, headquarters: draft.headquarters?.trim() ? normalizeLocation(draft.headquarters) : draft.headquarters };
+    const v = validateCompanyDraft(cleaned);
+    setErrors(v);
+    if (Object.keys(v).length > 0) return;
+    setDraft(cleaned);
     setSaving(true);
-    setError(null);
+    setSaveError(null);
     try {
-      await onSave(draft);
+      await onSave(cleaned);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save the company. Please try again.");
+      setSaveError(e instanceof Error ? e.message : "Couldn't save the company. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -69,16 +80,18 @@ export function CompanyProfileEditor({ company, onSave, onCancel }: Props) {
         <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={labelStyle}>Company name</label>
-            <input value={draft.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Acme Robotics" style={inputStyle} />
+            <input value={draft.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Acme Robotics" style={fieldStyle(errors.name)} />
+            {errors.name && <div style={errorTextStyle}>{errors.name}</div>}
           </div>
           <div>
             <label style={labelStyle}>Tagline</label>
-            <input value={draft.tagline ?? ""} onChange={(e) => set("tagline", e.target.value)} placeholder="One line on what you do" style={inputStyle} />
+            <input value={draft.tagline ?? ""} onChange={(e) => set("tagline", e.target.value)} placeholder="One line on what you do" style={fieldStyle(errors.tagline)} />
+            {errors.tagline && <div style={errorTextStyle}>{errors.tagline}</div>}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={labelStyle}>Industry</label>
-              <input value={draft.industry ?? ""} onChange={(e) => set("industry", e.target.value)} placeholder="e.g. Robotics" style={inputStyle} />
+              <SelectWithOther value={draft.industry ?? ""} onChange={(v) => set("industry", v)} options={INDUSTRY_OPTIONS} otherPlaceholder="Specify your industry" />
             </div>
             <div>
               <label style={labelStyle}>Company size</label>
@@ -93,16 +106,18 @@ export function CompanyProfileEditor({ company, onSave, onCancel }: Props) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={labelStyle}>Headquarters</label>
-              <input value={draft.headquarters ?? ""} onChange={(e) => set("headquarters", e.target.value)} placeholder="e.g. Austin, TX" style={inputStyle} />
+              <LocationInput value={draft.headquarters ?? ""} onChange={(v) => set("headquarters", v)} placeholder="e.g. Austin, TX" style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Website</label>
-              <input value={draft.website ?? ""} onChange={(e) => set("website", e.target.value)} placeholder="https://…" style={inputStyle} />
+              <input value={draft.website ?? ""} onChange={(e) => set("website", e.target.value)} placeholder="https://…" style={fieldStyle(errors.website)} />
+              {errors.website && <div style={errorTextStyle}>{errors.website}</div>}
             </div>
           </div>
           <div>
             <label style={labelStyle}>Logo URL</label>
-            <input value={draft.logoUrl ?? ""} onChange={(e) => set("logoUrl", e.target.value)} placeholder="https://…/logo.png" style={inputStyle} />
+            <input value={draft.logoUrl ?? ""} onChange={(e) => set("logoUrl", e.target.value)} placeholder="https://…/logo.png" style={fieldStyle(errors.logoUrl)} />
+            {errors.logoUrl && <div style={errorTextStyle}>{errors.logoUrl}</div>}
           </div>
         </div>
 
@@ -147,7 +162,7 @@ export function CompanyProfileEditor({ company, onSave, onCancel }: Props) {
           />
         </div>
 
-        {error && <div style={{ fontSize: 13, color: "var(--destructive, #ef4444)" }}>{error}</div>}
+        {saveError && <div style={{ fontSize: 13, color: "var(--destructive, #ef4444)" }}>{saveError}</div>}
 
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={handleSave} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer" }}>

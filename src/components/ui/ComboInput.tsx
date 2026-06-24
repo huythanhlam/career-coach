@@ -5,6 +5,7 @@ export function ComboInput({
   id,
   value,
   onChange,
+  onBlur,
   options,
   placeholder,
   style,
@@ -12,6 +13,7 @@ export function ComboInput({
   id?: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   options: string[];
   placeholder?: string;
   style?: React.CSSProperties;
@@ -26,6 +28,7 @@ export function ComboInput({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder}
         list={listId}
         autoComplete="off"

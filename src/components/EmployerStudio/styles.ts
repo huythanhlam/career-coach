@@ -21,6 +21,15 @@ export const labelStyle: React.CSSProperties = {
   fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 8, display: "block",
 };
 
+/** Inline field-error text, matching the editors' destructive-red convention. */
+export const errorTextStyle: React.CSSProperties = {
+  fontSize: 12, color: "var(--destructive, #ef4444)", marginTop: 6,
+};
+
+/** `inputStyle` with a destructive border when the field is invalid. */
+export const fieldStyle = (invalid?: string): React.CSSProperties =>
+  invalid ? { ...inputStyle, borderColor: "var(--destructive, #ef4444)" } : inputStyle;
+
 export const primaryBtn: React.CSSProperties = {
   height: 44, padding: "0 18px", background: "var(--primary)", color: "#FFF",
   border: "1px solid var(--primary)", borderRadius: 12, fontFamily: "inherit",
