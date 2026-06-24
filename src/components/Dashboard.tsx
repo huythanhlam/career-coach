@@ -27,6 +27,8 @@ import { computePipelineStats, STALE_AFTER_DAYS } from "@/lib/pipelineStats";
 import { MOCK_WORKFLOW_LABELS, MOCK_WORKFLOW_IDS, type MockWorkflowId } from "@/types/interviewSession";
 import type { ViewId } from "@/components/Sidebar";
 import { toast } from "@/components/ui/toast";
+import { LocationInput } from "@/components/ui/LocationInput";
+import { normalizeLocation } from "@/lib/locations";
 
 const STATUS_MAP: Record<JobStatus, { bg: string; fg: string; border: string; label: string }> = {
   suggested:    { bg: "rgba(217,119,87,0.10)",  fg: "#D97757", border: "rgba(217,119,87,0.25)",  label: "Suggested" },
@@ -91,7 +93,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       await addPosting({
         title: newApp.role,
         company: newApp.company,
-        location: newApp.location || "Remote",
+        location: normalizeLocation(newApp.location) || "Remote",
         source: "manual",
         status: newApp.status,
       });
@@ -626,7 +628,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               {[
                 { placeholder: "Company name", key: "company", required: true },
                 { placeholder: "Role / title", key: "role", required: true },
-                { placeholder: "Location (e.g. Remote, NYC)", key: "location" },
               ].map(({ placeholder, key, required }) => (
                 <input
                   key={key}
@@ -643,6 +644,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   }}
                 />
               ))}
+              <LocationInput
+                value={newApp.location || ""}
+                onChange={v => setNewApp({ ...newApp, location: v })}
+                placeholder="Location (e.g. Remote, Austin, TX)"
+                style={{
+                  height: 52, background: "var(--muted)", border: "1px solid var(--border)",
+                  borderRadius: 14, padding: "0 16px", fontFamily: "inherit", fontSize: 14,
+                  color: "var(--foreground)", outline: "none", width: "100%",
+                }}
+              />
               <select
                 value={newApp.status || "applied"}
                 onChange={e => setNewApp({ ...newApp, status: e.target.value as JobStatus })}

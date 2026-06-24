@@ -1,10 +1,20 @@
 import React, { useState } from "react";
 import { ArrowLeft, Briefcase, Loader2, Save, Sparkles, Wand2 } from "lucide-react";
 import type { EmployerJobListing, ListingStatus } from "@/types/employerListing";
-import { LISTING_STATUSES, LISTING_STATUS_META, validateListingDraft } from "@/types/employerListing";
+import { LISTING_STATUSES, LISTING_STATUS_META, EMPLOYMENT_TYPES, validateListingDraft } from "@/types/employerListing";
+import { JOB_LEVELS } from "@/lib/jobFilters";
+import { JOB_TITLES } from "@/lib/profileOptions";
+import { normalizeLocation } from "@/lib/locations";
 import { generateJobDescription } from "@/services/employerService";
 import { AITextField } from "./AIFieldButton";
-import { cardStyle, inputStyle, labelStyle, primaryBtn, ghostBtn, textareaStyle } from "./styles";
+import { SelectWithOther } from "./SelectWithOther";
+import { LocationInput } from "@/components/ui/LocationInput";
+import { cardStyle, inputStyle, labelStyle, errorTextStyle, fieldStyle, primaryBtn, ghostBtn, textareaStyle } from "./styles";
+
+const JOB_TITLE_OPTIONS = JOB_TITLES.map((t) => ({ value: t, label: t }));
+// Seniority options show their typical years-of-experience definition.
+const SENIORITY_OPTIONS = JOB_LEVELS.map((l) => ({ value: l.label, label: `${l.label} — ${l.years}` }));
+const EMPLOYMENT_OPTIONS = EMPLOYMENT_TYPES.map((t) => ({ value: t.value, label: t.label }));
 
 interface Props {
   listing: EmployerJobListing | null; // null = new
@@ -64,13 +74,15 @@ export function JobListingEditor({ listing, companyId, companyName, onSave, onCa
   };
 
   const handleSave = async () => {
-    const v = validateListingDraft(draft);
+    const cleaned: Draft = { ...draft, location: draft.location?.trim() ? normalizeLocation(draft.location) : draft.location };
+    const v = validateListingDraft(cleaned);
     setErrors(v);
     if (Object.keys(v).length > 0) return;
+    setDraft(cleaned);
     setSaving(true);
     setSaveError(null);
     try {
-      await onSave(draft);
+      await onSave(cleaned);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Couldn't save the listing. Please try again.");
     } finally {
@@ -101,34 +113,50 @@ export function JobListingEditor({ listing, companyId, companyName, onSave, onCa
         <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={labelStyle}>Job title</label>
-            <input value={draft.title ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Senior Backend Engineer" style={inputStyle} />
-            {errors.title && <div style={{ fontSize: 12, color: "var(--destructive, #ef4444)", marginTop: 6 }}>{errors.title}</div>}
+            <SelectWithOther value={draft.title ?? ""} onChange={(v) => set("title", v)} options={JOB_TITLE_OPTIONS} otherPlaceholder="Specify job title" style={errors.title ? { borderColor: "var(--destructive, #ef4444)" } : undefined} />
+            {errors.title && <div style={errorTextStyle}>{errors.title}</div>}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={labelStyle}>Location</label>
-              <input value={draft.location ?? ""} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Remote (US)" style={inputStyle} />
+              <LocationInput value={draft.location ?? ""} onChange={(v) => set("location", v || undefined)} placeholder="e.g. Austin, TX" style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Seniority</label>
-              <input value={draft.seniority ?? ""} onChange={(e) => set("seniority", e.target.value)} placeholder="e.g. Senior" style={inputStyle} />
+              <select value={draft.seniority ?? ""} onChange={(e) => set("seniority", e.target.value || undefined)} style={{ ...inputStyle, cursor: "pointer" }}>
+                <option value="">Select…</option>
+                {SENIORITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+                {draft.seniority && !SENIORITY_OPTIONS.some((o) => o.value === draft.seniority) && (
+                  <option value={draft.seniority}>{draft.seniority}</option>
+                )}
+              </select>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div>
               <label style={labelStyle}>Employment type</label>
-              <input value={draft.employmentType ?? ""} onChange={(e) => set("employmentType", e.target.value)} placeholder="Full-time" style={inputStyle} />
+              <select value={draft.employmentType ?? ""} onChange={(e) => set("employmentType", e.target.value || undefined)} style={{ ...inputStyle, cursor: "pointer" }}>
+                <option value="">Select…</option>
+                {EMPLOYMENT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+                {draft.employmentType && !EMPLOYMENT_OPTIONS.some((o) => o.value === draft.employmentType) && (
+                  <option value={draft.employmentType}>{draft.employmentType}</option>
+                )}
+              </select>
             </div>
             <div>
               <label style={labelStyle}>Salary min</label>
-              <input type="number" value={draft.salaryMin ?? ""} onChange={(e) => setNum("salaryMin", e.target.value)} placeholder="120000" style={inputStyle} />
+              <input type="number" min={0} value={draft.salaryMin ?? ""} onChange={(e) => setNum("salaryMin", e.target.value)} placeholder="120000" style={fieldStyle(errors.salary)} />
             </div>
             <div>
               <label style={labelStyle}>Salary max</label>
-              <input type="number" value={draft.salaryMax ?? ""} onChange={(e) => setNum("salaryMax", e.target.value)} placeholder="160000" style={inputStyle} />
+              <input type="number" min={0} value={draft.salaryMax ?? ""} onChange={(e) => setNum("salaryMax", e.target.value)} placeholder="160000" style={fieldStyle(errors.salary)} />
             </div>
           </div>
-          {errors.salary && <div style={{ fontSize: 12, color: "var(--destructive, #ef4444)" }}>{errors.salary}</div>}
+          {errors.salary && <div style={errorTextStyle}>{errors.salary}</div>}
           <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, color: "var(--foreground)", cursor: "pointer" }}>
               <input type="checkbox" checked={draft.remote ?? false} onChange={(e) => set("remote", e.target.checked)} />

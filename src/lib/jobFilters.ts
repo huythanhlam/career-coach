@@ -10,7 +10,9 @@
 
 interface Country { name: string; aliases: string[] } // aliases: phrases (substring) or ≤3-char codes (token)
 
-const COUNTRIES: Country[] = [
+// Canonical geo reference data — shared single source of truth. `src/lib/locations.ts`
+// imports these to build location normalization; keep this the only definition.
+export const COUNTRIES: Country[] = [
   { name: "United States", aliases: ["united states of america", "united states", "usa", "u s a", "us"] },
   { name: "United Kingdom", aliases: ["united kingdom", "great britain", "northern ireland", "england", "scotland", "wales", "britain", "uk"] },
   { name: "Canada", aliases: ["canada"] },
@@ -60,14 +62,14 @@ const COUNTRIES: Country[] = [
   { name: "Egypt", aliases: ["egypt"] },
 ];
 
-const COUNTRY_SHORT: Record<string, string> = {
+export const COUNTRY_SHORT: Record<string, string> = {
   "United States": "USA",
   "United Kingdom": "UK",
   "United Arab Emirates": "UAE",
 };
 
 interface UsState { name: string; code: string }
-const US_STATES: UsState[] = [
+export const US_STATES: UsState[] = [
   { name: "Alabama", code: "AL" }, { name: "Alaska", code: "AK" }, { name: "Arizona", code: "AZ" },
   { name: "Arkansas", code: "AR" }, { name: "California", code: "CA" }, { name: "Colorado", code: "CO" },
   { name: "Connecticut", code: "CT" }, { name: "Delaware", code: "DE" }, { name: "Florida", code: "FL" },
@@ -88,7 +90,7 @@ const US_STATES: UsState[] = [
 ];
 
 interface City { city: string; stateCode?: string; country: string }
-const CITIES: City[] = [
+export const CITIES: City[] = [
   // United States
   { city: "New York", stateCode: "NY", country: "United States" },
   { city: "Brooklyn", stateCode: "NY", country: "United States" },

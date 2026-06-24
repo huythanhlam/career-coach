@@ -41,4 +41,9 @@ describe("validateListingDraft", () => {
     const errors = validateListingDraft({ title: "SRE", companyId: "c1", salaryMin: 100000, salaryMax: 200000 });
     expect(errors.salary).toBeUndefined();
   });
+
+  it("flags a negative salary", () => {
+    const errors = validateListingDraft({ title: "SRE", companyId: "c1", salaryMin: -5 });
+    expect(errors.salary).toBeTruthy();
+  });
 });

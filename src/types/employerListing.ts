@@ -2,6 +2,16 @@ export type ListingStatus = "draft" | "published" | "closed";
 
 export const LISTING_STATUSES: ListingStatus[] = ["draft", "published", "closed"];
 
+/** Canonical employment types offered in the listing editor dropdown. */
+export const EMPLOYMENT_TYPES: { label: string; value: string }[] = [
+  { label: "Full-time", value: "Full-time" },
+  { label: "Part-time", value: "Part-time" },
+  { label: "Contract", value: "Contract" },
+  { label: "Internship", value: "Internship" },
+  { label: "Temporary", value: "Temporary" },
+  { label: "Freelance", value: "Freelance" },
+];
+
 export const LISTING_STATUS_META: Record<ListingStatus, { label: string; fg: string; bg: string; border: string }> = {
   draft:     { label: "Draft",     fg: "#71717A", bg: "rgba(113,113,122,0.10)", border: "rgba(113,113,122,0.25)" },
   published: { label: "Published", fg: "#2F6B4F", bg: "rgba(47,107,79,0.12)",   border: "rgba(47,107,79,0.30)" },
@@ -65,8 +75,8 @@ export interface ListingDraftErrors {
 }
 
 /**
- * Validate a listing before save. Title and company are required; if both salary
- * bounds are present, max must be ≥ min.
+ * Validate a listing before save. Title and company are required; salary bounds
+ * (when present) must be non-negative and, if both are set, max must be ≥ min.
  */
 export function validateListingDraft(draft: {
   title?: string;
@@ -77,11 +87,12 @@ export function validateListingDraft(draft: {
   const errors: ListingDraftErrors = {};
   if (!draft.title?.trim()) errors.title = "A job title is required.";
   if (!draft.companyId) errors.companyId = "Choose a company for this listing.";
-  if (
-    typeof draft.salaryMin === "number" &&
-    typeof draft.salaryMax === "number" &&
-    draft.salaryMax < draft.salaryMin
-  ) {
+
+  const minSet = typeof draft.salaryMin === "number" && !Number.isNaN(draft.salaryMin);
+  const maxSet = typeof draft.salaryMax === "number" && !Number.isNaN(draft.salaryMax);
+  if ((minSet && (draft.salaryMin as number) < 0) || (maxSet && (draft.salaryMax as number) < 0)) {
+    errors.salary = "Salary can't be negative.";
+  } else if (minSet && maxSet && (draft.salaryMax as number) < (draft.salaryMin as number)) {
     errors.salary = "Maximum salary must be greater than or equal to the minimum.";
   }
   return errors;

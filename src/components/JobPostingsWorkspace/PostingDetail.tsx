@@ -5,6 +5,8 @@ import { type JobPosting } from "@/types/jobPosting";
 import type { NewPosting } from "@/hooks/useJobPostings";
 import type { ImportedJobDraft } from "@/services/jobScanService";
 import { JobDescription } from "@/components/JobDescription";
+import { LocationInput } from "@/components/ui/LocationInput";
+import { normalizeLocation } from "@/lib/locations";
 import type { ViewId } from "@/components/Sidebar";
 import { inputStyle, primaryBtn, ghostBtn } from "./styles";
 import type { ListItem } from "./index";
@@ -125,13 +127,13 @@ function ImportDraftModal({
       <input style={inputStyle} placeholder="Job title *" value={title} onChange={(e) => setTitle(e.target.value)} />
       <div style={{ display: "flex", gap: 8 }}>
         <input style={inputStyle} placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
-        <input style={inputStyle} placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
+        <LocationInput style={inputStyle} placeholder="Location" value={location} onChange={setLocation} />
       </div>
       <textarea style={{ ...inputStyle, height: 180, padding: 14, resize: "vertical" as const, lineHeight: 1.5 }}
         placeholder="Job description" value={description} onChange={(e) => setDescription(e.target.value)} />
       <button style={primaryBtn} disabled={!title.trim()}
         onClick={() => onSave({
-          title: title.trim(), company: company.trim() || undefined, location: location.trim() || undefined,
+          title: title.trim(), company: company.trim() || undefined, location: location.trim() ? normalizeLocation(location) : undefined,
           description, url: draft.url, source: "web",
         })}>
         Save to board
