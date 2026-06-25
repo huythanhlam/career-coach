@@ -113,8 +113,7 @@ async function ground(ai: GoogleGenAI, system: string, prompt: string) {
 
 Deno.serve(async (req) => {
   const auth = req.headers.get("Authorization") ?? "";
-  const internal = req.headers.get("x-internal-key") ?? "";
-  if (!CRON_SECRET || (auth !== `Bearer ${CRON_SECRET}` && internal !== CRON_SECRET)) {
+  if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
   if (!GEMINI_API_KEY) {
