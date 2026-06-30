@@ -2,8 +2,10 @@
  * POST /api/tts — Vercel Node serverless function.
  *
  * Body: { text: string, voice?: string }
- * Returns: audio bytes (audio/mpeg) synthesized by the Vercel AI Gateway voice
- * models (https://vercel.com/blog/realtime-voice-agents-on-ai-gateway).
+ * Returns: { audio: base64, contentType } synthesized by the Vercel AI Gateway
+ * voice models (https://vercel.com/blog/realtime-voice-agents-on-ai-gateway).
+ * Audio is returned base64-in-JSON (not raw bytes) to mirror api/screenshot.ts —
+ * a proven-reliable transport for binary payloads from a Vercel Node function.
  *
  * Security: this endpoint is public and spends AI Gateway credits, so it (1)
  * requires a valid Supabase session (Bearer token) and (2) rate-limits per user,
@@ -77,12 +79,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  let audio: Buffer;
+  let contentType: string;
   try {
-    const { audio, contentType } = await synthesizeViaGateway(text, voice);
-    res.setHeader("Content-Type", contentType);
-    res.status(200).send(audio);
+    ({ audio, contentType } = await synthesizeViaGateway(text, voice));
   } catch (error: any) {
-    console.error("[tts] Error:", error?.message);
-    res.status(502).json({ error: "TTS backend error" });
+    // Log the full stack server-side; the status code (502) tells the client
+    // the gateway call itself failed (vs. auth/config).
+    console.error("[tts] gateway error:", error?.stack ?? error?.message ?? error);
+    if (!res.headersSent) res.status(502).json({ error: "TTS backend error" });
+    return;
   }
+
+  res.status(200).json({ audio: audio.toString("base64"), contentType });
 }
