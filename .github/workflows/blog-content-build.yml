@@ -67,7 +67,7 @@ jobs:
           npx tsx scripts/blog/build.ts $ARGS
 
       - name: Open pull request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: blog/auto-content
           base: main
