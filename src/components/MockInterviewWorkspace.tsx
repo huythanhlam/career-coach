@@ -339,7 +339,11 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   // that long, the browser drops the click's user-activation and blocks
   // audio.play() (silent "nothing happened"). A pre-warmed model generates in
   // ~1s, so playback stays inside the activation window.
-  useEffect(() => { if (mode.kind === "setup") preloadKokoro(); }, [mode.kind]);
+  // Only warm the ~80MB model when the interviewer voice is actually on (the default).
+  // A user who muted the interviewer shouldn't download the model speculatively;
+  // if they unmute here, voiceEnabled flips and this re-runs to warm it then. An
+  // explicit Sample tap still loads on demand regardless.
+  useEffect(() => { if (mode.kind === "setup" && voiceEnabled) preloadKokoro(); }, [mode.kind, voiceEnabled]);
 
   // ── Hands-free conversation: auto-submit after the user pauses speaking ──
   const [conversational, setConversational] = useState(true);
