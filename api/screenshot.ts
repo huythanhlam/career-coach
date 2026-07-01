@@ -10,7 +10,10 @@
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
-import { captureScreenshot } from "./_lib/capture";
+// Explicit .js extension: the deployed function runs as Node ESM
+// (package.json "type": "module"), which requires extensions on relative
+// imports. tsconfig's "bundler" resolution maps .js -> .ts at typecheck time.
+import { captureScreenshot } from "./_lib/capture.js";
 
 export const config = { maxDuration: 30 };
 
