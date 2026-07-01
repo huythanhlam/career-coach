@@ -14,7 +14,10 @@
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
-import { synthesizeViaGateway, TTS_TEXT_LIMIT } from "./_lib/tts";
+// NB: explicit .js extension — the deployed function runs as Node ESM
+// (package.json "type": "module"), where extensionless relative imports throw
+// ERR_MODULE_NOT_FOUND at runtime. tsconfig's "bundler" resolution maps .js -> .ts.
+import { synthesizeViaGateway, TTS_TEXT_LIMIT } from "./_lib/tts.js";
 
 export const config = { maxDuration: 30 };
 

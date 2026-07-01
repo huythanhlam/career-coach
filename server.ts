@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { spawn } from 'child_process';
 import { captureScreenshot } from './api/_lib/capture';
-import { synthesizeViaGateway, TTS_TEXT_LIMIT } from './api/_lib/tts';
+import { synthesizeViaGateway, TTS_TEXT_LIMIT } from './api/_lib/tts.js';
 
 // This Express gateway is for LOCAL DEVELOPMENT ONLY. It shells out to the
 // developer's Claude CLI (on their own subscription), which must never be
