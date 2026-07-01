@@ -8,7 +8,9 @@ export const MODELS = {
   /** Higher-quality drafting (resumes, cover letters) and coaching chat. */
   QUALITY: "claude-sonnet-4-6",
   /** Lightweight profile/data extraction. */
-  EXTRACTION: "gemini-3.1-flash-lite",
+  // gemini-2.5-flash is verified working on the project's Gemini plan; the 3.x
+  // flash models 429 "quota exceeded" on this tier, which silently broke import.
+  EXTRACTION: "gemini-2.5-flash",
   /** Search-grounded company research. */
   RESEARCH: "gemini-2.5-flash",
 } as const;

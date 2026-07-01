@@ -4,10 +4,14 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 // Map Claude model names (sent by the frontend) to Gemini equivalents.
 // The legacy 1.5/2.0 targets were retired by Google; map the Claude tiers to
-// a current, supported model.
+// a current, supported model. gemini-2.5-flash is verified working on the
+// project's Gemini plan; the 3.x flash models return HTTP 429 "quota exceeded"
+// on this billing tier, so mapping the tiers to them made every sonnet/haiku
+// call (e.g. the mock interview) fail with a gateway 500. Keep these pointed at
+// a model the key can actually reach.
 function toGeminiModel(model: string): string {
-  if (model.includes("sonnet")) return "gemini-3.1-flash-lite";
-  if (model.includes("haiku")) return "gemini-3.1-flash-lite";
+  if (model.includes("sonnet")) return "gemini-2.5-flash";
+  if (model.includes("haiku")) return "gemini-2.5-flash";
   // Already a Gemini model name (e.g. "gemini-2.5-flash")
   return model;
 }
