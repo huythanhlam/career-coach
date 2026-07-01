@@ -19,8 +19,8 @@ import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { deriveChatStatus } from "@/lib/chatStatus";
 import { stripMarkdown } from "@/lib/speechText";
 import {
-  TTS_VOICES, DEFAULT_TTS_VOICE, synthesizeSpeech, isTtsVoice, type TtsVoice,
-} from "@/services/ttsService";
+  KOKORO_VOICES, DEFAULT_KOKORO_VOICE, preloadKokoro, kokoroGenerate, isKokoroVoice, type KokoroVoice,
+} from "@/services/kokoroTts";
 import { QUESTION_BANK } from "@/config/interviewQuestions";
 import {
   SCORE_DIMENSIONS, MOCK_WORKFLOW_LABELS, STAR_ELEMENTS,
@@ -319,8 +319,8 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const [selectedVoice, setSelectedVoice] = useState<string>(() => {
     try {
       const stored = localStorage.getItem("interviewVoice");
-      return stored && isTtsVoice(stored) ? stored : DEFAULT_TTS_VOICE;
-    } catch { return DEFAULT_TTS_VOICE; }
+      return stored && isKokoroVoice(stored) ? stored : DEFAULT_KOKORO_VOICE;
+    } catch { return DEFAULT_KOKORO_VOICE; }
   });
   const [samplingVoice, setSamplingVoice] = useState<string | null>(null);
   // Surfaced when a voice preview can't be played, so a silent failure doesn't
@@ -334,6 +334,12 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     if (a) { try { a.pause(); } catch { /* ignore */ } a.src = ""; sampleAudioRef.current = null; }
   };
   useEffect(() => stopSample, []);
+  // Warm the ~80MB Kokoro model up front while the user reads the setup screen.
+  // Cold generation takes many seconds; if the user taps Sample first and waits
+  // that long, the browser drops the click's user-activation and blocks
+  // audio.play() (silent "nothing happened"). A pre-warmed model generates in
+  // ~1s, so playback stays inside the activation window.
+  useEffect(() => { if (mode.kind === "setup") preloadKokoro(); }, [mode.kind]);
 
   // ── Hands-free conversation: auto-submit after the user pauses speaking ──
   const [conversational, setConversational] = useState(true);
@@ -482,6 +488,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   /* ── Start a session ─────────────────────────────────────────────── */
   const handleStart = async () => {
     if (!requiredOk || isGenerating) return;
+    if (voiceEnabled) preloadKokoro(); // warm the in-browser voice model
     chatRef.current = createCoachingChat(buildSystemInstruction());
     // generatePrompt is typed string | parts[], but the mock workflows always build a string.
     const generated = config.generatePrompt(formData);
@@ -551,19 +558,18 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     });
   };
 
-  /** Sample a voice (plays a short line) so the user can choose. */
+  /** Sample a Kokoro voice (plays a short line) so the user can choose. */
   const sampleVoice = async (voiceId: string) => {
     // Silence the interviewer and any previous sample so previews don't overlap.
     speech.cancel();
     stopSample();
     setVoiceError(null);
     setSamplingVoice(voiceId);
-    const ac = new AbortController();
     try {
-      const blob = await synthesizeSpeech(
+      const blob = await kokoroGenerate(
         "Hi, I'm your interviewer today. Let's get started — tell me about yourself.",
         voiceId,
-        ac.signal,
+        { waitForLoad: true },
       );
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -581,7 +587,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
       });
     } catch (err) {
       console.error("Voice sample failed:", err);
-      const label = TTS_VOICES.find((v) => v.id === voiceId)?.label ?? "this voice";
+      const label = KOKORO_VOICES.find((v) => v.id === voiceId)?.label ?? "this voice";
       setVoiceError(`Couldn't play the ${label} sample — tap Sample again to try.`);
     } finally {
       setSamplingVoice(null);
@@ -591,6 +597,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const selectVoice = (voiceId: string) => {
     setSelectedVoice(voiceId);
     try { localStorage.setItem("interviewVoice", voiceId); } catch { /* ignore */ }
+    preloadKokoro();
   };
 
   /* ── Finish: score the transcript and persist the session ────────── */
@@ -1075,17 +1082,17 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
             )}
           </div>
 
-          {/* Interviewer voice — sample & choose a neural voice */}
+          {/* Interviewer voice — sample & choose a Kokoro voice */}
           <div style={{ ...cardStyle, padding: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <Volume2 className="w-4 h-4" style={{ color: "var(--primary)" }} />
               <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Interviewer voice</span>
             </div>
             <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 14px", lineHeight: 1.5 }}>
-              Natural neural voices powered by the Vercel AI Gateway. Tap ▶ to hear a sample, then choose one.
+              Top-graded Kokoro voices, running privately in your browser. Tap ▶ to hear a sample, then choose one. First sample downloads the voice model (~80MB), so it may take a moment.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {TTS_VOICES.map((v: TtsVoice) => {
+              {KOKORO_VOICES.map((v: KokoroVoice) => {
                 const isSel = selectedVoice === v.id;
                 return (
                   <div key={v.id}
