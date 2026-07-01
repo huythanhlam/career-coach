@@ -1,7 +1,6 @@
 {
   "functions": {
-    "api/screenshot.ts": { "memory": 1024, "maxDuration": 30 },
-    "api/tts.ts": { "maxDuration": 30 }
+    "api/screenshot.ts": { "memory": 1024, "maxDuration": 30 }
   },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "headers": [

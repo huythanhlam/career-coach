@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { spawn } from 'child_process';
 import { captureScreenshot } from './api/_lib/capture';
-import { synthesizeViaGateway, TTS_TEXT_LIMIT } from './api/_lib/tts.js';
 
 // This Express gateway is for LOCAL DEVELOPMENT ONLY. It shells out to the
 // developer's Claude CLI (on their own subscription), which must never be
@@ -100,35 +99,78 @@ app.post('/api/ai/generate', async (req, res) => {
   }
 });
 
-// --- Text-to-speech proxy (Vercel AI Gateway voice) ---
-// Gives the interviewer a human-sounding voice via the Vercel AI Gateway's
-// OpenAI-compatible speech endpoint
-// (https://vercel.com/blog/realtime-voice-agents-on-ai-gateway). Set
-// AI_GATEWAY_API_KEY (and optionally TTS_MODEL / TTS_VOICE). Keeps the key
-// server-side and sidesteps browser CORS. If unset, returns 501 and the
-// frontend falls back to the browser's speech synthesis.
+// --- Text-to-speech proxy (optional neural TTS backend) ---
+// Gives the interviewer a human-sounding voice. Two backends, in priority order:
+//   1. Hugging Face Inference — set HF_API_TOKEN + HF_TTS_MODEL (e.g.
+//      "hexgrad/Kokoro-82M", "facebook/mms-tts-eng", "suno/bark-small"). No GPU
+//      needed; HF hosts the model. This is the easiest path.
+//   2. A custom HTTP TTS server you run (VibeVoice/ElevenLabs/etc.) — set
+//      TTS_API_URL (+ optional TTS_API_KEY, TTS_VOICE); it must accept
+//      { text, voice } and return audio bytes.
+// Keeps any token server-side and sidesteps browser CORS. If neither is set,
+// returns 501 and the frontend falls back to the browser's speech synthesis.
 app.post('/api/tts', async (req, res) => {
   const { text, voice } = req.body as { text?: string; voice?: string };
   if (!text || typeof text !== 'string') {
     res.status(400).json({ error: 'Missing text' });
     return;
   }
-  if (text.length > TTS_TEXT_LIMIT) {
+  if (text.length > 8000) {
     res.status(400).json({ error: 'Text too long' });
     return;
   }
-  if (!process.env.AI_GATEWAY_API_KEY) {
+
+  const hfToken = process.env.HF_API_TOKEN;
+  const hfModel = process.env.HF_TTS_MODEL;
+  const customUrl = process.env.TTS_API_URL;
+  const useHf = !!(hfToken && hfModel);
+  if (!useHf && !customUrl) {
     res.status(501).json({ error: 'TTS backend not configured' });
     return;
   }
 
   try {
-    const { audio, contentType } = await synthesizeViaGateway(text, voice);
-    // base64-in-JSON transport, matching the prod api/tts function.
-    res.json({ audio: audio.toString('base64'), contentType });
+    const upstream = useHf
+      ? await fetch(`https://api-inference.huggingface.co/models/${hfModel}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${hfToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'audio/wav',
+          },
+          // wait_for_model:false → if the model is cold, HF returns 503 quickly
+          // and we fall back to the browser voice rather than blocking the turn.
+          body: JSON.stringify({ inputs: text, options: { wait_for_model: false } }),
+        })
+      : await fetch(customUrl as string, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.TTS_API_KEY ? { Authorization: `Bearer ${process.env.TTS_API_KEY}` } : {}),
+          },
+          body: JSON.stringify({ text, voice: voice ?? process.env.TTS_VOICE }),
+        });
+
+    // 503 = HF model still loading. Transient: let the client retry next turn.
+    if (upstream.status === 503) {
+      console.warn('[TTS] model loading (503) — falling back to browser voice this turn');
+      res.status(503).json({ error: 'TTS model is warming up' });
+      return;
+    }
+    const contentType = upstream.headers.get('content-type') ?? 'audio/wav';
+    // HF reports errors as JSON (sometimes with HTTP 200), never as audio.
+    if (!upstream.ok || contentType.includes('application/json')) {
+      const detail = await upstream.text().catch(() => '');
+      console.error('[TTS] backend error', upstream.status, detail.slice(0, 200));
+      res.status(502).json({ error: 'TTS backend error' });
+      return;
+    }
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.setHeader('Content-Type', contentType);
+    res.send(buf);
   } catch (err: any) {
-    console.error('[TTS] gateway failed:', err?.stack ?? err?.message);
-    res.status(502).json({ error: 'TTS backend error', detail: String(err?.message ?? err).slice(0, 300) });
+    console.error('[TTS] proxy failed:', err?.message);
+    res.status(502).json({ error: 'TTS proxy failed' });
   }
 });
 

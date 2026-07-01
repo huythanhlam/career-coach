@@ -15,7 +15,7 @@ import {
   type NegotiationSetup,
 } from "@/services/negotiationEval";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
-import { DEFAULT_TTS_VOICE } from "@/services/ttsService";
+import { DEFAULT_KOKORO_VOICE, preloadKokoro, isKokoroVoice } from "@/services/kokoroTts";
 import { COMMON_ROLES } from "@/config/workflows";
 import {
   COUNTERPART_LABELS, DIFFICULTY_LABELS, NEGOTIATION_DIMENSIONS,
@@ -61,7 +61,7 @@ export function NegotiationRoleplayWorkspace() {
   const speech = useSpeech();
   const [voiceOn, setVoiceOn] = useState(true);
   const voiceEnabled = speech.supported && voiceOn;
-  const selectedVoice = DEFAULT_TTS_VOICE;
+  const selectedVoice = isKokoroVoice(DEFAULT_KOKORO_VOICE) ? DEFAULT_KOKORO_VOICE : DEFAULT_KOKORO_VOICE;
 
   const conversationalRef = useRef(true);
   const handleSendRef = useRef<(t: string) => void>(() => {});
@@ -88,6 +88,7 @@ export function NegotiationRoleplayWorkspace() {
   });
 
   useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { if (mode.kind === "setup") preloadKokoro(); }, [mode.kind]);
   useEffect(() => () => { speech.cancel(); clearSilence(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startListening = () => {
@@ -126,6 +127,7 @@ export function NegotiationRoleplayWorkspace() {
 
   const handleStart = async () => {
     if (!role.trim() || isGenerating) return;
+    if (voiceEnabled) preloadKokoro();
     const setup: NegotiationSetup = {
       role: role.trim(),
       counterpart,
