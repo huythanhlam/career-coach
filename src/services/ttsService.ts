@@ -84,7 +84,16 @@ export async function synthesizeSpeech(
     signal: combined,
   });
   if (res.status === 501) throw new TtsUnavailableError("TTS backend not configured");
-  if (!res.ok) throw new Error(`TTS request failed (${res.status})`);
+  if (!res.ok) {
+    // Surface the server's error detail (see api/tts.ts) so failures are
+    // diagnosable from the browser console without server-log access.
+    let detail = "";
+    try {
+      const body = (await res.json()) as { error?: string; detail?: string };
+      detail = body.detail || body.error || "";
+    } catch { /* non-JSON body */ }
+    throw new Error(`TTS request failed (${res.status})${detail ? `: ${detail}` : ""}`);
+  }
   // The proxy returns audio as base64-in-JSON (see api/tts.ts) — decode to a Blob.
   const data = (await res.json()) as { audio?: string; contentType?: string };
   if (!data.audio) throw new Error("TTS returned empty audio");

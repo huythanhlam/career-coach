@@ -49,47 +49,56 @@ async function authenticate(req: VercelRequest): Promise<string | null> {
   }
 }
 
+const detailOf = (e: any) => String(e?.message ?? e).slice(0, 300);
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
-
-  const userId = await authenticate(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  if (isRateLimited(userId)) {
-    res.status(429).json({ error: "Too many requests — please wait a moment and try again." });
-    return;
-  }
-
-  const { text, voice } = (req.body ?? {}) as { text?: string; voice?: string };
-  if (!text || typeof text !== "string") {
-    res.status(400).json({ error: "Missing text" });
-    return;
-  }
-  if (text.length > TTS_TEXT_LIMIT) {
-    res.status(400).json({ error: "Text too long" });
-    return;
-  }
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    res.status(501).json({ error: "TTS backend not configured" });
-    return;
-  }
-
-  let audio: Buffer;
-  let contentType: string;
   try {
-    ({ audio, contentType } = await synthesizeViaGateway(text, voice));
-  } catch (error: any) {
-    // Log the full stack server-side; the status code (502) tells the client
-    // the gateway call itself failed (vs. auth/config).
-    console.error("[tts] gateway error:", error?.stack ?? error?.message ?? error);
-    if (!res.headersSent) res.status(502).json({ error: "TTS backend error" });
-    return;
-  }
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
 
-  res.status(200).json({ audio: audio.toString("base64"), contentType });
+    const userId = await authenticate(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (isRateLimited(userId)) {
+      res.status(429).json({ error: "Too many requests — please wait a moment and try again." });
+      return;
+    }
+
+    const { text, voice } = (req.body ?? {}) as { text?: string; voice?: string };
+    if (!text || typeof text !== "string") {
+      res.status(400).json({ error: "Missing text" });
+      return;
+    }
+    if (text.length > TTS_TEXT_LIMIT) {
+      res.status(400).json({ error: "Text too long" });
+      return;
+    }
+    if (!process.env.AI_GATEWAY_API_KEY) {
+      res.status(501).json({ error: "TTS backend not configured" });
+      return;
+    }
+
+    let audio: Buffer;
+    let contentType: string;
+    try {
+      ({ audio, contentType } = await synthesizeViaGateway(text, voice));
+    } catch (error: any) {
+      // Log the full stack server-side; 502 tells the client the gateway call
+      // itself failed (vs. auth/config). `detail` surfaces the reason to the
+      // browser Network tab so it's diagnosable without server-log access.
+      console.error("[tts] gateway error:", error?.stack ?? error?.message ?? error);
+      if (!res.headersSent) res.status(502).json({ error: "TTS backend error", detail: detailOf(error) });
+      return;
+    }
+
+    res.status(200).json({ audio: audio.toString("base64"), contentType });
+  } catch (error: any) {
+    // Anything the checks above didn't handle — never let it become a bare 500.
+    console.error("[tts] unhandled error:", error?.stack ?? error?.message ?? error);
+    if (!res.headersSent) res.status(500).json({ error: "TTS failed", detail: detailOf(error) });
+  }
 }

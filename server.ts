@@ -128,7 +128,7 @@ app.post('/api/tts', async (req, res) => {
     res.json({ audio: audio.toString('base64'), contentType });
   } catch (err: any) {
     console.error('[TTS] gateway failed:', err?.stack ?? err?.message);
-    res.status(502).json({ error: 'TTS backend error' });
+    res.status(502).json({ error: 'TTS backend error', detail: String(err?.message ?? err).slice(0, 300) });
   }
 });
 
