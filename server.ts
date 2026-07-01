@@ -124,10 +124,10 @@ app.post('/api/tts', async (req, res) => {
 
   try {
     const { audio, contentType } = await synthesizeViaGateway(text, voice);
-    res.setHeader('Content-Type', contentType);
-    res.send(audio);
+    // base64-in-JSON transport, matching the prod api/tts function.
+    res.json({ audio: audio.toString('base64'), contentType });
   } catch (err: any) {
-    console.error('[TTS] gateway failed:', err?.message);
+    console.error('[TTS] gateway failed:', err?.stack ?? err?.message);
     res.status(502).json({ error: 'TTS backend error' });
   }
 });

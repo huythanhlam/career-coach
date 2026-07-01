@@ -85,7 +85,16 @@ export async function synthesizeSpeech(
   });
   if (res.status === 501) throw new TtsUnavailableError("TTS backend not configured");
   if (!res.ok) throw new Error(`TTS request failed (${res.status})`);
-  const blob = await res.blob();
-  if (!blob.size) throw new Error("TTS returned empty audio");
-  return blob;
+  // The proxy returns audio as base64-in-JSON (see api/tts.ts) — decode to a Blob.
+  const data = (await res.json()) as { audio?: string; contentType?: string };
+  if (!data.audio) throw new Error("TTS returned empty audio");
+  return new Blob([base64ToBytes(data.audio)], { type: data.contentType || "audio/mpeg" });
+}
+
+/** Decode a base64 string to raw bytes (browser-safe, no Buffer). */
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
