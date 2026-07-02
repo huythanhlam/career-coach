@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "typecheck:strict": "node scripts/strict-ratchet.mjs",
     "server": "tsx server.ts",
     "profiles:seed-list": "tsx scripts/company-profiles/seedList.ts",
     "profiles:build": "tsx scripts/company-profiles/build.ts",
