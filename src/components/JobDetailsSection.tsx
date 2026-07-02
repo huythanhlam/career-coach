@@ -45,7 +45,12 @@ const labelStyle: React.CSSProperties = {
  * job description (with paste/URL import). Controlled via `value`/`onChange`;
  * the paste⇄URL toggle, fetch state, and suggestion lists are internal.
  */
-export function JobDetailsSection({ value, onChange, hideTitleCompany = false, jobDescriptionOptional = false }: JobDetailsSectionProps) {
+export function JobDetailsSection({
+  value,
+  onChange,
+  hideTitleCompany = false,
+  jobDescriptionOptional = false,
+}: JobDetailsSectionProps) {
   const { profile } = useUserProfile();
 
   const [jdInputMode, setJdInputMode] = useState<"paste" | "url">("paste");
@@ -54,10 +59,17 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
   const [urlError, setUrlError] = useState("");
 
   // Suggestions from the user's own work history, then common options.
-  const historyTitles = [...new Set((profile.workHistory ?? []).map((w) => w.role).filter(Boolean))];
-  const historyCompanies = [...new Set((profile.workHistory ?? []).map((w) => w.company).filter(Boolean))];
+  const historyTitles = [
+    ...new Set((profile.workHistory ?? []).map((w) => w.role).filter(Boolean)),
+  ];
+  const historyCompanies = [
+    ...new Set((profile.workHistory ?? []).map((w) => w.company).filter(Boolean)),
+  ];
   const titleOptions = [...historyTitles, ...JOB_TITLES.filter((t) => !historyTitles.includes(t))];
-  const companyOptions = [...historyCompanies, ...SP500_COMPANIES.filter((c) => !historyCompanies.includes(c))];
+  const companyOptions = [
+    ...historyCompanies,
+    ...SP500_COMPANIES.filter((c) => !historyCompanies.includes(c)),
+  ];
 
   const set = (patch: Partial<JobDetailsValue>) => onChange({ ...value, ...patch });
 
@@ -72,7 +84,11 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
       const token = sessionData.session?.access_token ?? "";
       const res = await fetch(`${supabaseUrl}/functions/v1/fetch-url`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "apikey": supabaseAnonKey, "Authorization": `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ url: jdUrl.trim() }),
       });
       const data = await res.json();
@@ -83,11 +99,17 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "js_rendered") {
-        setUrlError("This job board loads content dynamically and can't be imported automatically. Copy the job description text and paste it below.");
+        setUrlError(
+          "This job board loads content dynamically and can't be imported automatically. Copy the job description text and paste it below.",
+        );
       } else if (msg.includes("Not Found") || msg.includes("404")) {
-        setUrlError("That URL returned a 404 — double-check the link is for a specific job posting, not a search results page.");
+        setUrlError(
+          "That URL returned a 404 — double-check the link is for a specific job posting, not a search results page.",
+        );
       } else {
-        setUrlError("Couldn't import from this URL. Many job boards (Lever, Ashby, Greenhouse) load their content with JavaScript which can't be fetched server-side. Copy the job description and paste it instead.");
+        setUrlError(
+          "Couldn't import from this URL. Many job boards (Lever, Ashby, Greenhouse) load their content with JavaScript which can't be fetched server-side. Copy the job description and paste it instead.",
+        );
       }
     } finally {
       setIsFetchingUrl(false);
@@ -95,8 +117,26 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
   };
 
   return (
-    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>
+    <div
+      style={{
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 18,
+        padding: 24,
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          color: "var(--muted-foreground)",
+        }}
+      >
         Job Details
       </div>
 
@@ -127,28 +167,62 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
 
       <div>
         {/* Label row with paste/URL toggle */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 8,
+          }}
+        >
           <label style={{ ...labelStyle, marginBottom: 0 }}>
-            Job Description{jobDescriptionOptional
-              ? <span style={{ fontWeight: 400, color: "var(--muted-foreground)" }}> (optional)</span>
-              : <span style={{ color: "var(--primary)" }}> *</span>}
+            Job Description
+            {jobDescriptionOptional ? (
+              <span style={{ fontWeight: 400, color: "var(--muted-foreground)" }}> (optional)</span>
+            ) : (
+              <span style={{ color: "var(--primary)" }}> *</span>
+            )}
           </label>
-          <div style={{ display: "flex", gap: 4, background: "var(--muted)", borderRadius: 8, padding: 3 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 4,
+              background: "var(--muted)",
+              borderRadius: 8,
+              padding: 3,
+            }}
+          >
             {(["paste", "url"] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
-                onClick={() => { setJdInputMode(mode); setUrlError(""); }}
+                onClick={() => {
+                  setJdInputMode(mode);
+                  setUrlError("");
+                }}
                 style={{
-                  height: 28, padding: "0 10px", border: "none", borderRadius: 6, cursor: "pointer",
-                  fontFamily: "inherit", fontSize: 12, fontWeight: 500,
+                  height: 28,
+                  padding: "0 10px",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 12,
+                  fontWeight: 500,
                   background: jdInputMode === mode ? "var(--card)" : "transparent",
                   color: jdInputMode === mode ? "var(--foreground)" : "var(--muted-foreground)",
                   boxShadow: jdInputMode === mode ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                  display: "flex", alignItems: "center", gap: 5, transition: "all 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  transition: "all 0.15s",
                 }}
               >
-                {mode === "paste" ? <AlignLeft className="w-3 h-3" /> : <Link className="w-3 h-3" />}
+                {mode === "paste" ? (
+                  <AlignLeft className="w-3 h-3" />
+                ) : (
+                  <Link className="w-3 h-3" />
+                )}
                 {mode === "paste" ? "Paste" : "URL"}
               </button>
             ))}
@@ -169,8 +243,16 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
               <input
                 type="url"
                 value={jdUrl}
-                onChange={(e) => { setJdUrl(e.target.value); setUrlError(""); }}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleFetchUrl(); } }}
+                onChange={(e) => {
+                  setJdUrl(e.target.value);
+                  setUrlError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleFetchUrl();
+                  }
+                }}
                 placeholder="https://boards.greenhouse.io/…"
                 style={{ ...fieldStyle, flex: 1, height: 48, padding: "0 14px" }}
               />
@@ -179,14 +261,28 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
                 onClick={handleFetchUrl}
                 disabled={isFetchingUrl || !jdUrl.trim()}
                 style={{
-                  height: 48, padding: "0 18px", border: "none", borderRadius: 12,
-                  background: "var(--primary)", color: "#fff", fontFamily: "inherit",
-                  fontSize: 13, fontWeight: 600, cursor: isFetchingUrl ? "not-allowed" : "pointer",
+                  height: 48,
+                  padding: "0 18px",
+                  border: "none",
+                  borderRadius: 12,
+                  background: "var(--primary)",
+                  color: "#fff",
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: isFetchingUrl ? "not-allowed" : "pointer",
                   opacity: isFetchingUrl || !jdUrl.trim() ? 0.6 : 1,
-                  display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  whiteSpace: "nowrap",
                 }}
               >
-                {isFetchingUrl ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link className="w-3.5 h-3.5" />}
+                {isFetchingUrl ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Link className="w-3.5 h-3.5" />
+                )}
                 {isFetchingUrl ? "Fetching…" : "Import"}
               </button>
             </div>
@@ -194,11 +290,36 @@ export function JobDetailsSection({ value, onChange, hideTitleCompany = false, j
               <div style={{ fontSize: 12, color: "#ef4444", lineHeight: 1.5 }}>{urlError}</div>
             )}
             {value.jobDescription && (
-              <div style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ color: "#22c55e" }}>✓</span> Job description imported — <button type="button" onClick={() => setJdInputMode("paste")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, color: "var(--primary)", fontFamily: "inherit" }}>review it</button>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--muted-foreground)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <span style={{ color: "#22c55e" }}>✓</span> Job description imported —{" "}
+                <button
+                  type="button"
+                  onClick={() => setJdInputMode("paste")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    color: "var(--primary)",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  review it
+                </button>
               </div>
             )}
-            <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: 0, lineHeight: 1.5 }}>
+            <p
+              style={{ fontSize: 11, color: "var(--muted-foreground)", margin: 0, lineHeight: 1.5 }}
+            >
               Paste a link to the job posting and we'll extract the description automatically.
             </p>
           </div>

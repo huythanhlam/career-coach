@@ -26,8 +26,7 @@ export interface EditablePost {
 
 /** Outcome of trying to create a draft from a backlog topic. */
 export type CreateDraftResult =
-  | { kind: "created"; slug: string }
-  | { kind: "exists"; slug: string };
+  { kind: "created"; slug: string } | { kind: "exists"; slug: string };
 
 /**
  * Generate a draft for a topic and persist it as an unpublished `draft` row.

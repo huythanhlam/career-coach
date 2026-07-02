@@ -26,13 +26,7 @@ export const TONE_LABELS: Record<OutreachTone, string> = {
   direct: "Direct",
 };
 
-export type OutreachStatus =
-  | "to_reach_out"
-  | "sent"
-  | "replied"
-  | "intro"
-  | "referred"
-  | "closed";
+export type OutreachStatus = "to_reach_out" | "sent" | "replied" | "intro" | "referred" | "closed";
 
 export const STATUS_LABELS: Record<OutreachStatus, string> = {
   to_reach_out: "To reach out",

@@ -44,7 +44,10 @@ export function NetworkingWorkspace() {
 
   const handleFind = async () => {
     const name = company.trim();
-    if (!name) { setError("Enter a company name."); return; }
+    if (!name) {
+      setError("Enter a company name.");
+      return;
+    }
     setError("");
     setIsSearching(true);
     setTargets([]);
@@ -85,22 +88,40 @@ export function NetworkingWorkspace() {
       {icon}
       {label}
       {badge != null && badge > 0 && (
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}>{badge}</span>
+        <span
+          className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+          style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}
+        >
+          {badge}
+        </span>
       )}
     </button>
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--muted)" }}>
+    <div
+      className="flex-1 flex flex-col h-full overflow-hidden"
+      style={{ background: "var(--muted)" }}
+    >
       {/* Header */}
       <div className="px-4 sm:px-8 pt-6 pb-3 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}
+          >
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-display text-xl font-semibold" style={{ color: "var(--foreground)" }}>Networking & Referrals</h1>
-            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Find the right people at a company and send outreach that actually gets replies.</p>
+            <h1
+              className="font-display text-xl font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              Networking & Referrals
+            </h1>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Find the right people at a company and send outreach that actually gets replies.
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -114,28 +135,53 @@ export function NetworkingWorkspace() {
         <div className="px-4 sm:px-8 pb-10 max-w-2xl mx-auto w-full flex flex-col gap-5">
           {tab === "find" ? (
             <>
-              <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Target company</label>
+              <div
+                className="rounded-2xl p-5 flex flex-col gap-3"
+                style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+              >
+                <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                  Target company
+                </label>
                 <div className="flex gap-2">
                   <input
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleFind(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleFind();
+                    }}
                     placeholder="e.g. Stripe"
                     className="flex-1 h-11 rounded-xl px-3 text-sm"
-                    style={{ background: "var(--muted)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    style={{
+                      background: "var(--muted)",
+                      border: "1px solid var(--border)",
+                      color: "var(--foreground)",
+                    }}
                   />
                   <button
                     onClick={handleFind}
                     disabled={isSearching}
                     className="h-11 px-5 rounded-xl text-sm font-semibold flex items-center gap-2"
-                    style={{ background: "var(--primary)", color: "#fff", border: "none", opacity: isSearching ? 0.6 : 1, cursor: isSearching ? "not-allowed" : "pointer" }}
+                    style={{
+                      background: "var(--primary)",
+                      color: "#fff",
+                      border: "none",
+                      opacity: isSearching ? 0.6 : 1,
+                      cursor: isSearching ? "not-allowed" : "pointer",
+                    }}
                   >
-                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    {isSearching ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
                     Find people
                   </button>
                 </div>
-                {error && <p className="text-xs" style={{ color: "var(--primary)" }}>{error}</p>}
+                {error && (
+                  <p className="text-xs" style={{ color: "var(--primary)" }}>
+                    {error}
+                  </p>
+                )}
               </div>
 
               {targets.length > 0 && (
@@ -143,7 +189,11 @@ export function NetworkingWorkspace() {
               )}
             </>
           ) : (
-            <OutreachTracker contacts={contacts} onUpdate={updateContact} onDelete={deleteContact} />
+            <OutreachTracker
+              contacts={contacts}
+              onUpdate={updateContact}
+              onDelete={deleteContact}
+            />
           )}
         </div>
       </ScrollArea>
@@ -154,7 +204,10 @@ export function NetworkingWorkspace() {
           companyIntel={companyIntel}
           target={composing}
           onClose={() => setComposing(null)}
-          onSave={async (c) => { await handleSave(c); setComposing(null); }}
+          onSave={async (c) => {
+            await handleSave(c);
+            setComposing(null);
+          }}
         />
       )}
     </div>

@@ -68,11 +68,17 @@ function PostCard({ post }: { post: BlogPost }) {
         >
           {post.heroEmoji || "📝"}
         </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: `${color}18`, color }}>
+        <span
+          className="text-xs font-semibold px-2.5 py-1 rounded-full"
+          style={{ background: `${color}18`, color }}
+        >
           {prettyCategory(post.category)}
         </span>
       </div>
-      <h3 className="font-semibold text-base mb-2 leading-snug" style={{ color: "var(--foreground)" }}>
+      <h3
+        className="font-semibold text-base mb-2 leading-snug"
+        style={{ color: "var(--foreground)" }}
+      >
         {post.title}
       </h3>
       <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">{post.excerpt}</p>
@@ -91,15 +97,23 @@ function BlogList() {
       <header className="mb-10 text-center">
         <div
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4"
-          style={{ background: "rgba(217,119,87,0.1)", color: "var(--primary)", border: "1px solid rgba(217,119,87,0.2)" }}
+          style={{
+            background: "rgba(217,119,87,0.1)",
+            color: "var(--primary)",
+            border: "1px solid rgba(217,119,87,0.2)",
+          }}
         >
           <BookOpen className="w-3.5 h-3.5" /> Career Insights
         </div>
-        <h1 className="font-display text-3xl sm:text-5xl font-semibold mb-3" style={{ color: "var(--foreground)" }}>
+        <h1
+          className="font-display text-3xl sm:text-5xl font-semibold mb-3"
+          style={{ color: "var(--foreground)" }}
+        >
           The TechCoach AI Blog
         </h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
-          Practical, no-fluff guidance on resumes, interviews, salary negotiation, career pivots, and the job market.
+          Practical, no-fluff guidance on resumes, interviews, salary negotiation, career pivots,
+          and the job market.
         </p>
       </header>
 
@@ -130,7 +144,11 @@ function BlogDetail({ slug }: { slug: string }) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
         <p className="text-muted-foreground mb-4">This post couldn't be found.</p>
-        <button onClick={goToList} className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
+        <button
+          onClick={goToList}
+          className="text-sm font-semibold"
+          style={{ color: "var(--primary)" }}
+        >
           ← Back to all posts
         </button>
       </div>
@@ -149,21 +167,43 @@ function BlogDetail({ slug }: { slug: string }) {
 
       <div className="flex items-center gap-3 mb-4">
         <span className="text-3xl">{post.heroEmoji || "📝"}</span>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: `${color}18`, color }}>
+        <span
+          className="text-xs font-semibold px-2.5 py-1 rounded-full"
+          style={{ background: `${color}18`, color }}
+        >
           {prettyCategory(post.category)}
         </span>
       </div>
 
-      <h1 className="font-display text-3xl sm:text-4xl font-semibold leading-tight mb-4" style={{ color: "var(--foreground)" }}>
+      <h1
+        className="font-display text-3xl sm:text-4xl font-semibold leading-tight mb-4"
+        style={{ color: "var(--foreground)" }}
+      >
         {post.title}
       </h1>
 
-      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-8 pb-8 border-b" style={{ borderColor: "var(--border)" }}>
-        <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {post.readingMinutes} min read</span>
-        {post.publishedAt && <span>{new Date(post.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span>}
+      <div
+        className="flex items-center gap-4 text-xs text-muted-foreground mb-8 pb-8 border-b"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <span className="flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5" /> {post.readingMinutes} min read
+        </span>
+        {post.publishedAt && (
+          <span>
+            {new Date(post.publishedAt).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </span>
+        )}
       </div>
 
-      <div className="prose prose-sm sm:prose-base max-w-none" style={{ color: "var(--foreground)" }}>
+      <div
+        className="prose prose-sm sm:prose-base max-w-none"
+        style={{ color: "var(--foreground)" }}
+      >
         <Markdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>{post.content}</Markdown>
       </div>
 
@@ -171,7 +211,11 @@ function BlogDetail({ slug }: { slug: string }) {
         <div className="flex flex-wrap items-center gap-2 mt-10">
           <Tag className="w-3.5 h-3.5 text-muted-foreground" />
           {post.tags.map((t) => (
-            <span key={t} className="text-xs px-2.5 py-1 rounded-full" style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
+            <span
+              key={t}
+              className="text-xs px-2.5 py-1 rounded-full"
+              style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}
+            >
               {t}
             </span>
           ))}
@@ -180,7 +224,9 @@ function BlogDetail({ slug }: { slug: string }) {
 
       {post.sources.length > 0 && (
         <div className="mt-10 pt-8 border-t" style={{ borderColor: "var(--border)" }}>
-          <h3 className="font-semibold text-sm mb-3" style={{ color: "var(--foreground)" }}>Sources</h3>
+          <h3 className="font-semibold text-sm mb-3" style={{ color: "var(--foreground)" }}>
+            Sources
+          </h3>
           <ul className="space-y-2">
             {post.sources.map((s) => (
               <li key={s.url}>

@@ -21,11 +21,7 @@ export function SkillsPicker({ selected, onChange }: Props) {
   }, []);
 
   function toggle(skill: string) {
-    onChange(
-      selected.includes(skill)
-        ? selected.filter((s) => s !== skill)
-        : [...selected, skill]
-    );
+    onChange(selected.includes(skill) ? selected.filter((s) => s !== skill) : [...selected, skill]);
   }
 
   const q = query.toLowerCase();
@@ -35,7 +31,7 @@ export function SkillsPicker({ selected, onChange }: Props) {
       if (matches.length) acc[cat] = matches;
       return acc;
     },
-    {}
+    {},
   );
 
   return (
@@ -84,7 +80,10 @@ export function SkillsPicker({ selected, onChange }: Props) {
             className="flex items-center gap-2 px-3 py-2"
             style={{ borderBottom: "1px solid var(--border)" }}
           >
-            <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
+            <Search
+              className="w-3.5 h-3.5 flex-shrink-0"
+              style={{ color: "var(--muted-foreground)" }}
+            />
             <input
               autoFocus
               type="text"

@@ -68,20 +68,17 @@ export function useSavedAnalyses() {
           yoe: data.yoe || null,
           level: data.level || null,
           market_data: data.marketData ?? null,
-          company_intel:
-            typeof data.companyIntel === "string" ? data.companyIntel : null,
+          company_intel: typeof data.companyIntel === "string" ? data.companyIntel : null,
           resume_fit: data.resumeFit ?? null,
           interview_strategy:
-            typeof data.interviewStrategy === "string"
-              ? data.interviewStrategy
-              : null,
+            typeof data.interviewStrategy === "string" ? data.interviewStrategy : null,
           resume_file_name: data.resumeFileName,
         })
         .select()
         .single();
       if (row) setAnalyses((prev) => [rowToAnalysis(row), ...prev]);
     },
-    [user]
+    [user],
   );
 
   const deleteAnalysis = useCallback(async (id: string) => {

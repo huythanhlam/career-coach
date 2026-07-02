@@ -1,5 +1,18 @@
 import { useState, useCallback, useRef } from "react";
-import { Scissors, Sparkles, CheckCircle2, X, Loader2, Save, FileText, ArrowLeft, Undo2, EyeOff, Eye, Scan } from "lucide-react";
+import {
+  Scissors,
+  Sparkles,
+  CheckCircle2,
+  X,
+  Loader2,
+  Save,
+  FileText,
+  ArrowLeft,
+  Undo2,
+  EyeOff,
+  Eye,
+  Scan,
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentEditor, type DocumentEditorHandle } from "@/components/DocumentEditor";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -15,20 +28,32 @@ function generateId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-type SuggestionStatus = 'pending' | 'applied' | 'dismissed';
+type SuggestionStatus = "pending" | "applied" | "dismissed";
 
-const PRIORITY_ORDER: Record<'high' | 'medium' | 'low', number> = { high: 0, medium: 1, low: 2 };
+const PRIORITY_ORDER: Record<"high" | "medium" | "low", number> = { high: 0, medium: 1, low: 2 };
 
-const priorityStyles: Record<'high' | 'medium' | 'low', React.CSSProperties> = {
-  high:   { background: 'rgba(217,119,87,0.15)', border: '1px solid rgba(217,119,87,0.40)', color: 'var(--primary)' },
-  medium: { background: 'rgba(110,101,87,0.10)', border: '1px solid rgba(110,101,87,0.25)', color: 'var(--muted-foreground)' },
-  low:    { background: 'rgba(110,101,87,0.05)', border: '1px solid rgba(110,101,87,0.15)', color: 'var(--muted-foreground)' },
+const priorityStyles: Record<"high" | "medium" | "low", React.CSSProperties> = {
+  high: {
+    background: "rgba(217,119,87,0.15)",
+    border: "1px solid rgba(217,119,87,0.40)",
+    color: "var(--primary)",
+  },
+  medium: {
+    background: "rgba(110,101,87,0.10)",
+    border: "1px solid rgba(110,101,87,0.25)",
+    color: "var(--muted-foreground)",
+  },
+  low: {
+    background: "rgba(110,101,87,0.05)",
+    border: "1px solid rgba(110,101,87,0.15)",
+    color: "var(--muted-foreground)",
+  },
 };
 
-const typeLabels: Record<TailorSuggestion['type'], string> = {
-  rewrite: 'Rewrite',
-  add_keyword: 'Keyword',
-  strengthen: 'Strengthen',
+const typeLabels: Record<TailorSuggestion["type"], string> = {
+  rewrite: "Rewrite",
+  add_keyword: "Keyword",
+  strengthen: "Strengthen",
 };
 
 // ─── Setup screen ──────────────────────────────────────────────────────────────
@@ -45,12 +70,19 @@ interface SetupScreenProps {
   initialJobDetails?: JobDetailsValue;
 }
 
-function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResumeName, initialJobDetails }: SetupScreenProps) {
+function SetupScreen({
+  onStart,
+  onScreen,
+  onBack,
+  initialResumeText,
+  initialResumeName,
+  initialJobDetails,
+}: SetupScreenProps) {
   const { profile } = useUserProfile();
   const { session } = useAuth();
   const [selectedId, setSelectedId] = useState<string>("");
   const [jobDetails, setJobDetails] = useState<JobDetailsValue>(
-    initialJobDetails ?? { jobTitle: "", companyName: "", jobDescription: "" }
+    initialJobDetails ?? { jobTitle: "", companyName: "", jobDescription: "" },
   );
   const [pending, setPending] = useState<SetupAction | null>(null);
   const [error, setError] = useState("");
@@ -60,15 +92,21 @@ function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResu
   const saved = profile.savedResumes ?? [];
 
   const run = async (action: SetupAction) => {
-    if (!jobDetails.jobDescription.trim()) { setError("Please paste the job description."); return; }
+    if (!jobDetails.jobDescription.trim()) {
+      setError("Please paste the job description.");
+      return;
+    }
     const dispatch = action === "tailor" ? onStart : onScreen;
 
     // Resolve the resume text: either the pre-loaded upload or a downloaded saved variant.
     let resumeText = initialResumeText;
     let resumeName = initialResumeName;
     if (!hasInitial) {
-      if (!selectedId) { setError("Please select a resume."); return; }
-      const resume = saved.find(r => r.id === selectedId);
+      if (!selectedId) {
+        setError("Please select a resume.");
+        return;
+      }
+      const resume = saved.find((r) => r.id === selectedId);
       if (!resume || !session?.user?.id) return;
       resumeName = resume.name;
       setError("");
@@ -88,7 +126,11 @@ function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResu
     try {
       await dispatch(resumeText!, resumeName!, jobDetails);
     } catch (err) {
-      setError(action === "tailor" ? "Failed to analyze resume. Please try again." : "Failed to screen resume. Please try again.");
+      setError(
+        action === "tailor"
+          ? "Failed to analyze resume. Please try again."
+          : "Failed to screen resume. Please try again.",
+      );
       console.error(err);
     } finally {
       setPending(null);
@@ -99,42 +141,86 @@ function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResu
   const isLoading = pending !== null;
 
   return (
-    <div className="flex flex-col h-full w-full items-center justify-center p-4 sm:p-8 overflow-y-auto" style={{ background: "var(--muted)" }}>
+    <div
+      className="flex flex-col h-full w-full items-center justify-center p-4 sm:p-8 overflow-y-auto"
+      style={{ background: "var(--muted)" }}
+    >
       <div className="w-full max-w-2xl flex flex-col gap-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           {onBack && (
-            <button onClick={onBack} className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70" style={{ color: "var(--muted-foreground)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+              style={{
+                color: "var(--muted-foreground)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}
+          >
             <Scissors className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-display text-xl font-semibold" style={{ color: "var(--foreground)" }}>Tailor Resume</h1>
-            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Get inline edit suggestions to match a job description — no fake experience, ever.</p>
+            <h1
+              className="font-display text-xl font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              Tailor Resume
+            </h1>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Get inline edit suggestions to match a job description — no fake experience, ever.
+            </p>
           </div>
         </div>
 
         {/* Resume section: either show uploaded file or saved-resume picker */}
         {hasInitial ? (
-          <div className="rounded-2xl p-5 flex items-center gap-3" style={{ background: "var(--card)", border: "1px solid rgba(47,107,79,0.35)" }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(47,107,79,0.10)", color: "var(--forest)" }}>
+          <div
+            className="rounded-2xl p-5 flex items-center gap-3"
+            style={{ background: "var(--card)", border: "1px solid rgba(47,107,79,0.35)" }}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(47,107,79,0.10)", color: "var(--forest)" }}
+            >
               <FileText className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate" style={{ color: "var(--foreground)" }}>{initialResumeName}</div>
-              <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>Resume uploaded — ready to tailor</div>
+              <div
+                className="text-sm font-semibold truncate"
+                style={{ color: "var(--foreground)" }}
+              >
+                {initialResumeName}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                Resume uploaded — ready to tailor
+              </div>
             </div>
             <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: "var(--forest)" }} />
           </div>
         ) : (
-          <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-            <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Pick a saved resume</label>
+          <div
+            className="rounded-2xl p-5 flex flex-col gap-3"
+            style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+          >
+            <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+              Pick a saved resume
+            </label>
 
             {saved.length === 0 ? (
-              <div className="flex items-center gap-2 text-sm rounded-xl px-4 py-3" style={{ background: "rgba(217,119,87,0.08)", color: "var(--primary)" }}>
+              <div
+                className="flex items-center gap-2 text-sm rounded-xl px-4 py-3"
+                style={{ background: "rgba(217,119,87,0.08)", color: "var(--primary)" }}
+              >
                 <FileText className="w-4 h-4 flex-shrink-0" />
                 No saved resumes yet. Use Resume Builder to generate and save one first.
               </div>
@@ -143,26 +229,46 @@ function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResu
                 {saved
                   .slice()
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                  .map(r => (
+                  .map((r) => (
                     <button
                       key={r.id}
                       onClick={() => setSelectedId(r.id)}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-150"
                       style={{
                         background: selectedId === r.id ? "rgba(217,119,87,0.10)" : "var(--muted)",
-                        border: selectedId === r.id ? "1px solid rgba(217,119,87,0.40)" : "1px solid var(--border)",
+                        border:
+                          selectedId === r.id
+                            ? "1px solid rgba(217,119,87,0.40)"
+                            : "1px solid var(--border)",
                       }}
                     >
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(217,119,87,0.08)", color: "var(--primary)" }}>
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: "rgba(217,119,87,0.08)", color: "var(--primary)" }}
+                      >
                         <FileText className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{r.name}</div>
+                        <div
+                          className="text-sm font-medium truncate"
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          {r.name}
+                        </div>
                         <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                          {new Date(r.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                          {new Date(r.createdAt).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
                         </div>
                       </div>
-                      {selectedId === r.id && <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "var(--primary)" }} />}
+                      {selectedId === r.id && (
+                        <CheckCircle2
+                          className="w-4 h-4 flex-shrink-0"
+                          style={{ color: "var(--primary)" }}
+                        />
+                      )}
                     </button>
                   ))}
               </div>
@@ -174,7 +280,9 @@ function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResu
         <JobDetailsSection value={jobDetails} onChange={setJobDetails} />
 
         {error && (
-          <p className="text-sm px-1" style={{ color: "var(--primary)" }}>{error}</p>
+          <p className="text-sm px-1" style={{ color: "var(--primary)" }}>
+            {error}
+          </p>
         )}
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -191,9 +299,13 @@ function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResu
             }}
           >
             {pending === "screen" ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Screening…</>
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Screening…
+              </>
             ) : (
-              <><Scan className="w-4 h-4" /> Screen my resume</>
+              <>
+                <Scan className="w-4 h-4" /> Screen my resume
+              </>
             )}
           </button>
           <button
@@ -209,9 +321,13 @@ function SetupScreen({ onStart, onScreen, onBack, initialResumeText, initialResu
             }}
           >
             {pending === "tailor" ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing…</>
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Analyzing…
+              </>
             ) : (
-              <><Sparkles className="w-4 h-4" /> Tailor Resume</>
+              <>
+                <Sparkles className="w-4 h-4" /> Tailor Resume
+              </>
             )}
           </button>
         </div>
@@ -237,7 +353,13 @@ interface SuggestionsScreenProps {
   onVariantSaved?: (variant: SavedTailoredVariant) => void;
 }
 
-function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVariantSaved }: SuggestionsScreenProps) {
+function SuggestionsScreen({
+  resumeName,
+  resumeText,
+  suggestions,
+  onReset,
+  onVariantSaved,
+}: SuggestionsScreenProps) {
   const { profile, updateProfile } = useUserProfile();
   const { session } = useAuth();
   const [workingText, setWorkingText] = useState(resumeText);
@@ -247,44 +369,63 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
   const [savedVariant, setSavedVariant] = useState(false);
   const editorHandle = useRef<DocumentEditorHandle>(null);
 
-  const statusOf = useCallback((id: string): SuggestionStatus => statuses[id] ?? 'pending', [statuses]);
+  const statusOf = useCallback(
+    (id: string): SuggestionStatus => statuses[id] ?? "pending",
+    [statuses],
+  );
 
   // Apply Fix: rewrite the editor DOM imperatively via DocumentEditor.applyFix()
   // (3-pass text search: verbatim → HTML-entity → DOMParser text-nodes), which keeps
   // the cursor and avoids a re-mount. The handle's onChange syncs workingText.
-  const handleApply = useCallback((s: TailorSuggestion) => {
-    if (statusOf(s.id) === 'applied') return;
-    editorHandle.current?.applyFix(s.originalText, s.suggestedText);
-    setStatuses(prev => ({ ...prev, [s.id]: 'applied' }));
-  }, [statusOf]);
+  const handleApply = useCallback(
+    (s: TailorSuggestion) => {
+      if (statusOf(s.id) === "applied") return;
+      editorHandle.current?.applyFix(s.originalText, s.suggestedText);
+      setStatuses((prev) => ({ ...prev, [s.id]: "applied" }));
+    },
+    [statusOf],
+  );
 
   const handleDismiss = useCallback((s: TailorSuggestion) => {
-    setStatuses(prev => ({ ...prev, [s.id]: 'dismissed' }));
+    setStatuses((prev) => ({ ...prev, [s.id]: "dismissed" }));
   }, []);
 
   // Undo returns a suggestion to pending. If it was applied, revert the edit by
   // swapping the suggested text back to the original through the same reliable applyFix.
-  const handleUndo = useCallback((s: TailorSuggestion) => {
-    if (statusOf(s.id) === 'applied') {
-      editorHandle.current?.applyFix(s.suggestedText, s.originalText);
-    }
-    setStatuses(prev => { const next = { ...prev }; delete next[s.id]; return next; });
-  }, [statusOf]);
+  const handleUndo = useCallback(
+    (s: TailorSuggestion) => {
+      if (statusOf(s.id) === "applied") {
+        editorHandle.current?.applyFix(s.suggestedText, s.originalText);
+      }
+      setStatuses((prev) => {
+        const next = { ...prev };
+        delete next[s.id];
+        return next;
+      });
+    },
+    [statusOf],
+  );
 
   // Single hide/unhide toggle — flips membership in hiddenIds.
   const handleToggleHide = useCallback((id: string) => {
-    setHiddenIds(prev => {
+    setHiddenIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
 
   // Scroll the document to the relevant passage and highlight it. Once applied,
   // the original text is gone, so reveal the suggested replacement instead.
-  const handleReveal = useCallback((s: TailorSuggestion) => {
-    editorHandle.current?.revealText(statusOf(s.id) === 'applied' ? s.suggestedText : s.originalText);
-  }, [statusOf]);
+  const handleReveal = useCallback(
+    (s: TailorSuggestion) => {
+      editorHandle.current?.revealText(
+        statusOf(s.id) === "applied" ? s.suggestedText : s.originalText,
+      );
+    },
+    [statusOf],
+  );
 
   const handleSaveVariant = async () => {
     const userId = session?.user?.id;
@@ -293,7 +434,12 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
     try {
       const id = generateId();
       const storagePath = await uploadResume(userId, id, workingText);
-      const variant = { id, name: `${resumeName} (Tailored)`, storagePath, createdAt: new Date().toISOString() };
+      const variant = {
+        id,
+        name: `${resumeName} (Tailored)`,
+        storagePath,
+        createdAt: new Date().toISOString(),
+      };
       const existing = profile.savedResumes ?? [];
       await updateProfile({ savedResumes: [...existing, variant] });
       onVariantSaved?.(variant);
@@ -305,28 +451,31 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
     }
   };
 
-  const isActioned = (s: TailorSuggestion) => statusOf(s.id) !== 'pending';
+  const isActioned = (s: TailorSuggestion) => statusOf(s.id) !== "pending";
   // Sort tier: non-actioned (0) floats to top, actioned (1) below, hidden (2) sinks to the bottom.
-  const tier = (s: TailorSuggestion) => hiddenIds.has(s.id) ? 2 : isActioned(s) ? 1 : 0;
+  const tier = (s: TailorSuggestion) => (hiddenIds.has(s.id) ? 2 : isActioned(s) ? 1 : 0);
 
-  const sorted = [...suggestions]
-    .sort((a, b) => {
-      const tierDelta = tier(a) - tier(b);
-      if (tierDelta !== 0) return tierDelta;
-      return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-    });
+  const sorted = [...suggestions].sort((a, b) => {
+    const tierDelta = tier(a) - tier(b);
+    if (tierDelta !== 0) return tierDelta;
+    return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+  });
 
-  const pendingCount = suggestions.filter(s => !isActioned(s) && !hiddenIds.has(s.id)).length;
-  const appliedCount = suggestions.filter(s => statusOf(s.id) === 'applied').length;
+  const pendingCount = suggestions.filter((s) => !isActioned(s) && !hiddenIds.has(s.id)).length;
+  const appliedCount = suggestions.filter((s) => statusOf(s.id) === "applied").length;
 
   const suggestionsSidebar = (
     <div className="flex flex-col h-full">
       {/* Sidebar header */}
-      <div className="flex items-center justify-between px-4 shrink-0"
-        style={{ height: 46, borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
+      <div
+        className="flex items-center justify-between px-4 shrink-0"
+        style={{ height: 46, borderBottom: "1px solid var(--border)", background: "var(--muted)" }}
+      >
         <div className="flex items-center gap-2">
           <Scissors className="w-3.5 h-3.5" style={{ color: "var(--primary)" }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Suggestions</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+            Suggestions
+          </span>
           <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
             {pendingCount} left · {appliedCount} applied
           </span>
@@ -339,13 +488,17 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
           {sorted.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
               <CheckCircle2 className="w-8 h-8" style={{ color: "var(--forest)" }} />
-              <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>All done!</p>
-              <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>Save your tailored resume as a new variant.</p>
+              <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                All done!
+              </p>
+              <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                Save your tailored resume as a new variant.
+              </p>
             </div>
           )}
-          {sorted.map(s => {
-            const applied = statusOf(s.id) === 'applied';
-            const dismissed = statusOf(s.id) === 'dismissed';
+          {sorted.map((s) => {
+            const applied = statusOf(s.id) === "applied";
+            const dismissed = statusOf(s.id) === "dismissed";
             const hidden = hiddenIds.has(s.id);
 
             // Hidden → compact, restorable one-line row pinned at the bottom of the panel.
@@ -354,19 +507,52 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
                 <div
                   key={s.id}
                   className="flex items-center gap-2 rounded-lg px-3 py-2"
-                  style={{ border: "1px solid var(--border)", background: "var(--muted)", opacity: 0.75 }}
+                  style={{
+                    border: "1px solid var(--border)",
+                    background: "var(--muted)",
+                    opacity: 0.75,
+                  }}
                 >
-                  {applied
-                    ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--forest)" }} />
-                    : dismissed
-                      ? <X className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
-                      : <span className="flex-shrink-0" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--primary)" }} />}
-                  <span className="flex-1 min-w-0 truncate text-xs" style={{ color: "var(--muted-foreground)" }}>{s.originalText}</span>
+                  {applied ? (
+                    <CheckCircle2
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      style={{ color: "var(--forest)" }}
+                    />
+                  ) : dismissed ? (
+                    <X
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      style={{ color: "var(--muted-foreground)" }}
+                    />
+                  ) : (
+                    <span
+                      className="flex-shrink-0"
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: "var(--primary)",
+                      }}
+                    />
+                  )}
+                  <span
+                    className="flex-1 min-w-0 truncate text-xs"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    {s.originalText}
+                  </span>
                   <button
-                    onClick={e => { e.stopPropagation(); handleToggleHide(s.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleHide(s.id);
+                    }}
                     title="Show suggestion"
                     className="flex-shrink-0 flex items-center gap-1 h-6 px-2 rounded-md text-[10px] font-bold"
-                    style={{ border: "1px solid var(--border)", background: "var(--card)", color: "var(--muted-foreground)", cursor: "pointer" }}
+                    style={{
+                      border: "1px solid var(--border)",
+                      background: "var(--card)",
+                      color: "var(--muted-foreground)",
+                      cursor: "pointer",
+                    }}
                   >
                     <Eye className="w-3 h-3" /> Show
                   </button>
@@ -381,7 +567,12 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
                 tabIndex={0}
                 title="Click to locate this passage in the document"
                 onClick={() => handleReveal(s)}
-                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleReveal(s); } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleReveal(s);
+                  }
+                }}
                 className="rounded-2xl p-4 flex flex-col gap-3 transition-all duration-200 cursor-pointer hover:shadow-sm"
                 style={{
                   background: applied ? "rgba(47,107,79,0.06)" : "var(--card)",
@@ -390,68 +581,167 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
                 }}
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide" style={priorityStyles[s.priority]}>
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide"
+                    style={priorityStyles[s.priority]}
+                  >
                     {s.priority}
                   </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide"
-                    style={{ background: "rgba(110,101,87,0.08)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                  <span
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide"
+                    style={{
+                      background: "rgba(110,101,87,0.08)",
+                      color: "var(--muted-foreground)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
                     {typeLabels[s.type]}
                   </span>
-                  <span className="text-[10px] ml-auto truncate max-w-[120px]" style={{ color: "var(--muted-foreground)" }}>{s.section}</span>
+                  <span
+                    className="text-[10px] ml-auto truncate max-w-[120px]"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    {s.section}
+                  </span>
                   <button
-                    onClick={e => { e.stopPropagation(); handleToggleHide(s.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleHide(s.id);
+                    }}
                     title="Hide suggestion"
                     aria-label="Hide suggestion"
                     className="p-0.5 rounded transition-opacity opacity-50 hover:opacity-100"
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--muted-foreground)",
+                    }}
                   >
                     <EyeOff className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <div className="text-[11px] font-semibold" style={{ color: "var(--muted-foreground)" }}>BEFORE</div>
-                  <div className="text-xs px-3 py-2 rounded-lg leading-relaxed"
-                    style={{ background: "rgba(217,119,87,0.07)", color: "var(--foreground)", border: "1px solid rgba(217,119,87,0.18)" }}>
+                  <div
+                    className="text-[11px] font-semibold"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    BEFORE
+                  </div>
+                  <div
+                    className="text-xs px-3 py-2 rounded-lg leading-relaxed"
+                    style={{
+                      background: "rgba(217,119,87,0.07)",
+                      color: "var(--foreground)",
+                      border: "1px solid rgba(217,119,87,0.18)",
+                    }}
+                  >
                     {s.originalText}
                   </div>
-                  <div className="text-[11px] font-semibold mt-1" style={{ color: "var(--muted-foreground)" }}>AFTER</div>
-                  <div className="text-xs px-3 py-2 rounded-lg leading-relaxed"
-                    style={{ background: "rgba(47,107,79,0.07)", color: "var(--foreground)", border: "1px solid rgba(47,107,79,0.18)" }}>
+                  <div
+                    className="text-[11px] font-semibold mt-1"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    AFTER
+                  </div>
+                  <div
+                    className="text-xs px-3 py-2 rounded-lg leading-relaxed"
+                    style={{
+                      background: "rgba(47,107,79,0.07)",
+                      color: "var(--foreground)",
+                      border: "1px solid rgba(47,107,79,0.18)",
+                    }}
+                  >
                     {s.suggestedText}
                   </div>
                 </div>
 
-                <p className="text-[11px] leading-relaxed" style={{ color: "var(--muted-foreground)" }}>{s.rationale}</p>
+                <p
+                  className="text-[11px] leading-relaxed"
+                  style={{ color: "var(--muted-foreground)" }}
+                >
+                  {s.rationale}
+                </p>
 
                 {applied ? (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--forest)" }}>
+                    <div
+                      className="flex items-center gap-1.5 text-xs font-medium"
+                      style={{ color: "var(--forest)" }}
+                    >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Applied
                     </div>
-                    <button onClick={e => { e.stopPropagation(); handleUndo(s); }} className="ml-auto h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5"
-                      style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)", cursor: "pointer" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUndo(s);
+                      }}
+                      className="ml-auto h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5"
+                      style={{
+                        background: "var(--muted)",
+                        color: "var(--muted-foreground)",
+                        border: "1px solid var(--border)",
+                        cursor: "pointer",
+                      }}
+                    >
                       <Undo2 className="w-3.5 h-3.5" /> Undo
                     </button>
                   </div>
                 ) : dismissed ? (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>
+                    <div
+                      className="flex items-center gap-1.5 text-xs font-medium"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
                       <X className="w-3.5 h-3.5" /> Dismissed
                     </div>
-                    <button onClick={e => { e.stopPropagation(); handleUndo(s); }} className="ml-auto h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5"
-                      style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)", cursor: "pointer" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUndo(s);
+                      }}
+                      className="ml-auto h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5"
+                      style={{
+                        background: "var(--muted)",
+                        color: "var(--muted-foreground)",
+                        border: "1px solid var(--border)",
+                        cursor: "pointer",
+                      }}
+                    >
                       <Undo2 className="w-3.5 h-3.5" /> Restore
                     </button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <button onClick={e => { e.stopPropagation(); handleApply(s); }} className="flex-1 h-8 rounded-lg text-xs font-semibold"
-                      style={{ background: "var(--primary)", color: "#fff", border: "none", cursor: "pointer" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleApply(s);
+                      }}
+                      className="flex-1 h-8 rounded-lg text-xs font-semibold"
+                      style={{
+                        background: "var(--primary)",
+                        color: "#fff",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
                       Apply
                     </button>
-                    <button onClick={e => { e.stopPropagation(); handleDismiss(s); }} className="h-8 px-3 rounded-lg text-xs font-medium"
-                      style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)", cursor: "pointer" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDismiss(s);
+                      }}
+                      className="h-8 px-3 rounded-lg text-xs font-medium"
+                      style={{
+                        background: "var(--muted)",
+                        color: "var(--muted-foreground)",
+                        border: "1px solid var(--border)",
+                        cursor: "pointer",
+                      }}
+                    >
                       Dismiss
                     </button>
                   </div>
@@ -463,9 +753,18 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
       </ScrollArea>
 
       {/* Save footer */}
-      <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", background: "var(--muted)" }}>
+      <div
+        style={{
+          padding: "10px 12px",
+          borderTop: "1px solid var(--border)",
+          background: "var(--muted)",
+        }}
+      >
         {savedVariant ? (
-          <div className="flex items-center justify-center gap-1.5 text-xs font-medium py-1" style={{ color: "var(--forest)" }}>
+          <div
+            className="flex items-center justify-center gap-1.5 text-xs font-medium py-1"
+            style={{ color: "var(--forest)" }}
+          >
             <CheckCircle2 className="w-3.5 h-3.5" /> Saved as new variant
           </div>
         ) : (
@@ -473,9 +772,20 @@ function SuggestionsScreen({ resumeName, resumeText, suggestions, onReset, onVar
             onClick={handleSaveVariant}
             disabled={isSaving}
             className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold rounded-lg transition-opacity"
-            style={{ height: 36, background: "var(--primary)", color: "#fff", border: "none", opacity: isSaving ? 0.6 : 1, cursor: isSaving ? "not-allowed" : "pointer" }}
+            style={{
+              height: 36,
+              background: "var(--primary)",
+              color: "#fff",
+              border: "none",
+              opacity: isSaving ? 0.6 : 1,
+              cursor: isSaving ? "not-allowed" : "pointer",
+            }}
           >
-            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            {isSaving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Save className="w-3.5 h-3.5" />
+            )}
             Save as new variant
           </button>
         )}
@@ -509,30 +819,48 @@ interface TailorResumeWorkspaceProps {
   onVariantSaved?: (variant: SavedTailoredVariant) => void;
 }
 
-export function TailorResumeWorkspace({ onBack, initialResumeText, initialResumeName, initialJobDetails, onVariantSaved }: TailorResumeWorkspaceProps) {
+export function TailorResumeWorkspace({
+  onBack,
+  initialResumeText,
+  initialResumeName,
+  initialJobDetails,
+  onVariantSaved,
+}: TailorResumeWorkspaceProps) {
   const [state, setState] = useState<
-    | { phase: 'setup' }
-    | { phase: 'results'; resumeName: string; resumeText: string; suggestions: TailorSuggestion[] }
-    | { phase: 'screening'; resumeName: string; resumeText: string; jobDetails: JobDetailsValue; result: ScreeningResult }
-  >({ phase: 'setup' });
+    | { phase: "setup" }
+    | { phase: "results"; resumeName: string; resumeText: string; suggestions: TailorSuggestion[] }
+    | {
+        phase: "screening";
+        resumeName: string;
+        resumeText: string;
+        jobDetails: JobDetailsValue;
+        result: ScreeningResult;
+      }
+  >({ phase: "setup" });
 
-  const handleStart = useCallback(async (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => {
-    const suggestions = await tailorResume(resumeText, jobDetails.jobDescription, {
-      jobTitle: jobDetails.jobTitle,
-      companyName: jobDetails.companyName,
-    });
-    setState({ phase: 'results', resumeName, resumeText, suggestions });
-  }, []);
+  const handleStart = useCallback(
+    async (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => {
+      const suggestions = await tailorResume(resumeText, jobDetails.jobDescription, {
+        jobTitle: jobDetails.jobTitle,
+        companyName: jobDetails.companyName,
+      });
+      setState({ phase: "results", resumeName, resumeText, suggestions });
+    },
+    [],
+  );
 
-  const handleScreen = useCallback(async (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => {
-    const result = await screenResume(resumeText, jobDetails.jobDescription, {
-      jobTitle: jobDetails.jobTitle,
-      companyName: jobDetails.companyName,
-    });
-    setState({ phase: 'screening', resumeName, resumeText, jobDetails, result });
-  }, []);
+  const handleScreen = useCallback(
+    async (resumeText: string, resumeName: string, jobDetails: JobDetailsValue) => {
+      const result = await screenResume(resumeText, jobDetails.jobDescription, {
+        jobTitle: jobDetails.jobTitle,
+        companyName: jobDetails.companyName,
+      });
+      setState({ phase: "screening", resumeName, resumeText, jobDetails, result });
+    },
+    [],
+  );
 
-  if (state.phase === 'setup') {
+  if (state.phase === "setup") {
     return (
       <SetupScreen
         onStart={handleStart}
@@ -545,20 +873,43 @@ export function TailorResumeWorkspace({ onBack, initialResumeText, initialResume
     );
   }
 
-  if (state.phase === 'screening') {
+  if (state.phase === "screening") {
     return (
-      <div className="flex flex-col h-full w-full items-center overflow-y-auto p-4 sm:p-8" style={{ background: "var(--muted)" }}>
+      <div
+        className="flex flex-col h-full w-full items-center overflow-y-auto p-4 sm:p-8"
+        style={{ background: "var(--muted)" }}
+      >
         <div className="w-full max-w-2xl flex flex-col gap-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => setState({ phase: 'setup' })} className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70" style={{ color: "var(--muted-foreground)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            <button
+              onClick={() => setState({ phase: "setup" })}
+              className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+              style={{
+                color: "var(--muted-foreground)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}>
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}
+            >
               <Scan className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-display text-xl font-semibold" style={{ color: "var(--foreground)" }}>Recruiter's-eye screen</h1>
-              <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>How a recruiter would judge {state.resumeName} for this role in their first pass.</p>
+              <h1
+                className="font-display text-xl font-semibold"
+                style={{ color: "var(--foreground)" }}
+              >
+                Recruiter's-eye screen
+              </h1>
+              <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                How a recruiter would judge {state.resumeName} for this role in their first pass.
+              </p>
             </div>
           </div>
           <ScreeningVerdictView
@@ -575,7 +926,7 @@ export function TailorResumeWorkspace({ onBack, initialResumeText, initialResume
       resumeName={state.resumeName}
       resumeText={state.resumeText}
       suggestions={state.suggestions}
-      onReset={() => setState({ phase: 'setup' })}
+      onReset={() => setState({ phase: "setup" })}
       onVariantSaved={onVariantSaved}
     />
   );

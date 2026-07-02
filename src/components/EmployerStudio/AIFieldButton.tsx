@@ -90,15 +90,27 @@ export function AITextField({
         style={textareaStyle}
       />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}
+      >
         {onGenerate && (
           <button
             type="button"
             onClick={runGenerate}
             disabled={busy !== null}
-            style={{ ...pillBtn, color: "var(--primary)", borderColor: "color-mix(in srgb, var(--primary) 40%, transparent)", opacity: busy ? 0.6 : 1, cursor: busy ? "not-allowed" : "pointer" }}
+            style={{
+              ...pillBtn,
+              color: "var(--primary)",
+              borderColor: "color-mix(in srgb, var(--primary) 40%, transparent)",
+              opacity: busy ? 0.6 : 1,
+              cursor: busy ? "not-allowed" : "pointer",
+            }}
           >
-            {busy === "generate" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {busy === "generate" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
             {value.trim() ? `${generateLabel} again` : generateLabel}
           </button>
         )}
@@ -106,31 +118,77 @@ export function AITextField({
           type="button"
           onClick={runImprove}
           disabled={!hasText || busy !== null}
-          style={{ ...pillBtn, opacity: !hasText || busy !== null ? 0.5 : 1, cursor: !hasText || busy !== null ? "not-allowed" : "pointer" }}
+          style={{
+            ...pillBtn,
+            opacity: !hasText || busy !== null ? 0.5 : 1,
+            cursor: !hasText || busy !== null ? "not-allowed" : "pointer",
+          }}
         >
-          {busy === "improve" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+          {busy === "improve" ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Wand2 className="w-3.5 h-3.5" />
+          )}
           Improve with AI
         </button>
-        {error && <span style={{ fontSize: 12, color: "var(--destructive, #ef4444)" }}>{error}</span>}
+        {error && (
+          <span style={{ fontSize: 12, color: "var(--destructive, #ef4444)" }}>{error}</span>
+        )}
       </div>
 
       {suggestion && (
         <div
           role="region"
           aria-label="AI suggestion"
-          style={{ marginTop: 10, borderRadius: 14, border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)", background: "color-mix(in srgb, var(--primary) 8%, transparent)", overflow: "hidden" }}
+          style={{
+            marginTop: 10,
+            borderRadius: 14,
+            border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)",
+            background: "color-mix(in srgb, var(--primary) 8%, transparent)",
+            overflow: "hidden",
+          }}
         >
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid color-mix(in srgb, var(--primary) 22%, transparent)", display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{
+              padding: "10px 14px",
+              borderBottom: "1px solid color-mix(in srgb, var(--primary) 22%, transparent)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
             <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--primary)" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--foreground)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
               {suggestion.kind === "generate" ? "Generated draft" : "Suggested rewrite"}
             </span>
           </div>
-          <div style={{ padding: "12px 14px", fontSize: 14, lineHeight: 1.6, color: "var(--foreground)", whiteSpace: "pre-wrap", maxHeight: 280, overflow: "auto" }}>
+          <div
+            style={{
+              padding: "12px 14px",
+              fontSize: 14,
+              lineHeight: 1.6,
+              color: "var(--foreground)",
+              whiteSpace: "pre-wrap",
+              maxHeight: 280,
+              overflow: "auto",
+            }}
+          >
             {suggestion.text}
           </div>
           <div style={{ display: "flex", gap: 8, padding: "0 14px 12px" }}>
-            <button type="button" onClick={accept} style={{ ...pillBtn, background: "var(--primary)", color: "#fff", border: "none" }}>
+            <button
+              type="button"
+              onClick={accept}
+              style={{ ...pillBtn, background: "var(--primary)", color: "#fff", border: "none" }}
+            >
               <Check className="w-3.5 h-3.5" /> {value.trim() ? "Replace" : "Use this"}
             </button>
             <button type="button" onClick={() => setSuggestion(null)} style={pillBtn}>

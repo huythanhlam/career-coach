@@ -19,8 +19,7 @@ describe("parseJsonObject", () => {
   });
 
   it("extracts the object when wrapped in prose", () => {
-    expect(parseJsonObject('Here is your result:\n{"a":1}\nHope that helps!'))
-      .toEqual({ a: 1 });
+    expect(parseJsonObject('Here is your result:\n{"a":1}\nHope that helps!')).toEqual({ a: 1 });
   });
 
   it("handles nested objects via the greedy block match", () => {
@@ -44,9 +43,7 @@ describe("parseJsonArray", () => {
   });
 
   it("extracts the array when wrapped in prose", () => {
-    expect(parseJsonArray('Suggestions:\n[{"t":"a"}]\ndone')).toEqual([
-      { t: "a" },
-    ]);
+    expect(parseJsonArray('Suggestions:\n[{"t":"a"}]\ndone')).toEqual([{ t: "a" }]);
   });
 
   it("is generically typed", () => {

@@ -45,14 +45,21 @@ export function bulletTimestamp(bullet: string): number {
 }
 
 /** Build the list to render: prefer structured, date-sorted items; fall back to bullets. */
-function toRows(section: CompanyResearchSection): { lead: string; rest: string; date: string; url?: string }[] {
+function toRows(
+  section: CompanyResearchSection,
+): { lead: string; rest: string; date: string; url?: string }[] {
   const items: CompanyNewsItem[] = section?.items ?? [];
   if (items.length > 0) {
     // Sort newest → oldest here too: fresh fetches arrive pre-sorted, but
     // cached/seeded entries may not, so the UI guarantees the ordering.
     return [...items]
       .sort((a, b) => (b.date || "0").localeCompare(a.date || "0"))
-      .map((it) => ({ lead: it.headline, rest: it.whyItMatters, date: formatDate(it.date), url: it.url }));
+      .map((it) => ({
+        lead: it.headline,
+        rest: it.whyItMatters,
+        date: formatDate(it.date),
+        url: it.url,
+      }));
   }
   // Legacy bullets ("headline — … — date"): parse a date out of each and sort.
   return (section?.bullets ?? [])
@@ -72,12 +79,30 @@ export function NewsTimeline({ section }: { section: CompanyResearchSection }) {
       <SectionHeader Icon={Newspaper} color="#E8B948" title="Recent news" />
       <div style={{ padding: "18px 22px" }}>
         {section?.summary && (
-          <p style={{ fontSize: 14, color: "var(--foreground)", margin: "0 0 14px", lineHeight: 1.6 }}>{section.summary}</p>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--foreground)",
+              margin: "0 0 14px",
+              lineHeight: 1.6,
+            }}
+          >
+            {section.summary}
+          </p>
         )}
         {rows.length > 0 ? (
           <div style={{ position: "relative", paddingLeft: 22 }}>
             {/* timeline spine */}
-            <span style={{ position: "absolute", left: 5, top: 4, bottom: 4, width: 2, background: "var(--border)" }} />
+            <span
+              style={{
+                position: "absolute",
+                left: 5,
+                top: 4,
+                bottom: 4,
+                width: 2,
+                background: "var(--border)",
+              }}
+            />
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {rows.map((row, i) => (
                 <motion.div
@@ -87,24 +112,82 @@ export function NewsTimeline({ section }: { section: CompanyResearchSection }) {
                   transition={{ delay: i * 0.07, duration: 0.35, ease: "easeOut" }}
                   style={{ position: "relative" }}
                 >
-                  <span style={{ position: "absolute", left: -21, top: 4, width: 12, height: 12, borderRadius: 99, background: "#E8B948", border: "2px solid var(--card)", boxShadow: "0 0 0 2px color-mix(in srgb, #E8B948 35%, transparent)" }} />
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: -21,
+                      top: 4,
+                      width: 12,
+                      height: 12,
+                      borderRadius: 99,
+                      background: "#E8B948",
+                      border: "2px solid var(--card)",
+                      boxShadow: "0 0 0 2px color-mix(in srgb, #E8B948 35%, transparent)",
+                    }}
+                  />
                   {row.date && (
-                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--muted-foreground)", marginBottom: 2 }}>{row.date}</div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        color: "var(--muted-foreground)",
+                        marginBottom: 2,
+                      }}
+                    >
+                      {row.date}
+                    </div>
                   )}
                   {row.url ? (
-                    <a href={row.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", lineHeight: 1.4, textDecoration: "none" }}>
+                    <a
+                      href={row.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--foreground)",
+                        lineHeight: 1.4,
+                        textDecoration: "none",
+                      }}
+                    >
                       {row.lead}
                     </a>
                   ) : (
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", lineHeight: 1.4 }}>{row.lead}</div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--foreground)",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {row.lead}
+                    </div>
                   )}
-                  {row.rest && <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.5 }}>{row.rest}</div>}
+                  {row.rest && (
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "var(--muted-foreground)",
+                        marginTop: 2,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {row.rest}
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
           </div>
         ) : (
-          !section?.summary && <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No recent news found — use the source link to verify.</p>
+          !section?.summary && (
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
+              No recent news found — use the source link to verify.
+            </p>
+          )
         )}
         <SourceChips sources={section?.sources ?? []} />
       </div>

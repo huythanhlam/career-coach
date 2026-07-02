@@ -35,7 +35,10 @@ export function LinkedInWorkflow({
 }: LinkedInWorkflowProps) {
   if (!linkedinSubmitted) {
     return (
-      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+      <div
+        className="flex-1 flex flex-col h-full overflow-hidden"
+        style={{ background: "var(--background)" }}
+      >
         <PageHeader title={config.title} description={config.description} />
         <div className="flex-1 overflow-auto no-scrollbar p-8">
           <LinkedInUploadForm

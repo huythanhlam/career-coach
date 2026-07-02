@@ -57,7 +57,15 @@ const MODE_META: Record<ImproveMode, { title: string; accent: string }> = {
   suggest: { title: "Suggestion", accent: "var(--marigold)" },
 };
 
-export function SurveyTextField({ id, label, labelNode, value, placeholder, onChange, showUnsure = true }: SurveyTextFieldProps) {
+export function SurveyTextField({
+  id,
+  label,
+  labelNode,
+  value,
+  placeholder,
+  onChange,
+  showUnsure = true,
+}: SurveyTextFieldProps) {
   const [suggestion, setSuggestion] = useState<{ mode: ImproveMode; text: string } | null>(null);
   const [busy, setBusy] = useState<ImproveMode | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +128,9 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
 
   return (
     <div>
-      <label htmlFor={id} style={labelStyle}>{labelNode ?? label}</label>
+      <label htmlFor={id} style={labelStyle}>
+        {labelNode ?? label}
+      </label>
 
       <div style={{ position: "relative" }}>
         <textarea
@@ -130,7 +140,14 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
           placeholder={isUnsure ? "Marked as unsure — tap Unsure again to answer" : placeholder}
           rows={2}
           disabled={isUnsure}
-          style={{ ...fieldStyle, padding: "12px 44px 12px 14px", resize: "vertical", lineHeight: 1.6, opacity: isUnsure ? 0.6 : 1, cursor: isUnsure ? "not-allowed" : "auto" }}
+          style={{
+            ...fieldStyle,
+            padding: "12px 44px 12px 14px",
+            resize: "vertical",
+            lineHeight: 1.6,
+            opacity: isUnsure ? 0.6 : 1,
+            cursor: isUnsure ? "not-allowed" : "auto",
+          }}
         />
         {supported && !isUnsure && (
           <button
@@ -140,27 +157,57 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
             aria-pressed={listening}
             title={listening ? "Stop recording" : "Dictate your answer"}
             style={{
-              position: "absolute", top: 8, right: 8,
-              width: 32, height: 32, borderRadius: 9999,
-              display: "flex", alignItems: "center", justifyContent: "center",
+              position: "absolute",
+              top: 8,
+              right: 8,
+              width: 32,
+              height: 32,
+              borderRadius: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               border: `1px solid ${listening ? "var(--primary)" : "var(--border)"}`,
               background: listening ? "var(--primary)" : "var(--card)",
               color: listening ? "#fff" : "var(--muted-foreground)",
               cursor: "pointer",
             }}
           >
-            {listening
-              ? <Square className="w-3.5 h-3.5" fill="currentColor" />
-              : <Mic className="w-4 h-4" />}
+            {listening ? (
+              <Square className="w-3.5 h-3.5" fill="currentColor" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
           </button>
         )}
       </div>
 
       {/* Toolbar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, minHeight: 20, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 8,
+          minHeight: 20,
+          flexWrap: "wrap",
+        }}
+      >
         {listening ? (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>
-            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 9999, background: "var(--primary)" }} className="animate-pulse" />
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--primary)",
+            }}
+          >
+            <span
+              aria-hidden
+              style={{ width: 8, height: 8, borderRadius: 9999, background: "var(--primary)" }}
+              className="animate-pulse"
+            />
             Listening… speak now
           </span>
         ) : (
@@ -172,9 +219,19 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
                     type="button"
                     onClick={() => runImprove("refine")}
                     disabled={!hasText || busy !== null}
-                    style={{ ...pillBtn, opacity: !hasText || busy !== null ? 0.5 : 1, cursor: !hasText || busy !== null ? "not-allowed" : "pointer", color: "var(--primary)", borderColor: "color-mix(in srgb, var(--primary) 40%, transparent)" }}
+                    style={{
+                      ...pillBtn,
+                      opacity: !hasText || busy !== null ? 0.5 : 1,
+                      cursor: !hasText || busy !== null ? "not-allowed" : "pointer",
+                      color: "var(--primary)",
+                      borderColor: "color-mix(in srgb, var(--primary) 40%, transparent)",
+                    }}
                   >
-                    {busy === "refine" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                    {busy === "refine" ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Wand2 className="w-3.5 h-3.5" />
+                    )}
                     Refine
                   </button>
                 </FieldTooltip>
@@ -183,9 +240,19 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
                     type="button"
                     onClick={() => runImprove("suggest")}
                     disabled={!hasText || busy !== null}
-                    style={{ ...pillBtn, opacity: !hasText || busy !== null ? 0.5 : 1, cursor: !hasText || busy !== null ? "not-allowed" : "pointer", color: "var(--foreground)", borderColor: "color-mix(in srgb, var(--marigold) 55%, transparent)" }}
+                    style={{
+                      ...pillBtn,
+                      opacity: !hasText || busy !== null ? 0.5 : 1,
+                      cursor: !hasText || busy !== null ? "not-allowed" : "pointer",
+                      color: "var(--foreground)",
+                      borderColor: "color-mix(in srgb, var(--marigold) 55%, transparent)",
+                    }}
                   >
-                    {busy === "suggest" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lightbulb className="w-3.5 h-3.5" style={{ color: "var(--marigold)" }} />}
+                    {busy === "suggest" ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Lightbulb className="w-3.5 h-3.5" style={{ color: "var(--marigold)" }} />
+                    )}
                     Suggest
                   </button>
                 </FieldTooltip>
@@ -197,7 +264,14 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
                   type="button"
                   onClick={toggleUnsure}
                   aria-pressed={isUnsure}
-                  style={{ ...pillBtn, background: isUnsure ? "color-mix(in srgb, var(--muted-foreground) 18%, transparent)" : "var(--card)", borderColor: isUnsure ? "var(--muted-foreground)" : "var(--border)", color: "var(--muted-foreground)" }}
+                  style={{
+                    ...pillBtn,
+                    background: isUnsure
+                      ? "color-mix(in srgb, var(--muted-foreground) 18%, transparent)"
+                      : "var(--card)",
+                    borderColor: isUnsure ? "var(--muted-foreground)" : "var(--border)",
+                    color: "var(--muted-foreground)",
+                  }}
                 >
                   <HelpCircle className="w-3.5 h-3.5" /> Unsure
                 </button>
@@ -205,11 +279,21 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
             )}
           </>
         )}
-        {error && <span style={{ fontSize: 12, color: "var(--destructive, #ef4444)" }}>{error}</span>}
+        {error && (
+          <span style={{ fontSize: 12, color: "var(--destructive, #ef4444)" }}>{error}</span>
+        )}
       </div>
 
       {voiceError && (
-        <div role="alert" style={{ fontSize: 12, color: "var(--destructive, #ef4444)", marginTop: 6, lineHeight: 1.5 }}>
+        <div
+          role="alert"
+          style={{
+            fontSize: 12,
+            color: "var(--destructive, #ef4444)",
+            marginTop: 6,
+            lineHeight: 1.5,
+          }}
+        >
           {voiceError}
         </div>
       )}
@@ -219,15 +303,49 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
         <div
           role="region"
           aria-label={panel.title}
-          style={{ marginTop: 10, borderRadius: 14, border: `1px solid color-mix(in srgb, ${panel.accent} 40%, transparent)`, background: `color-mix(in srgb, ${panel.accent} 8%, transparent)`, overflow: "hidden" }}
+          style={{
+            marginTop: 10,
+            borderRadius: 14,
+            border: `1px solid color-mix(in srgb, ${panel.accent} 40%, transparent)`,
+            background: `color-mix(in srgb, ${panel.accent} 8%, transparent)`,
+            overflow: "hidden",
+          }}
         >
-          <div style={{ padding: "10px 14px", borderBottom: `1px solid color-mix(in srgb, ${panel.accent} 22%, transparent)`, display: "flex", alignItems: "center", gap: 8 }}>
-            {suggestion.mode === "refine"
-              ? <Wand2 className="w-3.5 h-3.5" style={{ color: panel.accent }} />
-              : <Lightbulb className="w-3.5 h-3.5" style={{ color: panel.accent }} />}
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{panel.title}</span>
+          <div
+            style={{
+              padding: "10px 14px",
+              borderBottom: `1px solid color-mix(in srgb, ${panel.accent} 22%, transparent)`,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {suggestion.mode === "refine" ? (
+              <Wand2 className="w-3.5 h-3.5" style={{ color: panel.accent }} />
+            ) : (
+              <Lightbulb className="w-3.5 h-3.5" style={{ color: panel.accent }} />
+            )}
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--foreground)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              {panel.title}
+            </span>
           </div>
-          <div style={{ padding: "12px 14px", fontSize: 14, lineHeight: 1.6, color: "var(--foreground)", whiteSpace: "pre-wrap" }}>
+          <div
+            style={{
+              padding: "12px 14px",
+              fontSize: 14,
+              lineHeight: 1.6,
+              color: "var(--foreground)",
+              whiteSpace: "pre-wrap",
+            }}
+          >
             {suggestion.text}
           </div>
           <div style={{ display: "flex", gap: 8, padding: "0 14px 12px" }}>
@@ -238,11 +356,7 @@ export function SurveyTextField({ id, label, labelNode, value, placeholder, onCh
             >
               <Check className="w-3.5 h-3.5" /> Accept
             </button>
-            <button
-              type="button"
-              onClick={rejectSuggestion}
-              style={{ ...pillBtn }}
-            >
+            <button type="button" onClick={rejectSuggestion} style={{ ...pillBtn }}>
               <X className="w-3.5 h-3.5" /> Reject
             </button>
           </div>

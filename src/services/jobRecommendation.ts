@@ -42,10 +42,45 @@ export type ScorableJob = {
 export const RECOMMENDED_THRESHOLD = 60;
 
 const STOPWORDS = new Set([
-  "the", "and", "for", "with", "of", "a", "an", "to", "in", "on", "at", "or",
-  "is", "are", "be", "as", "by", "our", "you", "your", "we", "will", "this",
-  "that", "from", "have", "has", "all", "new", "team", "work", "role", "job",
-  "jr", "sr", "i", "ii", "iii", "iv",
+  "the",
+  "and",
+  "for",
+  "with",
+  "of",
+  "a",
+  "an",
+  "to",
+  "in",
+  "on",
+  "at",
+  "or",
+  "is",
+  "are",
+  "be",
+  "as",
+  "by",
+  "our",
+  "you",
+  "your",
+  "we",
+  "will",
+  "this",
+  "that",
+  "from",
+  "have",
+  "has",
+  "all",
+  "new",
+  "team",
+  "work",
+  "role",
+  "job",
+  "jr",
+  "sr",
+  "i",
+  "ii",
+  "iii",
+  "iv",
 ]);
 
 function tokenize(text: string): string[] {
@@ -61,7 +96,16 @@ function tokenSet(text: string): Set<string> {
 }
 
 /** Significant role words shared between two titles, ignoring seniority noise. */
-const SENIORITY = new Set(["senior", "junior", "lead", "principal", "staff", "intern", "entry", "mid"]);
+const SENIORITY = new Set([
+  "senior",
+  "junior",
+  "lead",
+  "principal",
+  "staff",
+  "intern",
+  "entry",
+  "mid",
+]);
 
 function roleTokens(text: string): string[] {
   return tokenize(text).filter((t) => !SENIORITY.has(t));
@@ -115,7 +159,8 @@ export function scoreJobFit(job: ScorableJob, profile: UserProfile): FitResult {
   } else if (matchedSkills.length === 0) {
     skillDetail = "None of your listed skills appear in this posting.";
   } else {
-    skillDetail = `Found ${matchedSkills.length} of your ${skills.length} skills: ${matchedSkills.slice(0, 5).join(", ")}` +
+    skillDetail =
+      `Found ${matchedSkills.length} of your ${skills.length} skills: ${matchedSkills.slice(0, 5).join(", ")}` +
       (matchedSkills.length < skills.length && missingSkills.length
         ? `. Not mentioned: ${missingSkills.slice(0, 3).join(", ")}.`
         : ".");
@@ -166,19 +211,22 @@ export function scoreJobFit(job: ScorableJob, profile: UserProfile): FitResult {
   if (typeof years === "number") {
     if (req != null) {
       expScore = years >= req ? 1 : Math.max(0.2, years / Math.max(req, 1));
-      expDetail = years >= req
-        ? `You meet the ${req}+ years required (you have ${years}).`
-        : `Asks for ${req}+ years; your profile lists ${years}.`;
+      expDetail =
+        years >= req
+          ? `You meet the ${req}+ years required (you have ${years}).`
+          : `Asks for ${req}+ years; your profile lists ${years}.`;
     } else if (level === "senior") {
       expScore = years >= 5 ? 1 : years >= 3 ? 0.65 : 0.35;
-      expDetail = years >= 5
-        ? `Senior-level role; your ${years} years are a strong fit.`
-        : `Senior-level role; your ${years} years may be light.`;
+      expDetail =
+        years >= 5
+          ? `Senior-level role; your ${years} years are a strong fit.`
+          : `Senior-level role; your ${years} years may be light.`;
     } else if (level === "junior") {
       expScore = years <= 3 ? 1 : years <= 6 ? 0.7 : 0.5;
-      expDetail = years <= 3
-        ? `Early-career role that fits your ${years} years.`
-        : `Early-career role; with ${years} years you may be overqualified.`;
+      expDetail =
+        years <= 3
+          ? `Early-career role that fits your ${years} years.`
+          : `Early-career role; with ${years} years you may be overqualified.`;
     } else {
       expScore = 0.75;
       expDetail = `No stated requirement; your ${years} years are a reasonable fit.`;
@@ -213,15 +261,37 @@ export function scoreJobFit(job: ScorableJob, profile: UserProfile): FitResult {
     historyDetail = "Little overlap with your past roles.";
   }
 
-  const score = Math.round(
-    skillScore * 42 + titleScore * 30 + expScore * 18 + historyScore * 10,
-  );
+  const score = Math.round(skillScore * 42 + titleScore * 30 + expScore * 18 + historyScore * 10);
 
   const factors: FitFactor[] = [
-    { key: "skills", label: "Skills", score: Math.round(skillScore * 100), weight: 42, detail: skillDetail },
-    { key: "role", label: "Role match", score: Math.round(titleScore * 100), weight: 30, detail: roleDetail },
-    { key: "experience", label: "Experience", score: Math.round(expScore * 100), weight: 18, detail: expDetail },
-    { key: "history", label: "Work history", score: Math.round(historyScore * 100), weight: 10, detail: historyDetail },
+    {
+      key: "skills",
+      label: "Skills",
+      score: Math.round(skillScore * 100),
+      weight: 42,
+      detail: skillDetail,
+    },
+    {
+      key: "role",
+      label: "Role match",
+      score: Math.round(titleScore * 100),
+      weight: 30,
+      detail: roleDetail,
+    },
+    {
+      key: "experience",
+      label: "Experience",
+      score: Math.round(expScore * 100),
+      weight: 18,
+      detail: expDetail,
+    },
+    {
+      key: "history",
+      label: "Work history",
+      score: Math.round(historyScore * 100),
+      weight: 10,
+      detail: historyDetail,
+    },
   ];
 
   return { score: Math.min(100, Math.max(0, score)), reasons: reasons.slice(0, 3), factors };
@@ -261,7 +331,6 @@ export function buildDefaultQuery(profile: UserProfile): { keyword: string; loca
     profile.currentRole ||
     (profile.workHistory ?? [])[0]?.role ||
     "";
-  const location =
-    (profile.targetRoles ?? []).find((r) => r.location)?.location || "";
+  const location = (profile.targetRoles ?? []).find((r) => r.location)?.location || "";
   return { keyword: keyword.trim(), location: location.trim() };
 }

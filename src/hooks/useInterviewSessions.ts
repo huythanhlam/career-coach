@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
-import type { InterviewSession, InterviewScores, ChatTurn, MockWorkflowId, QuestionFeedback } from "@/types/interviewSession";
+import type {
+  InterviewSession,
+  InterviewScores,
+  ChatTurn,
+  MockWorkflowId,
+  QuestionFeedback,
+} from "@/types/interviewSession";
 
 // Interview practice history data hook — reads/writes the `interview_sessions`
 // table. Mirrors the useJobPostings shape (list + add + delete).

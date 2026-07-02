@@ -28,9 +28,9 @@ describe("yoeToTier", () => {
 
 describe("marketCacheKey", () => {
   it("normalizes case, whitespace, and canonicalizes the location", () => {
-    expect(
-      marketCacheKey({ role: "  Software Engineer ", location: "  Austin ", yoe: "5" }),
-    ).toBe("software engineer|austin, tx|3-5");
+    expect(marketCacheKey({ role: "  Software Engineer ", location: "  Austin ", yoe: "5" })).toBe(
+      "software engineer|austin, tx|3-5",
+    );
   });
 
   it("collapses equivalent location spellings to one key", () => {
@@ -58,9 +58,7 @@ describe("marketCacheKey", () => {
   });
 
   it("omits an empty secondary location", () => {
-    expect(marketCacheKey({ role: "PM", location: "NYC", yoe: "2" })).toBe(
-      "pm|nyc|0-2",
-    );
+    expect(marketCacheKey({ role: "PM", location: "NYC", yoe: "2" })).toBe("pm|nyc|0-2");
   });
 
   it("folds equal YoE values within a tier into the same key", () => {

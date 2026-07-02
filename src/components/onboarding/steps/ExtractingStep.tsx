@@ -43,10 +43,7 @@ export function ExtractingStep({ importType, error, onRetry, onSkip }: Props) {
 
   return (
     <div className="flex flex-col items-center text-center px-8 py-16 max-w-md mx-auto">
-      <Loader2
-        className="w-12 h-12 animate-spin mb-6"
-        style={{ color: "var(--primary)" }}
-      />
+      <Loader2 className="w-12 h-12 animate-spin mb-6" style={{ color: "var(--primary)" }} />
       <h3
         className="text-xl font-bold mb-3"
         style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
@@ -54,7 +51,8 @@ export function ExtractingStep({ importType, error, onRetry, onSkip }: Props) {
         {importType === "linkedin" ? "Reading your LinkedIn profile…" : "Parsing your resume…"}
       </h3>
       <p className="text-sm" style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-        Gemini is extracting your work history, skills, and education. This usually takes 5–15 seconds.
+        Gemini is extracting your work history, skills, and education. This usually takes 5–15
+        seconds.
       </p>
     </div>
   );

@@ -24,9 +24,7 @@ describe("stripMarkdown", () => {
   });
 
   it("keeps link text and drops the URL", () => {
-    expect(stripMarkdown("See [the docs](https://example.com) here")).toBe(
-      "See the docs here",
-    );
+    expect(stripMarkdown("See [the docs](https://example.com) here")).toBe("See the docs here");
   });
 
   it("keeps inline code contents", () => {

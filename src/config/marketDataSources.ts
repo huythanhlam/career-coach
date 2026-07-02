@@ -18,7 +18,10 @@ export const COMPENSATION_SOURCES: SourceLink[] = [
   { label: "Levels.fyi", url: "https://www.levels.fyi" },
   { label: "BLS OEWS", url: "https://www.bls.gov/oes/" },
   { label: "Glassdoor Salaries", url: "https://www.glassdoor.com/Salaries/index.htm" },
-  { label: "Robert Half Salary Guide", url: "https://www.roberthalf.com/us/en/insights/salary-guide" },
+  {
+    label: "Robert Half Salary Guide",
+    url: "https://www.roberthalf.com/us/en/insights/salary-guide",
+  },
   { label: "Stack Overflow Developer Survey", url: "https://survey.stackoverflow.co/" },
   { label: "Hired State of Salaries", url: "https://hired.com/state-of-salaries-report/" },
 ];
@@ -30,7 +33,10 @@ export const COMPENSATION_SOURCES: SourceLink[] = [
  */
 export const COST_OF_LIVING_SOURCES: SourceLink[] = [
   { label: "BLS Consumer Expenditure Survey", url: "https://www.bls.gov/cex/" },
-  { label: "BEA Regional Price Parities", url: "https://www.bea.gov/data/prices-inflation/regional-price-parities-state-and-metro-area" },
+  {
+    label: "BEA Regional Price Parities",
+    url: "https://www.bea.gov/data/prices-inflation/regional-price-parities-state-and-metro-area",
+  },
   { label: "HUD Fair Market Rents", url: "https://www.huduser.gov/portal/datasets/fmr.html" },
   { label: "BLS Consumer Price Index (CPI)", url: "https://www.bls.gov/cpi/" },
 ];
@@ -43,7 +49,10 @@ export const COST_OF_LIVING_SOURCES: SourceLink[] = [
  */
 export const LOCATION_SOURCE_MAP: Record<string, SourceLink[]> = {
   "San Francisco, CA": [
-    { label: "BLS OEWS — San Francisco metro", url: "https://www.bls.gov/oes/current/oes_41860.htm" },
+    {
+      label: "BLS OEWS — San Francisco metro",
+      url: "https://www.bls.gov/oes/current/oes_41860.htm",
+    },
   ],
   "New York, NY": [
     { label: "BLS OEWS — New York metro", url: "https://www.bls.gov/oes/current/oes_35620.htm" },
@@ -61,7 +70,10 @@ export const LOCATION_SOURCE_MAP: Record<string, SourceLink[]> = {
     { label: "BLS OEWS — Los Angeles metro", url: "https://www.bls.gov/oes/current/oes_31080.htm" },
   ],
   "London, UK": [
-    { label: "ONS — UK inflation & cost of living", url: "https://www.ons.gov.uk/economy/inflationandpriceindices" },
+    {
+      label: "ONS — UK inflation & cost of living",
+      url: "https://www.ons.gov.uk/economy/inflationandpriceindices",
+    },
     { label: "Glassdoor UK Salaries", url: "https://www.glassdoor.co.uk/Salaries/index.htm" },
   ],
   "Remote (US)": [
@@ -71,18 +83,54 @@ export const LOCATION_SOURCE_MAP: Record<string, SourceLink[]> = {
 
 /** Levels.fyi role landing pages for the most common tech roles. */
 const ROLE_SOURCE_MAP: Record<string, SourceLink> = {
-  "Software Engineer": { label: "Levels.fyi — Software Engineer", url: "https://www.levels.fyi/t/software-engineer" },
-  "Frontend Engineer": { label: "Levels.fyi — Software Engineer", url: "https://www.levels.fyi/t/software-engineer" },
-  "Backend Engineer": { label: "Levels.fyi — Software Engineer", url: "https://www.levels.fyi/t/software-engineer" },
-  "Full Stack Engineer": { label: "Levels.fyi — Software Engineer", url: "https://www.levels.fyi/t/software-engineer" },
-  "Product Manager": { label: "Levels.fyi — Product Manager", url: "https://www.levels.fyi/t/product-manager" },
-  "Data Scientist": { label: "Levels.fyi — Data Scientist", url: "https://www.levels.fyi/t/data-scientist" },
-  "Data Engineer": { label: "Levels.fyi — Software Engineer", url: "https://www.levels.fyi/t/software-engineer" },
-  "Machine Learning Engineer": { label: "Levels.fyi — ML Engineer", url: "https://www.levels.fyi/t/software-engineer/focus/ml-ai" },
-  "DevOps Engineer": { label: "Levels.fyi — Software Engineer", url: "https://www.levels.fyi/t/software-engineer" },
-  "Engineering Manager": { label: "Levels.fyi — Engineering Manager", url: "https://www.levels.fyi/t/engineering-manager" },
-  "UX/UI Designer": { label: "Levels.fyi — Product Designer", url: "https://www.levels.fyi/t/product-designer" },
-  "QA Engineer": { label: "Levels.fyi — Software Engineer", url: "https://www.levels.fyi/t/software-engineer" },
+  "Software Engineer": {
+    label: "Levels.fyi — Software Engineer",
+    url: "https://www.levels.fyi/t/software-engineer",
+  },
+  "Frontend Engineer": {
+    label: "Levels.fyi — Software Engineer",
+    url: "https://www.levels.fyi/t/software-engineer",
+  },
+  "Backend Engineer": {
+    label: "Levels.fyi — Software Engineer",
+    url: "https://www.levels.fyi/t/software-engineer",
+  },
+  "Full Stack Engineer": {
+    label: "Levels.fyi — Software Engineer",
+    url: "https://www.levels.fyi/t/software-engineer",
+  },
+  "Product Manager": {
+    label: "Levels.fyi — Product Manager",
+    url: "https://www.levels.fyi/t/product-manager",
+  },
+  "Data Scientist": {
+    label: "Levels.fyi — Data Scientist",
+    url: "https://www.levels.fyi/t/data-scientist",
+  },
+  "Data Engineer": {
+    label: "Levels.fyi — Software Engineer",
+    url: "https://www.levels.fyi/t/software-engineer",
+  },
+  "Machine Learning Engineer": {
+    label: "Levels.fyi — ML Engineer",
+    url: "https://www.levels.fyi/t/software-engineer/focus/ml-ai",
+  },
+  "DevOps Engineer": {
+    label: "Levels.fyi — Software Engineer",
+    url: "https://www.levels.fyi/t/software-engineer",
+  },
+  "Engineering Manager": {
+    label: "Levels.fyi — Engineering Manager",
+    url: "https://www.levels.fyi/t/engineering-manager",
+  },
+  "UX/UI Designer": {
+    label: "Levels.fyi — Product Designer",
+    url: "https://www.levels.fyi/t/product-designer",
+  },
+  "QA Engineer": {
+    label: "Levels.fyi — Software Engineer",
+    url: "https://www.levels.fyi/t/software-engineer",
+  },
 };
 
 function dedupe(links: SourceLink[]): SourceLink[] {
@@ -94,14 +142,23 @@ function dedupe(links: SourceLink[]): SourceLink[] {
  * Collect the preferred source links for a given role + location(s) — used both
  * for prompt guidance and as a fallback reference list in the UI.
  */
-export function getSourcesFor(role?: string, location?: string, secondaryLocation?: string): SourceLink[] {
+export function getSourcesFor(
+  role?: string,
+  location?: string,
+  secondaryLocation?: string,
+): SourceLink[] {
   const links: SourceLink[] = [];
   if (role && ROLE_SOURCE_MAP[role]) links.push(ROLE_SOURCE_MAP[role]);
   for (const loc of [location, secondaryLocation]) {
     if (loc && LOCATION_SOURCE_MAP[loc]) links.push(...LOCATION_SOURCE_MAP[loc]);
   }
   // Always include the top general comp anchors + government cost-of-living anchors.
-  links.push(COMPENSATION_SOURCES[0], COMPENSATION_SOURCES[1], COST_OF_LIVING_SOURCES[0], COST_OF_LIVING_SOURCES[1]);
+  links.push(
+    COMPENSATION_SOURCES[0],
+    COMPENSATION_SOURCES[1],
+    COST_OF_LIVING_SOURCES[0],
+    COST_OF_LIVING_SOURCES[1],
+  );
   return dedupe(links);
 }
 
@@ -109,7 +166,11 @@ export function getSourcesFor(role?: string, location?: string, secondaryLocatio
  * Prompt fragment instructing the model to ground citations in the curated
  * sources for the selected role + location(s).
  */
-export function buildSourceGuidance(role?: string, location?: string, secondaryLocation?: string): string {
+export function buildSourceGuidance(
+  role?: string,
+  location?: string,
+  secondaryLocation?: string,
+): string {
   const links = getSourcesFor(role, location, secondaryLocation);
   const list = links.map((l) => `- ${l.label}: ${l.url}`).join("\n");
   return `\n\nPREFERRED SOURCES — attribute each metric's \`source\` to one of these real publishers (use the exact label and URL; do NOT invent URLs). If you rely on another well-known publisher, use its real homepage URL.\n${list}\n`;

@@ -60,7 +60,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.from("profiles").upsert(profileToRow(next, user.id));
       if (error) console.error("Failed to save profile:", error);
     },
-    [user]
+    [user],
   );
 
   const resetProfile = useCallback(async () => {
@@ -73,19 +73,14 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({ profile, updateProfile, resetProfile, loading }),
-    [profile, updateProfile, resetProfile, loading]
+    [profile, updateProfile, resetProfile, loading],
   );
 
-  return (
-    <UserProfileContext.Provider value={value}>
-      {children}
-    </UserProfileContext.Provider>
-  );
+  return <UserProfileContext.Provider value={value}>{children}</UserProfileContext.Provider>;
 }
 
 export function useUserProfile(): UserProfileContextValue {
   const ctx = useContext(UserProfileContext);
-  if (!ctx)
-    throw new Error("useUserProfile must be used within UserProfileProvider");
+  if (!ctx) throw new Error("useUserProfile must be used within UserProfileProvider");
   return ctx;
 }

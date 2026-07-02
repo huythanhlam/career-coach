@@ -1,15 +1,26 @@
 import { useCallback, useState } from "react";
 import {
-  researchCompanyProfile, researchCompanyNews, assembleCompanyResearch, CompanyResearchResult,
+  researchCompanyProfile,
+  researchCompanyNews,
+  assembleCompanyResearch,
+  CompanyResearchResult,
   type CompanyProfileData,
 } from "@/services/geminiService";
 import { fetchCareerPageContext } from "@/services/companyCareerService";
 import { getCachedCompanyResearch, putCachedCompanyResearch } from "@/config/companyResearchCache";
-import { getCompanyProfile, requestCompanyProfile, type RequestProfileResult } from "@/services/companyProfileService";
+import {
+  getCompanyProfile,
+  requestCompanyProfile,
+  type RequestProfileResult,
+} from "@/services/companyProfileService";
 import type { CompanyProfile } from "@/types/companyProfile";
 
 export function useCompanyResearchHandlers() {
-  const [companyJobDetails, setCompanyJobDetails] = useState({ jobTitle: "", companyName: "", jobDescription: "" });
+  const [companyJobDetails, setCompanyJobDetails] = useState({
+    jobTitle: "",
+    companyName: "",
+    jobDescription: "",
+  });
   const [companyResult, setCompanyResult] = useState<CompanyResearchResult | null>(null);
   const [isResearching, setIsResearching] = useState(false);
   const [isRevalidating, setIsRevalidating] = useState(false);
@@ -20,13 +31,23 @@ export function useCompanyResearchHandlers() {
   const [careerInsights, setCareerInsights] = useState<CompanyProfileData | null>(null);
   const [careerInsightsLoading, setCareerInsightsLoading] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false);
-  const [requestState, setRequestState] = useState<RequestProfileResult | "requesting" | null>(null);
+  const [requestState, setRequestState] = useState<RequestProfileResult | "requesting" | null>(
+    null,
+  );
 
   const fetchProfileFresh = async (company: string) => {
     // Navigate the company's own careers pages first so the profile is grounded
     // in primary-source text (culture, benefits, interview process). Best-effort.
-    const careerContext = await fetchCareerPageContext(company).catch(() => ({ text: "", sources: [] }));
-    const p = await researchCompanyProfile({ jobTitle: "", companyName: company, jobDescription: "", careerContext });
+    const careerContext = await fetchCareerPageContext(company).catch(() => ({
+      text: "",
+      sources: [],
+    }));
+    const p = await researchCompanyProfile({
+      jobTitle: "",
+      companyName: company,
+      jobDescription: "",
+      careerContext,
+    });
     await putCachedCompanyResearch(company, "profile", p);
     return p;
   };
@@ -43,7 +64,10 @@ export function useCompanyResearchHandlers() {
       const cached = await getCachedCompanyResearch(company, "profile");
       if (cached) {
         setCareerInsights(cached.data);
-        if (!cached.fresh) fetchProfileFresh(company).then(setCareerInsights).catch(() => {});
+        if (!cached.fresh)
+          fetchProfileFresh(company)
+            .then(setCareerInsights)
+            .catch(() => {});
         return;
       }
       setCareerInsightsLoading(true);
@@ -61,7 +85,10 @@ export function useCompanyResearchHandlers() {
     return n;
   };
 
-  const runCompanyResearch = async (mode: "auto" | "news" | "all" = "auto", companyArg?: string) => {
+  const runCompanyResearch = async (
+    mode: "auto" | "news" | "all" = "auto",
+    companyArg?: string,
+  ) => {
     const company = (companyArg ?? companyJobDetails.companyName).trim();
     if (!company || isResearching || isRevalidating) return;
 
@@ -82,7 +109,11 @@ export function useCompanyResearchHandlers() {
             ]);
             setCompanyResult(assembleCompanyResearch(p, n));
             setCompanyCachedAt(new Date().toISOString());
-          } catch (err) { console.error(err); } finally { setIsRevalidating(false); }
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setIsRevalidating(false);
+          }
         }
         return;
       }
@@ -94,7 +125,11 @@ export function useCompanyResearchHandlers() {
         ]);
         setCompanyResult(assembleCompanyResearch(p, n));
         setCompanyCachedAt(new Date().toISOString());
-      } catch (err) { console.error(err); } finally { setIsResearching(false); }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsResearching(false);
+      }
       return;
     }
 
@@ -103,12 +138,24 @@ export function useCompanyResearchHandlers() {
       const wantP = mode === "all";
       const wantN = mode === "all" || mode === "news";
       const [p, n] = await Promise.all([
-        wantP ? fetchProfileFresh(company) : getCachedCompanyResearch(company, "profile").then((c) => c?.data ?? fetchProfileFresh(company)),
-        wantN ? fetchNewsFresh(company) : getCachedCompanyResearch(company, "news").then((c) => c?.data ?? fetchNewsFresh(company)),
+        wantP
+          ? fetchProfileFresh(company)
+          : getCachedCompanyResearch(company, "profile").then(
+              (c) => c?.data ?? fetchProfileFresh(company),
+            ),
+        wantN
+          ? fetchNewsFresh(company)
+          : getCachedCompanyResearch(company, "news").then(
+              (c) => c?.data ?? fetchNewsFresh(company),
+            ),
       ]);
       setCompanyResult(assembleCompanyResearch(p, n));
       setCompanyCachedAt(new Date().toISOString());
-    } catch (err) { console.error(err); } finally { setIsRevalidating(false); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRevalidating(false);
+    }
   };
 
   const startCompanyResearch = async (name: string) => {
@@ -128,7 +175,9 @@ export function useCompanyResearchHandlers() {
         loadCareerInsights(company);
         return;
       }
-    } catch { /* fall through to AI */ }
+    } catch {
+      /* fall through to AI */
+    }
     setProfileMissing(true);
     setIsResearching(false);
     await runCompanyResearch("auto", company);

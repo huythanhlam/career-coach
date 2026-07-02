@@ -2,7 +2,17 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, User, Send, X, MessageSquare, Loader2, Sparkles, Trash2, RotateCcw } from "lucide-react";
+import {
+  Bot,
+  User,
+  Send,
+  X,
+  MessageSquare,
+  Loader2,
+  Sparkles,
+  Trash2,
+  RotateCcw,
+} from "lucide-react";
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
@@ -33,7 +43,10 @@ function restoreMessages(): Message[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
       (m): m is Message =>
-        m && (m.role === "user" || m.role === "model") && typeof m.text === "string" && m.text !== ""
+        m &&
+        (m.role === "user" || m.role === "model") &&
+        typeof m.text === "string" &&
+        m.text !== "",
     );
   } catch {
     return [];
@@ -44,7 +57,9 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   const { profile } = useUserProfile();
   const { postings } = useJobPostings();
   const [messages, setMessages] = useState<Message[]>(restoreMessages);
-  const [chatInstance, setChatInstance] = useState<ReturnType<typeof createCoachingChat> | null>(null);
+  const [chatInstance, setChatInstance] = useState<ReturnType<typeof createCoachingChat> | null>(
+    null,
+  );
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [failedInput, setFailedInput] = useState<string | null>(null);
@@ -75,7 +90,12 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
 
   const initials =
     (profile.preferredName || profile.fullName || "")
-      .trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "You";
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() || "You";
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -92,7 +112,9 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
       buildPipelineSummary(postings),
       profile.resumeScore != null ? `Latest resume score: ${profile.resumeScore}/100` : "",
       profile.linkedinScore != null ? `Latest LinkedIn score: ${profile.linkedinScore}/100` : "",
-    ].filter(Boolean).join("\n\n");
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     if (!context) return systemInstruction;
     return `${systemInstruction}\n\nWHAT YOU ALREADY KNOW ABOUT THIS USER (from their profile and activity in the app — use it naturally, don't re-ask for it):\n${context}`;
   };
@@ -124,7 +146,10 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
       console.error(err);
       setMessages((prev) => [
         ...prev.slice(0, -1),
-        { role: "model", text: "I couldn't reach the AI just now. No worries — tap Retry to try again." }
+        {
+          role: "model",
+          text: "I couldn't reach the AI just now. No worries — tap Retry to try again.",
+        },
       ]);
       setFailedInput(text);
     } finally {
@@ -154,20 +179,35 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 w-full md:static md:inset-auto md:w-[400px] h-full border-l border-border flex flex-col shadow-xl animate-in slide-in-from-right duration-300 z-50"
-      style={{ background: "var(--card)" }}>
-
+    <div
+      className="fixed inset-0 w-full md:static md:inset-auto md:w-[400px] h-full border-l border-border flex flex-col shadow-xl animate-in slide-in-from-right duration-300 z-50"
+      style={{ background: "var(--card)" }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 border-b border-border"
-        style={{ padding: "14px 18px", background: "var(--muted)" }}>
+      <div
+        className="flex items-center justify-between gap-3 border-b border-border"
+        style={{ padding: "14px 18px", background: "var(--muted)" }}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-[30px] h-[30px] rounded-[10px] flex items-center justify-center border"
-            style={{ background: "rgba(217,119,87,0.10)", borderColor: "rgba(217,119,87,0.25)", color: "var(--primary)" }}>
+          <div
+            className="w-[30px] h-[30px] rounded-[10px] flex items-center justify-center border"
+            style={{
+              background: "rgba(217,119,87,0.10)",
+              borderColor: "rgba(217,119,87,0.25)",
+              color: "var(--primary)",
+            }}
+          >
             <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div>
-            <div className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>The Coach</div>
-            <div className="text-[10px] font-semibold" aria-live="polite" style={{ color: "var(--forest)" }}>
+            <div className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>
+              The Coach
+            </div>
+            <div
+              className="text-[10px] font-semibold"
+              aria-live="polite"
+              style={{ color: "var(--forest)" }}
+            >
               ● {isGenerating ? "Thinking…" : "AI coach"} · {workflowConfig?.title || "All tools"}
             </div>
           </div>
@@ -186,7 +226,13 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close coach panel" className="rounded-full hover:bg-muted w-8 h-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close coach panel"
+            className="rounded-full hover:bg-muted w-8 h-8"
+          >
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -203,48 +249,77 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
         >
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(217,119,87,0.08)", color: "rgba(217,119,87,0.35)" }}>
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(217,119,87,0.08)", color: "rgba(217,119,87,0.35)" }}
+              >
                 <MessageSquare className="w-7 h-7" />
               </div>
               <div>
                 <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>
                   Hey, I'm your coach 👋
                 </div>
-                <p className="text-xs leading-relaxed max-w-[200px] mx-auto" style={{ color: "var(--muted-foreground)" }}>
-                  I know your profile, your pipeline, and this workspace. Ask me anything about your strategy.
+                <p
+                  className="text-xs leading-relaxed max-w-[200px] mx-auto"
+                  style={{ color: "var(--muted-foreground)" }}
+                >
+                  I know your profile, your pipeline, and this workspace. Ask me anything about your
+                  strategy.
                 </p>
               </div>
             </div>
           )}
 
           {messages.map((msg, idx) => (
-            <div key={idx} className={cn("flex gap-3 items-end", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
-              <div className={cn(
-                "w-[34px] h-[34px] rounded-xl flex items-center justify-center shrink-0 border text-xs font-semibold",
-                msg.role === "user"
-                  ? "border-border text-foreground"
-                  : "border-primary/20 text-primary"
-              )} style={{ background: msg.role === "user" ? "var(--muted)" : "rgba(217,119,87,0.10)" }}>
+            <div
+              key={idx}
+              className={cn(
+                "flex gap-3 items-end",
+                msg.role === "user" ? "flex-row-reverse" : "flex-row",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-[34px] h-[34px] rounded-xl flex items-center justify-center shrink-0 border text-xs font-semibold",
+                  msg.role === "user"
+                    ? "border-border text-foreground"
+                    : "border-primary/20 text-primary",
+                )}
+                style={{
+                  background: msg.role === "user" ? "var(--muted)" : "rgba(217,119,87,0.10)",
+                }}
+              >
                 {msg.role === "user" ? initials : <Sparkles className="w-3.5 h-3.5" />}
               </div>
-              <div className={cn(
-                "max-w-[80%] rounded-[18px] px-4 py-3 text-sm leading-relaxed",
-                msg.role === "user"
-                  ? "rounded-tr-[4px] text-white"
-                  : "rounded-tl-[4px] border border-border"
-              )} style={{
-                background: msg.role === "user" ? "var(--primary)" : "var(--card)",
-                color: msg.role === "user" ? "#FFF" : "var(--foreground)",
-                boxShadow: msg.role === "user" ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
-              }}>
+              <div
+                className={cn(
+                  "max-w-[80%] rounded-[18px] px-4 py-3 text-sm leading-relaxed",
+                  msg.role === "user"
+                    ? "rounded-tr-[4px] text-white"
+                    : "rounded-tl-[4px] border border-border",
+                )}
+                style={{
+                  background: msg.role === "user" ? "var(--primary)" : "var(--card)",
+                  color: msg.role === "user" ? "#FFF" : "var(--foreground)",
+                  boxShadow: msg.role === "user" ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
+                }}
+              >
                 <div className="prose prose-sm max-w-none" style={{ color: "inherit" }}>
                   <Markdown>{msg.text}</Markdown>
                   {msg.role === "model" && !msg.text && (
                     <div className="flex items-center gap-1 h-4">
-                      <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--primary)" }} />
-                      <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s]" style={{ background: "var(--primary)" }} />
-                      <div className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s]" style={{ background: "var(--primary)" }} />
+                      <div
+                        className="w-1.5 h-1.5 rounded-full animate-bounce"
+                        style={{ background: "var(--primary)" }}
+                      />
+                      <div
+                        className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s]"
+                        style={{ background: "var(--primary)" }}
+                      />
+                      <div
+                        className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s]"
+                        style={{ background: "var(--primary)" }}
+                      />
                     </div>
                   )}
                 </div>
@@ -258,7 +333,11 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
                 onClick={retry}
                 aria-label="Retry the last message"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-[12px] font-semibold transition-colors hover:border-primary/40"
-                style={{ background: "var(--card)", color: "var(--primary)", fontFamily: "inherit" }}
+                style={{
+                  background: "var(--card)",
+                  color: "var(--primary)",
+                  fontFamily: "inherit",
+                }}
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Retry
               </button>
@@ -277,16 +356,26 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
                 key={i}
                 onClick={() => handleSend(undefined, p)}
                 className="whitespace-nowrap px-3 py-1.5 rounded-full border border-border text-[11px] font-medium transition-colors hover:border-primary/40"
-                style={{ background: "var(--card)", color: "var(--muted-foreground)", fontFamily: "inherit" }}
+                style={{
+                  background: "var(--card)",
+                  color: "var(--muted-foreground)",
+                  fontFamily: "inherit",
+                }}
               >
                 {p}
               </button>
             ))}
           </div>
         )}
-        <form onSubmit={handleSend} className="flex items-center gap-2 rounded-[14px] border border-border"
-          style={{ background: "var(--card)", padding: "8px 8px 8px 14px" }}>
-          <Sparkles className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
+        <form
+          onSubmit={handleSend}
+          className="flex items-center gap-2 rounded-[14px] border border-border"
+          style={{ background: "var(--card)", padding: "8px 8px 8px 14px" }}
+        >
+          <Sparkles
+            className="w-3.5 h-3.5 flex-shrink-0"
+            style={{ color: "var(--muted-foreground)" }}
+          />
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -303,7 +392,11 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
             className="w-9 h-9 rounded-[10px] flex-shrink-0"
             style={{ background: "var(--primary)", color: "#FFF", border: "none" }}
           >
-            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {isGenerating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
           </Button>
         </form>
       </div>

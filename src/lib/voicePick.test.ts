@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import { pickVoice, scoreVoice, type VoiceLike } from "./voicePick";
 
 const v = (name: string, lang = "en-US", extra: Partial<VoiceLike> = {}): VoiceLike => ({
-  name, lang, ...extra,
+  name,
+  lang,
+  ...extra,
 });
 
 describe("pickVoice", () => {

@@ -27,8 +27,14 @@ export function MonthYearPicker({
   };
 
   function update(m: string, y: string) {
-    if (!m && !y) { onChange(""); return; }
-    if (allowPresent && y === "Present") { onChange("Present"); return; }
+    if (!m && !y) {
+      onChange("");
+      return;
+    }
+    if (allowPresent && y === "Present") {
+      onChange("Present");
+      return;
+    }
     onChange([m, y].filter(Boolean).join(" "));
   }
 
@@ -43,7 +49,11 @@ export function MonthYearPicker({
         style={sStyle}
       >
         <option value="">Month</option>
-        {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+        {MONTHS.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
       </select>
 
       <select
@@ -54,7 +64,11 @@ export function MonthYearPicker({
       >
         <option value="">Year</option>
         {allowPresent && <option value="Present">Present</option>}
-        {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
       </select>
     </div>
   );
