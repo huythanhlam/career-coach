@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { stripMarkdown } from "@/lib/speechText";
 import { pickVoice } from "@/lib/voicePick";
 import { synthesizeSpeech, ttsConfigured, TtsUnavailableError } from "@/services/ttsService";
-import { kokoroGenerate, kokoroFailed, isKokoroVoice } from "@/services/kokoroTts";
+import { kokoroGenerateSamples, kokoroFailed, isKokoroVoice } from "@/services/kokoroTts";
+import { getAudioContext, samplesToAudioBuffer, nextStartTime, MIN_LEAD_S } from "@/services/kokoroAudio";
 
 /**
  * Speak text aloud for the interview agent. Voice priority:
@@ -73,6 +74,10 @@ export function useSpeech() {
   // Bumped on every cancel/new utterance so stale async callbacks bail out.
   const tokenRef = useRef(0);
   const remoteDownRef = useRef(false);
+  // Live Kokoro source nodes (Web Audio) + the running schedule cursor, so
+  // sentences play back-to-back gaplessly and cancel() can stop them instantly.
+  const kokoroNodesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  const cursorRef = useRef(0);
 
   useEffect(() => {
     if (!synth) return;
@@ -92,11 +97,23 @@ export function useSpeech() {
     audioDoneRef.current = null;
   };
 
+  // Stop every scheduled Kokoro clip and reset the cursor. Leaving `onended`
+  // attached means each stop() still resolves its awaiting playback promise — the
+  // token guard then keeps the (stale) onEnd from firing.
+  const stopKokoro = () => {
+    for (const node of kokoroNodesRef.current) {
+      try { node.stop(); } catch { /* ignore */ }
+    }
+    kokoroNodesRef.current.clear();
+    cursorRef.current = 0;
+  };
+
   const cancel = useCallback(() => {
     tokenRef.current++;
     abortRef.current?.abort();
     abortRef.current = null;
     stopAudio();
+    stopKokoro();
     try { synth?.cancel(); } catch { /* ignore */ }
     setSpeaking(false);
   }, [synth]);
@@ -121,39 +138,67 @@ export function useSpeech() {
   }), []);
 
   /**
-   * Kokoro, pipelined: generate sentence i+1 while sentence i plays.
+   * Schedule one Kokoro clip on the shared AudioContext at the running cursor —
+   * gapless when generation keeps up with playback, a small lead-in gap when it
+   * doesn't. Returns a promise that resolves when the clip finishes (or is
+   * stopped by cancel(), which leaves onended attached so this still resolves).
+   */
+  const scheduleKokoroClip = useCallback((
+    ctx: AudioContext, samples: Float32Array, sampleRate: number, token: number,
+  ): Promise<void> => new Promise<void>((resolve) => {
+    if (token !== tokenRef.current || samples.length === 0) { resolve(); return; }
+    const src = ctx.createBufferSource();
+    src.buffer = samplesToAudioBuffer(ctx, samples, sampleRate);
+    src.connect(ctx.destination);
+    const startAt = nextStartTime(ctx.currentTime, cursorRef.current, MIN_LEAD_S);
+    cursorRef.current = startAt + src.buffer.duration;
+    kokoroNodesRef.current.add(src);
+    let done = false;
+    const finish = () => { if (done) return; done = true; kokoroNodesRef.current.delete(src); resolve(); };
+    src.onended = finish;
+    try { src.start(startAt); } catch { finish(); }
+  }), []);
+
+  /**
+   * Kokoro, pipelined: generate sentence i+1 while sentence i plays, scheduling
+   * each clip back-to-back on the Web Audio timeline for gapless playback.
    * Returns false if it couldn't even start (model loading/failed) so the
    * caller can fall back; true if it handled playback (incl. cancellation).
    */
   const speakKokoroStreaming = useCallback(async (
     clean: string, voice: string, token: number, onEnd?: () => void,
   ): Promise<boolean> => {
+    const ctx = getAudioContext();
+    if (!ctx) return false; // no Web Audio → let the caller fall back
     const chunks = splitForSpeech(clean);
     // First sentence: don't block on model load — bail fast to a fallback.
-    let current: Blob;
+    let first: { samples: Float32Array; sampleRate: number };
     try {
-      current = await kokoroGenerate(chunks[0], voice, { waitForLoad: false });
+      first = await kokoroGenerateSamples(chunks[0], voice, { waitForLoad: false });
     } catch {
       return false;
     }
     if (token !== tokenRef.current) return true;
-    // Prefetch the 2nd sentence (model is warm now) while the 1st plays.
-    const genNext = (i: number) =>
-      i < chunks.length ? kokoroGenerate(chunks[i], voice, { waitForLoad: true }).catch(() => null) : Promise.resolve(null);
-    let nextPromise = genNext(1);
-    for (let i = 0; i < chunks.length; i++) {
-      await playBlobAwait(current, token);
+    cursorRef.current = 0;
+    // Schedule each clip onto the audio timeline as soon as it's generated —
+    // subsequent sentences generate (model is warm now) while earlier ones play,
+    // and each is queued at the running cursor so it butts against the previous
+    // with no gap. `lastPlayed` tracks the final clip so we fire onEnd on its end.
+    let lastPlayed = scheduleKokoroClip(ctx, first.samples, first.sampleRate, token);
+    for (let i = 1; i < chunks.length; i++) {
+      let next: { samples: Float32Array; sampleRate: number };
+      try {
+        next = await kokoroGenerateSamples(chunks[i], voice, { waitForLoad: true });
+      } catch {
+        break; // a later sentence failed to synthesize — play what's queued, then stop
+      }
       if (token !== tokenRef.current) return true;
-      if (i + 1 >= chunks.length) break;
-      const next = await nextPromise;
-      if (token !== tokenRef.current) return true;
-      if (!next) break; // a later sentence failed to synthesize — stop gracefully
-      current = next;
-      nextPromise = genNext(i + 2);
+      lastPlayed = scheduleKokoroClip(ctx, next.samples, next.sampleRate, token);
     }
+    await lastPlayed;
     if (token === tokenRef.current) { setSpeaking(false); onEnd?.(); }
     return true;
-  }, [playBlobAwait]);
+  }, [scheduleKokoroClip]);
 
   /** Browser Web Speech, sentence-chunked for a more natural cadence. */
   const speakBrowser = useCallback((clean: string, token: number, onEnd?: () => void) => {

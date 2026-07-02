@@ -16,6 +16,7 @@ import {
 } from "@/services/negotiationEval";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { DEFAULT_KOKORO_VOICE, preloadKokoro, isKokoroVoice } from "@/services/kokoroTts";
+import { resumeAudioContext } from "@/services/kokoroAudio";
 import { COMMON_ROLES } from "@/config/workflows";
 import {
   COUNTERPART_LABELS, DIFFICULTY_LABELS, NEGOTIATION_DIMENSIONS,
@@ -130,7 +131,7 @@ export function NegotiationRoleplayWorkspace() {
 
   const handleStart = async () => {
     if (!role.trim() || isGenerating) return;
-    if (voiceEnabled) preloadKokoro();
+    if (voiceEnabled) { preloadKokoro(); resumeAudioContext(); }
     const setup: NegotiationSetup = {
       role: role.trim(),
       counterpart,
@@ -180,7 +181,7 @@ export function NegotiationRoleplayWorkspace() {
     }
   };
 
-  const toggleVoice = () => setVoiceOn((on) => { if (on) speech.cancel(); return !on; });
+  const toggleVoice = () => setVoiceOn((on) => { if (on) speech.cancel(); else resumeAudioContext(); return !on; });
 
   const answered = messages.filter((m) => m.role === "user").length > 1;
   const handleFinish = async () => {

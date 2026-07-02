@@ -19,8 +19,9 @@ import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { deriveChatStatus } from "@/lib/chatStatus";
 import { stripMarkdown } from "@/lib/speechText";
 import {
-  KOKORO_VOICES, DEFAULT_KOKORO_VOICE, preloadKokoro, kokoroGenerate, isKokoroVoice, type KokoroVoice,
+  KOKORO_VOICES, DEFAULT_KOKORO_VOICE, preloadKokoro, kokoroGenerateSamples, isKokoroVoice, type KokoroVoice,
 } from "@/services/kokoroTts";
+import { playKokoroSample, stopKokoroSample, resumeAudioContext } from "@/services/kokoroAudio";
 import { QUESTION_BANK } from "@/config/interviewQuestions";
 import {
   SCORE_DIMENSIONS, MOCK_WORKFLOW_LABELS, STAR_ELEMENTS,
@@ -326,14 +327,9 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   // Surfaced when a voice preview can't be played, so a silent failure doesn't
   // read as "this voice is broken".
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  // Hold onto the playing sample so it isn't garbage-collected mid-clip and can
-  // be stopped before the next preview (no overlapping samples).
-  const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
-  const stopSample = () => {
-    const a = sampleAudioRef.current;
-    if (a) { try { a.pause(); } catch { /* ignore */ } a.src = ""; sampleAudioRef.current = null; }
-  };
-  useEffect(() => stopSample, []);
+  // Voice previews play through the shared Web Audio context; stop any in-flight
+  // preview on unmount so it doesn't outlive the screen.
+  useEffect(() => stopKokoroSample, []);
   // Warm the ~80MB Kokoro model up front while the user reads the setup screen.
   // Cold generation takes many seconds; if the user taps Sample first and waits
   // that long, the browser drops the click's user-activation and blocks
@@ -492,7 +488,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   /* ── Start a session ─────────────────────────────────────────────── */
   const handleStart = async () => {
     if (!requiredOk || isGenerating) return;
-    if (voiceEnabled) preloadKokoro(); // warm the in-browser voice model
+    if (voiceEnabled) { preloadKokoro(); resumeAudioContext(); } // warm + unlock audio on this gesture
     chatRef.current = createCoachingChat(buildSystemInstruction());
     // generatePrompt is typed string | parts[], but the mock workflows always build a string.
     const generated = config.generatePrompt(formData);
@@ -558,6 +554,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const toggleVoice = () => {
     setVoiceOn((on) => {
       if (on) speech.cancel(); // turning off — silence any current speech
+      else resumeAudioContext(); // turning on — unlock audio on this gesture
       return !on;
     });
   };
@@ -566,29 +563,17 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const sampleVoice = async (voiceId: string) => {
     // Silence the interviewer and any previous sample so previews don't overlap.
     speech.cancel();
-    stopSample();
+    stopKokoroSample();
+    resumeAudioContext(); // this tap is the user gesture that unlocks audio
     setVoiceError(null);
     setSamplingVoice(voiceId);
     try {
-      const blob = await kokoroGenerate(
+      const { samples, sampleRate } = await kokoroGenerateSamples(
         "Hi, I'm your interviewer today. Let's get started — tell me about yourself.",
         voiceId,
         { waitForLoad: true },
       );
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      sampleAudioRef.current = audio;
-      // Resolve on natural end; reject if playback can't start (e.g. the browser
-      // blocked it) so the failure surfaces instead of being swallowed.
-      await new Promise<void>((resolve, reject) => {
-        const cleanup = () => {
-          URL.revokeObjectURL(url);
-          if (sampleAudioRef.current === audio) sampleAudioRef.current = null;
-        };
-        audio.onended = () => { cleanup(); resolve(); };
-        audio.onerror = () => { cleanup(); reject(new Error("playback failed")); };
-        audio.play().catch((err) => { cleanup(); reject(err); });
-      });
+      await playKokoroSample(samples, sampleRate);
     } catch (err) {
       console.error("Voice sample failed:", err);
       const label = KOKORO_VOICES.find((v) => v.id === voiceId)?.label ?? "this voice";

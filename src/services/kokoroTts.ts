@@ -9,14 +9,13 @@
  * never blocks the UI — without the worker, the WASM-CPU `generate()` burst
  * freezes the page during voice sampling, the interview intro, and every spoken
  * question. Callers fall back to other TTS while the model loads or if it can't
- * run. Pure helpers (voice list, WAV encoding, wasm base path) live in
- * `kokoroShared.ts` so they stay unit-testable and worker-safe.
+ * run. Pure helpers (voice list, wasm base path) live in `kokoroShared.ts` so
+ * they stay unit-testable and worker-safe; playback lives in `kokoroAudio.ts`.
  */
 
 import {
   DEFAULT_KOKORO_VOICE,
   KOKORO_VOICES,
-  encodePcm16Wav,
   isKokoroVoice,
   kokoroWasmBase,
   type KokoroVoice,
@@ -196,16 +195,17 @@ export const kokoroReady = () => ready;
 export const kokoroFailed = () => failed;
 
 /**
- * Synthesize `text` in `voice` to an audio Blob, with inference running in the
- * worker so the UI never freezes.
+ * Synthesize `text` in `voice` to raw mono `Float32` samples, with inference
+ * running in the worker so the UI never freezes. Callers play the samples
+ * directly through the Web Audio API (see `kokoroAudio.ts`) — no WAV encode.
  * @throws KokoroLoadingError if not loaded yet and waitForLoad is false
  * @throws Error if Kokoro can't run at all
  */
-export async function kokoroGenerate(
+export async function kokoroGenerateSamples(
   text: string,
   voice: string,
   opts: { waitForLoad?: boolean } = {},
-): Promise<Blob> {
+): Promise<{ samples: Float32Array; sampleRate: number }> {
   if (failed) throw new Error("Kokoro unavailable");
   if (!ensureLoad()) throw new Error("Kokoro unavailable");
 
@@ -220,13 +220,10 @@ export async function kokoroGenerate(
   const w = worker;
   if (!w) throw new Error("Kokoro unavailable");
   const id = nextId++;
-  const { samples, sampleRate } = await new Promise<{ samples: Float32Array; sampleRate: number }>(
+  return new Promise<{ samples: Float32Array; sampleRate: number }>(
     (resolve, reject) => {
       pending.set(id, { resolve, reject });
       w.postMessage({ type: "generate", id, text, voice });
     },
   );
-  // Re-encode to 16-bit PCM WAV; kokoro's native 32-bit float WAV plays back
-  // scratchy/distorted through <audio> on some browsers (see encodePcm16Wav).
-  return encodePcm16Wav(samples, sampleRate);
 }
