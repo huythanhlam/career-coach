@@ -1,6 +1,5 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
-import { markdownToHtml } from "@/lib/documentMarkdown";
 
 interface DocumentBodyProps {
   scopeId: string;

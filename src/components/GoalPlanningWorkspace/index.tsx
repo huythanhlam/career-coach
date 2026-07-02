@@ -1,19 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlertCircle,
-  ListChecks,
-  CheckCircle2,
-  Circle,
-  MessageCircleHeart,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import {
   isProfileThin,
   buildProfileBaseline,
-  buildSurveySummary,
   getProfileIdentity,
   hasBaselineIdentity,
   hasProfileBaseline,

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { X, Megaphone, Loader2, Copy, Check, Rocket, Sparkles, Star } from "lucide-react";
 import type {
   EmployerJobListing,
-  ListingStatus,
   PromoAssets,
   PromoPack,
 } from "@/types/employerListing";

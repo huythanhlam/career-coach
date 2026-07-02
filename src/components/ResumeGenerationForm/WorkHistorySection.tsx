@@ -7,7 +7,7 @@ import { JOB_TITLES, SP500_COMPANIES } from "@/lib/profileOptions";
 import { Plus, Trash2, Loader2, Wand2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { suggestWorkExperienceBullets } from "@/services/geminiService";
-import { ResumeFormState, ResumeFormAction, WorkEntry } from "./resumeFormReducer";
+import { ResumeFormState, ResumeFormAction } from "./resumeFormReducer";
 
 const fieldStyle: React.CSSProperties = {
   background: "var(--muted)",

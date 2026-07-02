@@ -46,6 +46,10 @@ export default tseslint.config(
       ...Object.fromEntries(
         Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([k, v]) => [k, toWarn(v)]),
       ),
+      // Keyboard interaction rules are P4 accessibility work — disable for now
+      "jsx-a11y/no-static-element-interactions": "off",
+      "jsx-a11y/click-events-have-key-events": "off",
+      "jsx-a11y/no-noninteractive-element-interactions": "off",
     },
   },
 

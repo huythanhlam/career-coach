@@ -25,7 +25,6 @@ import {
   Info,
   Target,
   Layers,
-  Receipt,
 } from "lucide-react";
 
 export interface SourceRef {
@@ -1194,7 +1193,7 @@ function LevelLadder({ data, fmt }: { data: MarketCompData; fmt: (v: number) => 
 }
 
 /* ── Salary range (percentile / box-plot bar) ────────────────────── */
-function SalaryRangeBar({ data, fmt }: { data: MarketCompData; fmt: (v: number) => string }) {
+function SalaryRangeBar({ data, fmt: _fmt }: { data: MarketCompData; fmt: (v: number) => string }) {
   const locs = data.locations;
   const gMin = Math.min(...locs.map((l) => l.salaryBands.min));
   const gMax = Math.max(...locs.map((l) => l.salaryBands.max));

@@ -31,7 +31,6 @@ import {
 import { expandRoleQuery, roleSearchTerms } from "@/lib/roleSynonyms";
 import {
   type JobPosting,
-  type JobStatus,
   type AggregatorJob,
   type ScannedJob,
 } from "@/types/jobPosting";
@@ -505,7 +504,7 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
               }}
             >
               {(showAllSuggested ? suggested : suggested.slice(0, 6)).map(
-                ({ posting: p, fit }, i, shown) => (
+                ({ posting: p, fit: _fit }, i, shown) => (
                   <div
                     key={p.id}
                     onClick={() => setDetailId(p.id)}
