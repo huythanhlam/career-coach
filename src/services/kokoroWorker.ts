@@ -71,9 +71,11 @@ async function load(forceCpu: boolean) {
   //   1. Multi-threaded WASM q8 when the page is cross-origin isolated — the SAME clean
   //      q8 voice as before, just parallelized. Small (~86 MB), no GPU, no precision
   //      artifacts, and fast enough to outrun playback on a typical multi-core machine.
-  //   2. WebGPU fp32 when NOT isolated but a GPU is available — clean and GPU-fast, at
-  //      the cost of a ~330 MB one-time download. This covers browsers like Safari that
-  //      can't be cross-origin isolated here.
+  //   2. WebGPU q8 when NOT isolated but a GPU is available — the SAME clean q8 weights
+  //      as the CPU path (~86 MB) rather than fp32 (~330 MB), so browsers like Safari that
+  //      can't be cross-origin isolated here download ~4x less on first use. (fp16/q4f16
+  //      are audibly distorted; q8 is the smallest clean option and is proven clean on
+  //      the CPU path — see the WebGPU verification note on tryWebgpu.)
   //   3. Single-threaded WASM q8 otherwise — clean but slow (the original path).
   //
   // We only reach WebGPU when NOT isolated, so cross-origin-isolated users never touch
@@ -89,12 +91,20 @@ async function load(forceCpu: boolean) {
 }
 
 /**
- * Try to bring up Kokoro on WebGPU with the clean fp32 weights, proving it can actually
+ * Try to bring up Kokoro on WebGPU with the clean q8 weights, proving it can actually
  * synthesize. Returns the ready TTS, or null to fall back to CPU on no GPU or a
  * load/inference error. If the GPU path instead HANGS, this never resolves — the
  * client's ready-deadline terminates and respawns the worker with forceCpu, which is
- * the only reliable way to abandon stuck GPU work. (fp32 runs on any WebGPU adapter, so
- * unlike fp16 it needs no shader-f16 feature check.)
+ * the only reliable way to abandon stuck GPU work. (Integer q8 runs on any WebGPU
+ * adapter, so like fp32 it needs no shader-f16 feature check.)
+ *
+ * VERIFICATION GATE: q8 replaces fp32 here to cut Safari's first-load download ~4x.
+ * The prove-it-synthesizes generate below guards adapters that init but can't run the
+ * graph — but it does NOT guard against (a) q8 sounding worse than fp32 on the ORT
+ * WebGPU/JSEP backend, or (b) ORT silently running the quantized ops on CPU (no byte
+ * saving). Before merging, confirm on a non-cross-origin-isolated browser (Safari, or
+ * Chrome with COOP/COEP stripped) that the voice is clean AND the transferred model
+ * bytes actually drop. If either fails, revert this to `dtype: "fp32"`.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function tryWebgpu(KokoroTTS: any): Promise<any | null> {
@@ -105,7 +115,7 @@ async function tryWebgpu(KokoroTTS: any): Promise<any | null> {
     if (!gpu?.requestAdapter) return null;
     if (!(await gpu.requestAdapter())) return null;
 
-    const tts = await KokoroTTS.from_pretrained(MODEL_ID, { dtype: "fp32", device: "webgpu" });
+    const tts = await KokoroTTS.from_pretrained(MODEL_ID, { dtype: "q8", device: "webgpu" });
     // Some adapters initialize but can't actually run the graph; prove it
     // synthesizes once (this doubles as the warm-up) before committing to it.
     await tts.generate("Hello.", { voice: DEFAULT_KOKORO_VOICE });
