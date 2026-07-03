@@ -10,25 +10,59 @@ import { Toaster } from "@/components/ui/toast";
 // Every view is lazy-loaded so first paint only ships the shell + the view the
 // user lands on; heavy deps (recharts, pdf.js, markdown, docx) stay out of the
 // entry chunk.
-const Dashboard = lazy(() => import("@/components/Dashboard").then((m) => ({ default: m.Dashboard })));
-const WorkflowView = lazy(() => import("@/components/WorkflowView").then((m) => ({ default: m.WorkflowView })));
-const GlobalChatPanel = lazy(() => import("@/components/GlobalChatPanel").then((m) => ({ default: m.GlobalChatPanel })));
-const OnboardingWizard = lazy(() => import("@/components/onboarding/OnboardingWizard").then((m) => ({ default: m.OnboardingWizard })));
-const ConsentModal = lazy(() => import("@/components/ConsentModal").then((m) => ({ default: m.ConsentModal })));
-const ProfileSettings = lazy(() => import("@/components/ProfileSettings").then((m) => ({ default: m.ProfileSettings })));
-const JobPostingsWorkspace = lazy(() => import("@/components/JobPostingsWorkspace").then((m) => ({ default: m.JobPostingsWorkspace })));
-const EmployerStudio = lazy(() => import("@/components/EmployerStudio").then((m) => ({ default: m.EmployerStudio })));
-const SecuritySettings = lazy(() => import("@/components/SecuritySettings").then((m) => ({ default: m.SecuritySettings })));
-const LandingPage = lazy(() => import("@/components/LandingPage").then((m) => ({ default: m.LandingPage })));
-const MFAChallengePage = lazy(() => import("@/components/MFAChallengePage").then((m) => ({ default: m.MFAChallengePage })));
+const Dashboard = lazy(() =>
+  import("@/components/Dashboard").then((m) => ({ default: m.Dashboard })),
+);
+const WorkflowView = lazy(() =>
+  import("@/components/WorkflowView").then((m) => ({ default: m.WorkflowView })),
+);
+const GlobalChatPanel = lazy(() =>
+  import("@/components/GlobalChatPanel").then((m) => ({ default: m.GlobalChatPanel })),
+);
+const OnboardingWizard = lazy(() =>
+  import("@/components/onboarding/OnboardingWizard").then((m) => ({ default: m.OnboardingWizard })),
+);
+const ConsentModal = lazy(() =>
+  import("@/components/ConsentModal").then((m) => ({ default: m.ConsentModal })),
+);
+const ProfileSettings = lazy(() =>
+  import("@/components/ProfileSettings").then((m) => ({ default: m.ProfileSettings })),
+);
+const JobPostingsWorkspace = lazy(() =>
+  import("@/components/JobPostingsWorkspace").then((m) => ({ default: m.JobPostingsWorkspace })),
+);
+const EmployerStudio = lazy(() =>
+  import("@/components/EmployerStudio").then((m) => ({ default: m.EmployerStudio })),
+);
+const SecuritySettings = lazy(() =>
+  import("@/components/SecuritySettings").then((m) => ({ default: m.SecuritySettings })),
+);
+const LandingPage = lazy(() =>
+  import("@/components/LandingPage").then((m) => ({ default: m.LandingPage })),
+);
+const MFAChallengePage = lazy(() =>
+  import("@/components/MFAChallengePage").then((m) => ({ default: m.MFAChallengePage })),
+);
 const BlogPage = lazy(() => import("@/components/BlogPage").then((m) => ({ default: m.BlogPage })));
-const PublicBlogShell = lazy(() => import("@/components/BlogPage/PublicBlogShell").then((m) => ({ default: m.PublicBlogShell })));
-const BlogAdmin = lazy(() => import("@/components/BlogAdmin").then((m) => ({ default: m.BlogAdmin })));
+const PublicBlogShell = lazy(() =>
+  import("@/components/BlogPage/PublicBlogShell").then((m) => ({ default: m.PublicBlogShell })),
+);
+const BlogAdmin = lazy(() =>
+  import("@/components/BlogAdmin").then((m) => ({ default: m.BlogAdmin })),
+);
 
 /* ── URL hash <-> view sync ──────────────────────────────────────────
  * The hash (e.g. #/resume_generator) is the source of truth for navigation, so
  * refresh restores the view, links are shareable, and back/forward work. */
-const STATIC_VIEWS = ["dashboard", "job_postings", "employer_studio", "blog", "blog_admin", "profile_settings", "security_settings"] as const;
+const STATIC_VIEWS = [
+  "dashboard",
+  "job_postings",
+  "employer_studio",
+  "blog",
+  "blog_admin",
+  "profile_settings",
+  "security_settings",
+] as const;
 
 function isValidView(v: string): v is ViewId {
   return v in workflowsConfig || (STATIC_VIEWS as readonly string[]).includes(v);
@@ -60,7 +94,10 @@ function viewFromHash(): ViewId | null {
 
 function Spinner() {
   return (
-    <div className="flex-1 min-h-0 flex items-center justify-center" style={{ background: "var(--background)" }}>
+    <div
+      className="flex-1 min-h-0 flex items-center justify-center"
+      style={{ background: "var(--background)" }}
+    >
       <div
         style={{
           width: 40,
@@ -92,7 +129,7 @@ function AppInner() {
   // Workflows keep in-progress state by staying mounted, but only once visited —
   // mounting all of them up front made first load initialize every workspace.
   const [visitedWorkflows, setVisitedWorkflows] = useState<Set<string>>(
-    () => new Set(activeView in workflowsConfig ? [activeView] : [])
+    () => new Set(activeView in workflowsConfig ? [activeView] : []),
   );
 
   // Navigation writes the hash; the hashchange listener below updates state.
@@ -136,7 +173,10 @@ function AppInner() {
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans text-foreground">
         <Sidebar
           activeView={activeView}
-          onSelectView={(v) => { handleSelectView(v); setIsSidebarOpen(false); }}
+          onSelectView={(v) => {
+            handleSelectView(v);
+            setIsSidebarOpen(false);
+          }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
@@ -144,7 +184,6 @@ function AppInner() {
         {/* Main Workspace Area */}
         <div className="flex-1 h-full overflow-hidden flex relative">
           <div className="flex-1 h-full overflow-hidden flex flex-col relative">
-
             {/* Mobile top bar — drawer trigger (hidden on md+ where the sidebar is always visible) */}
             <header
               className="md:hidden flex items-center gap-3 px-4 h-14 border-b border-border flex-shrink-0 z-20"
@@ -171,8 +210,12 @@ function AppInner() {
             <div className="flex-1 min-h-0 relative flex flex-col">
               <Suspense fallback={<Spinner />}>
                 {activeView === "dashboard" && <Dashboard onNavigate={handleSelectView} />}
-                {activeView === "job_postings" && <JobPostingsWorkspace onNavigate={handleSelectView} />}
-                {activeView === "employer_studio" && <EmployerStudio onNavigate={handleSelectView} />}
+                {activeView === "job_postings" && (
+                  <JobPostingsWorkspace onNavigate={handleSelectView} />
+                )}
+                {activeView === "employer_studio" && (
+                  <EmployerStudio onNavigate={handleSelectView} />
+                )}
                 {activeView === "blog" && <BlogPage />}
                 {activeView === "blog_admin" && <BlogAdmin />}
                 {activeView === "profile_settings" && <ProfileSettings />}
@@ -181,7 +224,7 @@ function AppInner() {
                 {[...visitedWorkflows].map((id) => (
                   <div
                     key={id}
-                    className={`flex-1 min-h-0 overflow-hidden ${activeView === id ? 'flex' : 'hidden'}`}
+                    className={`flex-1 min-h-0 overflow-hidden ${activeView === id ? "flex" : "hidden"}`}
                   >
                     {/* @ts-ignore */}
                     <WorkflowView workflowId={id as any} onNavigate={handleSelectView} />
@@ -192,12 +235,17 @@ function AppInner() {
               {/* Coach FAB */}
               {!isChatOpen && (
                 <button
-                  onClick={() => { setChatMounted(true); setIsChatOpen(true); }}
+                  onClick={() => {
+                    setChatMounted(true);
+                    setIsChatOpen(true);
+                  }}
                   aria-label="Open coach chat"
                   className="absolute bottom-6 right-7 w-14 h-14 rounded-full flex items-center justify-center z-40 transition-transform hover:scale-105 animate-in zoom-in duration-300"
                   style={{
-                    background: "var(--primary)", color: "#FFF",
-                    border: "none", cursor: "pointer",
+                    background: "var(--primary)",
+                    color: "#FFF",
+                    border: "none",
+                    cursor: "pointer",
                     boxShadow: "0 12px 30px rgba(217,119,87,0.35)",
                   }}
                 >

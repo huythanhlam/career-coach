@@ -16,7 +16,10 @@ import { useWorkflowHandlers } from "./useWorkflowHandlers";
 
 configurePdfWorker(pdfjs);
 
-interface WorkflowViewProps { workflowId: WorkflowId; onNavigate?: (view: ViewId) => void; }
+interface WorkflowViewProps {
+  workflowId: WorkflowId;
+  onNavigate?: (view: ViewId) => void;
+}
 
 export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
   const h = useWorkflowHandlers(workflowId);
@@ -103,7 +106,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         onAnalyzeFromBuilder={h.handleAnalyzeFromBuilder}
         onOpenSaved={h.handleOpenSavedResume}
         onDeleteSaved={h.handleDeleteSavedResume}
-        onImportToEditor={markdown => h.setSavedResumeText(markdown)}
+        onImportToEditor={(markdown) => h.setSavedResumeText(markdown)}
       />
     );
   }
@@ -162,7 +165,11 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         profileMissing={h.profileMissing}
         requestState={h.requestState}
         onPick={h.startCompanyResearch}
-        onResetProfile={() => { h.setCompanyProfile(null); h.setProfileMissing(false); h.setRequestState(null); }}
+        onResetProfile={() => {
+          h.setCompanyProfile(null);
+          h.setProfileMissing(false);
+          h.setRequestState(null);
+        }}
         onSubmitProfileRequest={h.submitProfileRequest}
         onRefreshNews={() => h.runCompanyResearch("news")}
         onRefreshAll={() => h.runCompanyResearch("all")}
@@ -181,7 +188,11 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
       onInputChange={h.handleInputChange}
       onFileChange={h.handleFileChange}
       onSubmit={h.handleInitialSubmit}
-      onReset={() => { h.setMainDocumentText(""); h.setFormData({}); h.setFileData({}); }}
+      onReset={() => {
+        h.setMainDocumentText("");
+        h.setFormData({});
+        h.setFileData({});
+      }}
     />
   );
 }

@@ -42,12 +42,12 @@ export interface FinancialMetric {
  * links only (`ratingLinks`).
  */
 export interface CompanyRating {
-  source: string;        // "Blind", "RepVue", …
-  score: number;         // e.g. 3.3
-  scale: number;         // e.g. 5
-  reviewCount?: number;  // e.g. 98
-  url: string;           // the page the score was read from
-  fetchedAt?: string;    // ISO timestamp it was scraped
+  source: string; // "Blind", "RepVue", …
+  score: number; // e.g. 3.3
+  scale: number; // e.g. 5
+  reviewCount?: number; // e.g. 98
+  url: string; // the page the score was read from
+  fetchedAt?: string; // ISO timestamp it was scraped
   /**
    * Whose perspective the score reflects. "general" = all employees; "sales" =
    * sales professionals only (e.g. RepVue), so it must not be shown as the

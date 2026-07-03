@@ -42,15 +42,11 @@ describe("isSurveyComplete", () => {
     expect(isSurveyComplete(undefined)).toBe(false);
     expect(isSurveyComplete({ jobSatisfaction: 4 })).toBe(false);
     expect(isSurveyComplete({ mobility: "Open to the right move" })).toBe(false);
-    expect(
-      isSurveyComplete({ jobSatisfaction: 4, mobility: "Open to the right move" }),
-    ).toBe(true);
+    expect(isSurveyComplete({ jobSatisfaction: 4, mobility: "Open to the right move" })).toBe(true);
   });
 
   it("treats a 0 satisfaction as answered (null-check, not falsy-check)", () => {
-    expect(isSurveyComplete({ jobSatisfaction: 0, mobility: "Unsure" })).toBe(
-      true,
-    );
+    expect(isSurveyComplete({ jobSatisfaction: 0, mobility: "Unsure" })).toBe(true);
   });
 });
 
@@ -61,15 +57,22 @@ describe("isProfileThin", () => {
   });
 
   it("is not thin with at least two signals", () => {
-    expect(
-      isProfileThin(profile({ currentRole: "Engineer", skills: ["a", "b", "c"] })),
-    ).toBe(false);
+    expect(isProfileThin(profile({ currentRole: "Engineer", skills: ["a", "b", "c"] }))).toBe(
+      false,
+    );
     expect(
       isProfileThin(
         profile({
           skills: ["a", "b", "c"],
           workHistory: [
-            { id: "1", company: "X", role: "Eng", startDate: "", endDate: "", responsibilities: "" },
+            {
+              id: "1",
+              company: "X",
+              role: "Eng",
+              startDate: "",
+              endDate: "",
+              responsibilities: "",
+            },
           ],
         }),
       ),
@@ -77,22 +80,26 @@ describe("isProfileThin", () => {
   });
 
   it("does not count fewer than three skills as a signal", () => {
-    expect(
-      isProfileThin(profile({ currentRole: "Engineer", skills: ["a", "b"] })),
-    ).toBe(true);
+    expect(isProfileThin(profile({ currentRole: "Engineer", skills: ["a", "b"] }))).toBe(true);
   });
 });
 
 describe("getProfileIdentity", () => {
   it("prefers explicit currentRole, falls back to current job role", () => {
-    expect(getProfileIdentity(profile({ currentRole: "Staff Eng" })).currentRole).toBe(
-      "Staff Eng",
-    );
+    expect(getProfileIdentity(profile({ currentRole: "Staff Eng" })).currentRole).toBe("Staff Eng");
     expect(
       getProfileIdentity(
         profile({
           workHistory: [
-            { id: "1", company: "Acme", role: "Senior Eng", startDate: "", endDate: "", responsibilities: "", current: true },
+            {
+              id: "1",
+              company: "Acme",
+              role: "Senior Eng",
+              startDate: "",
+              endDate: "",
+              responsibilities: "",
+              current: true,
+            },
           ],
         }),
       ),
@@ -103,8 +110,23 @@ describe("getProfileIdentity", () => {
     const id = getProfileIdentity(
       profile({
         workHistory: [
-          { id: "1", company: "Old", role: "Junior", startDate: "", endDate: "2020", responsibilities: "" },
-          { id: "2", company: "New", role: "Senior", startDate: "2020", endDate: "", responsibilities: "", current: true },
+          {
+            id: "1",
+            company: "Old",
+            role: "Junior",
+            startDate: "",
+            endDate: "2020",
+            responsibilities: "",
+          },
+          {
+            id: "2",
+            company: "New",
+            role: "Senior",
+            startDate: "2020",
+            endDate: "",
+            responsibilities: "",
+            current: true,
+          },
         ],
       }),
     );
@@ -147,18 +169,16 @@ describe("diffIdentityForSync", () => {
   });
 
   it("marks case-insensitive matches as 'same'", () => {
-    const [field] = diffIdentityForSync(
-      profile({ currentRole: "Product Manager" }),
-      { currentRole: "product manager" },
-    );
+    const [field] = diffIdentityForSync(profile({ currentRole: "Product Manager" }), {
+      currentRole: "product manager",
+    });
     expect(field.status).toBe("same");
   });
 
   it("marks differing values as 'conflict'", () => {
-    const [field] = diffIdentityForSync(
-      profile({ currentRole: "Engineer" }),
-      { currentRole: "Designer" },
-    );
+    const [field] = diffIdentityForSync(profile({ currentRole: "Engineer" }), {
+      currentRole: "Designer",
+    });
     expect(field.status).toBe("conflict");
   });
 });
@@ -174,17 +194,16 @@ describe("buildIdentityPatch", () => {
     expect(
       buildIdentityPatch(profile(), { yearsExperience: "8 years" }, ["yearsExperience"]),
     ).toEqual({ yearsOfExperience: 8 });
-    expect(
-      buildIdentityPatch(profile(), { yearsExperience: "many" }, ["yearsExperience"]),
-    ).toEqual({});
+    expect(buildIdentityPatch(profile(), { yearsExperience: "many" }, ["yearsExperience"])).toEqual(
+      {},
+    );
   });
 
   it("writes company into a new current work-history entry when none exists", () => {
-    const patch = buildIdentityPatch(
-      profile(),
-      { company: "Acme", currentRole: "PM" },
-      ["company", "currentRole"],
-    );
+    const patch = buildIdentityPatch(profile(), { company: "Acme", currentRole: "PM" }, [
+      "company",
+      "currentRole",
+    ]);
     expect(patch.currentRole).toBe("PM");
     expect(patch.workHistory).toHaveLength(1);
     expect(patch.workHistory![0]).toMatchObject({
@@ -197,7 +216,15 @@ describe("buildIdentityPatch", () => {
   it("updates the existing current entry's company in place", () => {
     const base = profile({
       workHistory: [
-        { id: "1", company: "Old", role: "Eng", startDate: "", endDate: "", responsibilities: "", current: true },
+        {
+          id: "1",
+          company: "Old",
+          role: "Eng",
+          startDate: "",
+          endDate: "",
+          responsibilities: "",
+          current: true,
+        },
       ],
     });
     const patch = buildIdentityPatch(base, { company: "NewCo" }, ["company"]);

@@ -90,7 +90,14 @@ describe("rowToProfile", () => {
   it("normalizes legacy 'Present' work history on read", () => {
     const profile = rowToProfile({
       work_history: [
-        { id: "1", company: "Acme", role: "Eng", startDate: "2020", endDate: "Present", responsibilities: "" },
+        {
+          id: "1",
+          company: "Acme",
+          role: "Eng",
+          startDate: "2020",
+          endDate: "Present",
+          responsibilities: "",
+        },
       ],
     });
     expect(profile.workHistory[0]).toMatchObject({ current: true, endDate: "" });
@@ -112,7 +119,15 @@ describe("round-trip", () => {
       summary: "Compiler pioneer",
       skills: ["COBOL", "leadership"],
       workHistory: [
-        { id: "w1", company: "US Navy", role: "Officer", startDate: "1943", endDate: "", responsibilities: "", current: true },
+        {
+          id: "w1",
+          company: "US Navy",
+          role: "Officer",
+          startDate: "1943",
+          endDate: "",
+          responsibilities: "",
+          current: true,
+        },
       ],
       onboardingComplete: true,
     };

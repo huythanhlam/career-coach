@@ -33,12 +33,22 @@ describe("validateListingDraft", () => {
   });
 
   it("flags an inverted salary range", () => {
-    const errors = validateListingDraft({ title: "SRE", companyId: "c1", salaryMin: 200000, salaryMax: 100000 });
+    const errors = validateListingDraft({
+      title: "SRE",
+      companyId: "c1",
+      salaryMin: 200000,
+      salaryMax: 100000,
+    });
     expect(errors.salary).toBeTruthy();
   });
 
   it("accepts a valid salary range", () => {
-    const errors = validateListingDraft({ title: "SRE", companyId: "c1", salaryMin: 100000, salaryMax: 200000 });
+    const errors = validateListingDraft({
+      title: "SRE",
+      companyId: "c1",
+      salaryMin: 100000,
+      salaryMax: 200000,
+    });
     expect(errors.salary).toBeUndefined();
   });
 

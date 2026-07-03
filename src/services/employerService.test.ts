@@ -12,7 +12,7 @@ import {
 
 describe("cleanText", () => {
   it("strips ```json fences", () => {
-    expect(cleanText("```json\n{\"a\":1}\n```")).toBe('{"a":1}');
+    expect(cleanText('```json\n{"a":1}\n```')).toBe('{"a":1}');
   });
   it("strips a plain code fence", () => {
     expect(cleanText("```\nhello\n```")).toBe("hello");

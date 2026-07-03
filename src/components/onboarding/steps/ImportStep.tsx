@@ -3,7 +3,9 @@ import { Briefcase, FileText, ArrowLeft, Upload, Loader2 } from "lucide-react";
 import { parseDocumentToText } from "@/services/documentParserService";
 
 interface Props {
-  onExtract: (input: { type: "linkedin"; text: string; url?: string } | { type: "resume"; text: string }) => void;
+  onExtract: (
+    input: { type: "linkedin"; text: string; url?: string } | { type: "resume"; text: string },
+  ) => void;
   onBack: () => void;
   onSkip: () => void;
 }
@@ -67,7 +69,8 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
         {(["linkedin", "resume"] as const).map((m) => {
           const Icon = m === "linkedin" ? Briefcase : FileText;
           const label = m === "linkedin" ? "LinkedIn Profile" : "Resume / CV";
-          const desc = m === "linkedin" ? "Paste your LinkedIn profile text" : "Paste or upload your resume";
+          const desc =
+            m === "linkedin" ? "Paste your LinkedIn profile text" : "Paste or upload your resume";
           const isSelected = method === m;
           return (
             <button
@@ -83,11 +86,18 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
                 className="w-9 h-9 rounded-lg flex items-center justify-center"
                 style={{ background: isSelected ? "rgba(217,119,87,0.14)" : "var(--muted)" }}
               >
-                <Icon className="w-4.5 h-4.5" style={{ color: isSelected ? "var(--primary)" : "var(--muted-foreground)" }} />
+                <Icon
+                  className="w-4.5 h-4.5"
+                  style={{ color: isSelected ? "var(--primary)" : "var(--muted-foreground)" }}
+                />
               </div>
               <div>
-                <div className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{label}</div>
-                <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>{desc}</div>
+                <div className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                  {label}
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                  {desc}
+                </div>
               </div>
             </button>
           );
@@ -98,8 +108,12 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
       {method === "linkedin" && (
         <div className="flex flex-col gap-3 mb-6">
           <div>
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--foreground)" }}>
-              LinkedIn URL <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>(optional)</span>
+            <label
+              className="text-xs font-semibold mb-1.5 block"
+              style={{ color: "var(--foreground)" }}
+            >
+              LinkedIn URL{" "}
+              <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>(optional)</span>
             </label>
             <input
               type="url"
@@ -117,7 +131,10 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--foreground)" }}>
+            <label
+              className="text-xs font-semibold mb-1.5 block"
+              style={{ color: "var(--foreground)" }}
+            >
               LinkedIn profile text <span style={{ color: "var(--primary)" }}>*</span>
             </label>
             <p className="text-xs mb-2" style={{ color: "var(--muted-foreground)" }}>
@@ -145,8 +162,14 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
       {method === "resume" && (
         <div className="flex flex-col gap-3 mb-6">
           <div>
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--foreground)" }}>
-              Upload resume <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>(PDF, DOCX, or TXT — we'll extract the text)</span>
+            <label
+              className="text-xs font-semibold mb-1.5 block"
+              style={{ color: "var(--foreground)" }}
+            >
+              Upload resume{" "}
+              <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>
+                (PDF, DOCX, or TXT — we'll extract the text)
+              </span>
             </label>
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -159,9 +182,13 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
               }}
             >
               {isPdfLoading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Extracting text…</>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Extracting text…
+                </>
               ) : (
-                <><Upload className="w-4 h-4" /> Upload PDF, DOCX, or TXT</>
+                <>
+                  <Upload className="w-4 h-4" /> Upload PDF, DOCX, or TXT
+                </>
               )}
             </button>
             <input
@@ -176,7 +203,10 @@ export function ImportStep({ onExtract, onBack, onSkip }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--foreground)" }}>
+            <label
+              className="text-xs font-semibold mb-1.5 block"
+              style={{ color: "var(--foreground)" }}
+            >
               Resume text <span style={{ color: "var(--primary)" }}>*</span>
             </label>
             <p className="text-xs mb-2" style={{ color: "var(--muted-foreground)" }}>

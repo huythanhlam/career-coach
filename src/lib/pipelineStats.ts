@@ -6,9 +6,20 @@ import type { JobPosting, JobStatus } from "@/types/jobPosting";
 // funnel rates and follow-up nudges with zero API calls.
 
 /** Statuses meaning the user actually applied (rejected implies an application). */
-const APPLIED_SET: ReadonlySet<JobStatus> = new Set(["applied", "interviewing", "offer", "accepted", "rejected"]);
+const APPLIED_SET: ReadonlySet<JobStatus> = new Set([
+  "applied",
+  "interviewing",
+  "offer",
+  "accepted",
+  "rejected",
+]);
 /** Statuses meaning the company responded after the application. */
-const RESPONSE_SET: ReadonlySet<JobStatus> = new Set(["interviewing", "offer", "accepted", "rejected"]);
+const RESPONSE_SET: ReadonlySet<JobStatus> = new Set([
+  "interviewing",
+  "offer",
+  "accepted",
+  "rejected",
+]);
 /** Statuses meaning the user reached at least the interview stage. */
 const INTERVIEW_SET: ReadonlySet<JobStatus> = new Set(["interviewing", "offer", "accepted"]);
 /** Statuses meaning an offer was extended. */
@@ -49,7 +60,10 @@ function daysSince(iso: string | undefined, now: Date): number | null {
   return (now.getTime() - t) / 86_400_000;
 }
 
-export function computePipelineStats(postings: JobPosting[], now: Date = new Date()): PipelineStats {
+export function computePipelineStats(
+  postings: JobPosting[],
+  now: Date = new Date(),
+): PipelineStats {
   const appliedPostings = postings.filter((p) => APPLIED_SET.has(p.status));
   const applied = appliedPostings.length;
   const responses = appliedPostings.filter((p) => RESPONSE_SET.has(p.status)).length;
@@ -62,7 +76,11 @@ export function computePipelineStats(postings: JobPosting[], now: Date = new Dat
       const age = daysSince(p.appliedAt ?? p.updatedAt, now);
       return age != null && age > STALE_AFTER_DAYS;
     })
-    .sort((a, b) => new Date(a.appliedAt ?? a.updatedAt).getTime() - new Date(b.appliedAt ?? b.updatedAt).getTime());
+    .sort(
+      (a, b) =>
+        new Date(a.appliedAt ?? a.updatedAt).getTime() -
+        new Date(b.appliedAt ?? b.updatedAt).getTime(),
+    );
 
   // Outcome attribution: does attaching a tailored resume change the response
   // rate? Only meaningful once both groups have a few data points.
@@ -87,7 +105,14 @@ export function computePipelineStats(postings: JobPosting[], now: Date = new Dat
   };
 }
 
-const STATUS_ORDER: JobStatus[] = ["applied", "interviewing", "offer", "accepted", "rejected", "saved"];
+const STATUS_ORDER: JobStatus[] = [
+  "applied",
+  "interviewing",
+  "offer",
+  "accepted",
+  "rejected",
+  "saved",
+];
 
 /**
  * Prompt-ready snapshot of the user's pipeline for the coach — counts per
@@ -98,8 +123,7 @@ export function buildPipelineSummary(postings: JobPosting[]): string {
   const tracked = postings.filter((p) => p.status !== "suggested" && p.status !== "archived");
   if (tracked.length === 0) return "";
 
-  const counts = STATUS_ORDER
-    .map((s) => ({ s, n: tracked.filter((p) => p.status === s).length }))
+  const counts = STATUS_ORDER.map((s) => ({ s, n: tracked.filter((p) => p.status === s).length }))
     .filter(({ n }) => n > 0)
     .map(({ s, n }) => `${n} ${s}`)
     .join(", ");

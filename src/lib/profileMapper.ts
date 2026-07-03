@@ -42,10 +42,7 @@ export function rowToProfile(row: Record<string, unknown>): UserProfile {
   };
 }
 
-export function profileToRow(
-  profile: UserProfile,
-  userId: string
-): Record<string, unknown> {
+export function profileToRow(profile: UserProfile, userId: string): Record<string, unknown> {
   return {
     id: userId,
     full_name: profile.fullName,
@@ -69,15 +66,25 @@ export function profileToRow(
     saved_resumes: profile.savedResumes ?? [],
     saved_cover_letters: (profile.savedCoverLetters ?? []).map(
       ({ id, name, storagePath, jobTitle, company, createdAt }) => ({
-        id, name, storagePath, jobTitle, company, createdAt,
-      })
+        id,
+        name,
+        storagePath,
+        jobTitle,
+        company,
+        createdAt,
+      }),
     ),
     saved_career_plans: (profile.savedCareerPlans ?? []).map(
       ({ id, name, storagePath, goalType, goalSummary, createdAt, milestones, lastCheckInAt }) => ({
-        id, name, storagePath, goalType, goalSummary, createdAt,
+        id,
+        name,
+        storagePath,
+        goalType,
+        goalSummary,
+        createdAt,
         ...(milestones?.length ? { milestones } : {}),
         ...(lastCheckInAt ? { lastCheckInAt } : {}),
-      })
+      }),
     ),
     target_roles: profile.targetRoles ?? [],
     target_companies: profile.targetCompanies ?? [],

@@ -4,8 +4,13 @@ import type { TailorSuggestion } from "@/services/geminiService";
 
 function suggestion(partial: Partial<TailorSuggestion>): TailorSuggestion {
   return {
-    id: "1", section: "Work", type: "rewrite", priority: "high",
-    originalText: "", suggestedText: "", rationale: "",
+    id: "1",
+    section: "Work",
+    type: "rewrite",
+    priority: "high",
+    originalText: "",
+    suggestedText: "",
+    rationale: "",
     ...partial,
   };
 }

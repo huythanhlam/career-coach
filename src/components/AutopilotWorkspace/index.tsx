@@ -84,10 +84,19 @@ export function AutopilotWorkspace() {
 
   const handleGenerate = async () => {
     setError("");
-    if (!baseResumeId) { setError("Pick a base resume first."); return; }
-    if (selected.size === 0) { setError("Select at least one posting."); return; }
+    if (!baseResumeId) {
+      setError("Pick a base resume first.");
+      return;
+    }
+    if (selected.size === 0) {
+      setError("Select at least one posting.");
+      return;
+    }
     const baseText = await loadBaseResume();
-    if (!baseText) { setError("Couldn't load that resume. Pick another."); return; }
+    if (!baseText) {
+      setError("Couldn't load that resume. Pick another.");
+      return;
+    }
 
     setIsRunning(true);
     const ids = [...selected];
@@ -110,11 +119,21 @@ export function AutopilotWorkspace() {
     try {
       const posting = postingById.get(pkg.jobPostingId);
       const variantId = generateId();
-      const baseName = posting?.company ? `${posting.company} – ${posting.title}` : posting?.title ?? "Tailored";
+      const baseName = posting?.company
+        ? `${posting.company} – ${posting.title}`
+        : (posting?.title ?? "Tailored");
       const storagePath = await uploadResume(userId, variantId, pkg.tailoredResumeText);
-      const variant = { id: variantId, name: `${baseName} (Autopilot)`, storagePath, createdAt: new Date().toISOString() };
+      const variant = {
+        id: variantId,
+        name: `${baseName} (Autopilot)`,
+        storagePath,
+        createdAt: new Date().toISOString(),
+      };
       await updateProfile({ savedResumes: [...(profile.savedResumes ?? []), variant] });
-      await updatePackage(pkgId, { packageStatus: "approved", tailoredResumeStoragePath: storagePath });
+      await updatePackage(pkgId, {
+        packageStatus: "approved",
+        tailoredResumeStoragePath: storagePath,
+      });
       if (posting) await updatePosting(posting.id, { appliedResumeId: variantId });
     } catch (err) {
       console.error("Approve failed:", err);
@@ -140,7 +159,10 @@ export function AutopilotWorkspace() {
     const posting = postingById.get(pkg.jobPostingId);
     if (!posting) return;
     const baseText = await loadBaseResume();
-    if (!baseText) { setError("Couldn't load the base resume to regenerate."); return; }
+    if (!baseText) {
+      setError("Couldn't load the base resume to regenerate.");
+      return;
+    }
     setBusyPkgId(pkgId);
     try {
       await generateFor(posting, baseText);
@@ -152,16 +174,30 @@ export function AutopilotWorkspace() {
   const reviewPackages = packages.filter((p) => postingById.has(p.jobPostingId));
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--muted)" }}>
+    <div
+      className="flex-1 flex flex-col h-full overflow-hidden"
+      style={{ background: "var(--muted)" }}
+    >
       {/* Header */}
       <div className="px-4 sm:px-8 pt-6 pb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(217,119,87,0.12)", color: "var(--primary)" }}
+          >
             <Rocket className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-display text-xl font-semibold" style={{ color: "var(--foreground)" }}>Application Autopilot</h1>
-            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Auto-generate tailored resume + cover-letter packages for your saved jobs — you review and approve every one.</p>
+            <h1
+              className="font-display text-xl font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              Application Autopilot
+            </h1>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Auto-generate tailored resume + cover-letter packages for your saved jobs — you review
+              and approve every one.
+            </p>
           </div>
         </div>
       </div>
@@ -169,27 +205,58 @@ export function AutopilotWorkspace() {
       <ScrollArea className="flex-1 min-h-0">
         <div className="px-4 sm:px-8 pb-10 max-w-2xl mx-auto w-full flex flex-col gap-5">
           {/* Setup */}
-          <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <div
+            className="rounded-2xl p-5 flex flex-col gap-4"
+            style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+          >
             {savedResumes.length === 0 ? (
-              <div className="flex items-center gap-2 text-sm rounded-xl px-4 py-3" style={{ background: "rgba(217,119,87,0.08)", color: "var(--primary)" }}>
+              <div
+                className="flex items-center gap-2 text-sm rounded-xl px-4 py-3"
+                style={{ background: "rgba(217,119,87,0.08)", color: "var(--primary)" }}
+              >
                 <FileText className="w-4 h-4 flex-shrink-0" />
                 Save a resume in Resume Builder first — Autopilot tailors it for each job.
               </div>
             ) : (
               <>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>Base resume</label>
-                  <select value={baseResumeId} onChange={(e) => setBaseResumeId(e.target.value)} className="h-11 rounded-xl px-3 text-sm" style={{ background: "var(--muted)", border: "1px solid var(--border)", color: "var(--foreground)", cursor: "pointer" }}>
-                    {savedResumes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  <label
+                    className="text-xs font-semibold uppercase tracking-wide"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    Base resume
+                  </label>
+                  <select
+                    value={baseResumeId}
+                    onChange={(e) => setBaseResumeId(e.target.value)}
+                    className="h-11 rounded-xl px-3 text-sm"
+                    style={{
+                      background: "var(--muted)",
+                      border: "1px solid var(--border)",
+                      color: "var(--foreground)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {savedResumes.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
+                  <label
+                    className="text-xs font-semibold uppercase tracking-wide"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
                     Pick postings to apply to ({selected.size}/{MAX_BATCH})
                   </label>
                   {candidatePostings.length === 0 ? (
-                    <div className="text-sm rounded-xl px-4 py-3" style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
+                    <div
+                      className="text-sm rounded-xl px-4 py-3"
+                      style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}
+                    >
                       No saved or suggested postings yet. Save jobs in Job Postings, then come back.
                     </div>
                   ) : (
@@ -205,17 +272,37 @@ export function AutopilotWorkspace() {
                             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left"
                             style={{
                               background: isOn ? "rgba(217,119,87,0.10)" : "var(--muted)",
-                              border: isOn ? "1px solid rgba(217,119,87,0.40)" : "1px solid var(--border)",
+                              border: isOn
+                                ? "1px solid rgba(217,119,87,0.40)"
+                                : "1px solid var(--border)",
                               opacity: atCap ? 0.5 : 1,
                               cursor: atCap ? "not-allowed" : "pointer",
                             }}
                           >
-                            <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style={{ border: isOn ? "none" : "1px solid var(--border)", background: isOn ? "var(--primary)" : "transparent" }}>
-                              {isOn && <CheckCircle2 className="w-4 h-4" style={{ color: "#fff" }} />}
+                            <div
+                              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                              style={{
+                                border: isOn ? "none" : "1px solid var(--border)",
+                                background: isOn ? "var(--primary)" : "transparent",
+                              }}
+                            >
+                              {isOn && (
+                                <CheckCircle2 className="w-4 h-4" style={{ color: "#fff" }} />
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</div>
-                              <div className="text-xs truncate" style={{ color: "var(--muted-foreground)" }}>{p.company ?? ""}</div>
+                              <div
+                                className="text-sm font-medium truncate"
+                                style={{ color: "var(--foreground)" }}
+                              >
+                                {p.title}
+                              </div>
+                              <div
+                                className="text-xs truncate"
+                                style={{ color: "var(--muted-foreground)" }}
+                              >
+                                {p.company ?? ""}
+                              </div>
                             </div>
                           </button>
                         );
@@ -224,20 +311,45 @@ export function AutopilotWorkspace() {
                   )}
                 </div>
 
-                {error && <p className="text-xs" style={{ color: "var(--primary)" }}>{error}</p>}
+                {error && (
+                  <p className="text-xs" style={{ color: "var(--primary)" }}>
+                    {error}
+                  </p>
+                )}
 
                 <button
                   onClick={handleGenerate}
                   disabled={isRunning || selected.size === 0 || !baseResumeId}
                   className="h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-                  style={{ background: "var(--primary)", color: "#fff", border: "none", opacity: isRunning || selected.size === 0 || !baseResumeId ? 0.5 : 1, cursor: isRunning || selected.size === 0 || !baseResumeId ? "not-allowed" : "pointer" }}
+                  style={{
+                    background: "var(--primary)",
+                    color: "#fff",
+                    border: "none",
+                    opacity: isRunning || selected.size === 0 || !baseResumeId ? 0.5 : 1,
+                    cursor:
+                      isRunning || selected.size === 0 || !baseResumeId ? "not-allowed" : "pointer",
+                  }}
                 >
-                  {isRunning
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating {progress ? `${progress.done}/${progress.total}` : ""}…</>
-                    : <><Sparkles className="w-4 h-4" /> Generate {selected.size > 0 ? selected.size : ""} package{selected.size === 1 ? "" : "s"}</>}
+                  {isRunning ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Generating{" "}
+                      {progress ? `${progress.done}/${progress.total}` : ""}…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" /> Generate{" "}
+                      {selected.size > 0 ? selected.size : ""} package
+                      {selected.size === 1 ? "" : "s"}
+                    </>
+                  )}
                 </button>
-                <p className="text-[11px] flex items-center gap-1.5" style={{ color: "var(--muted-foreground)" }}>
-                  <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Autopilot never submits applications for you — it prepares packages you review, approve, and submit yourself.
+                <p
+                  className="text-[11px] flex items-center gap-1.5"
+                  style={{ color: "var(--muted-foreground)" }}
+                >
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" /> Autopilot never submits
+                  applications for you — it prepares packages you review, approve, and submit
+                  yourself.
                 </p>
               </>
             )}
@@ -246,7 +358,9 @@ export function AutopilotWorkspace() {
           {/* Review queue */}
           {reviewPackages.length > 0 && (
             <div className="flex flex-col gap-4">
-              <span className="text-sm font-semibold px-1" style={{ color: "var(--foreground)" }}>Packages to review</span>
+              <span className="text-sm font-semibold px-1" style={{ color: "var(--foreground)" }}>
+                Packages to review
+              </span>
               {reviewPackages.map((pkg) => (
                 <PackageReview
                   key={pkg.id}

@@ -75,7 +75,8 @@ function ListView({ posts, onEdit, onReschedule, onCancel }: Props) {
   const byDay = useMemo(() => {
     const groups = [...groupByLocalDay(posts).entries()];
     groups.sort((a, b) => (a[0] < b[0] ? -1 : 1));
-    for (const [, list] of groups) list.sort((a, b) => (a.scheduledFor! < b.scheduledFor! ? -1 : 1));
+    for (const [, list] of groups)
+      list.sort((a, b) => (a.scheduledFor! < b.scheduledFor! ? -1 : 1));
     return groups;
   }, [posts]);
 
@@ -96,12 +97,20 @@ function ListView({ posts, onEdit, onReschedule, onCancel }: Props) {
   };
 
   if (posts.length === 0) {
-    return <p className="text-sm text-muted-foreground px-1">No scheduled posts. Set a publish time on any draft from its editor.</p>;
+    return (
+      <p className="text-sm text-muted-foreground px-1">
+        No scheduled posts. Set a publish time on any draft from its editor.
+      </p>
+    );
   }
 
   return (
     <div className="space-y-5">
-      {err && <p className="text-xs" style={{ color: "#B91C1C" }}>{err}</p>}
+      {err && (
+        <p className="text-xs" style={{ color: "#B91C1C" }}>
+          {err}
+        </p>
+      )}
       {byDay.map(([key, list]) => (
         <div key={key}>
           <div className="text-xs font-semibold mb-2 text-muted-foreground">{dayLabel(key)}</div>
@@ -113,13 +122,26 @@ function ListView({ posts, onEdit, onReschedule, onCancel }: Props) {
                 style={{ background: "var(--paper)", borderColor: "var(--border)" }}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-mono tabular-nums flex items-center gap-1 flex-shrink-0" style={{ color: "var(--foreground)" }}>
-                    <Clock className="w-3.5 h-3.5" /> {p.scheduledFor ? formatScheduleTime(p.scheduledFor) : "—"}
+                  <span
+                    className="text-sm font-mono tabular-nums flex items-center gap-1 flex-shrink-0"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    <Clock className="w-3.5 h-3.5" />{" "}
+                    {p.scheduledFor ? formatScheduleTime(p.scheduledFor) : "—"}
                   </span>
                   <span className="text-lg flex-shrink-0">{p.heroEmoji || "📝"}</span>
-                  <span className="font-medium text-sm truncate flex-1" style={{ color: "var(--foreground)" }}>{p.title}</span>
+                  <span
+                    className="font-medium text-sm truncate flex-1"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    {p.title}
+                  </span>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => onEdit(p.slug)} className="text-xs font-semibold inline-flex items-center gap-1 hover:underline" style={{ color: "var(--primary)" }}>
+                    <button
+                      onClick={() => onEdit(p.slug)}
+                      className="text-xs font-semibold inline-flex items-center gap-1 hover:underline"
+                      style={{ color: "var(--primary)" }}
+                    >
                       <PenLine className="w-3 h-3" /> Edit
                     </button>
                     <button
@@ -149,7 +171,11 @@ function ListView({ posts, onEdit, onReschedule, onCancel }: Props) {
                       value={value}
                       onChange={(e) => setValue(e.target.value)}
                       className="rounded-lg border px-2 py-1 text-sm"
-                      style={{ background: "var(--background)", borderColor: "var(--border)", color: "var(--foreground)" }}
+                      style={{
+                        background: "var(--background)",
+                        borderColor: "var(--border)",
+                        color: "var(--foreground)",
+                      }}
                     />
                     <button
                       onClick={() => submitReschedule(p.slug)}
@@ -187,11 +213,19 @@ function CalendarView({ posts, onEdit }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <div className="font-display text-base font-semibold" style={{ color: "var(--foreground)" }}>
+        <div
+          className="font-display text-base font-semibold"
+          style={{ color: "var(--foreground)" }}
+        >
           {MONTH_LABELS[cursor.month]} {cursor.year}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => shift(-1)} className="p-1.5 rounded-lg border hover:bg-muted" style={{ borderColor: "var(--border)" }} aria-label="Previous month">
+          <button
+            onClick={() => shift(-1)}
+            className="p-1.5 rounded-lg border hover:bg-muted"
+            style={{ borderColor: "var(--border)" }}
+            aria-label="Previous month"
+          >
             <ChevronLeft className="w-4 h-4" style={{ color: "var(--foreground)" }} />
           </button>
           <button
@@ -201,15 +235,27 @@ function CalendarView({ posts, onEdit }: Props) {
           >
             Today
           </button>
-          <button onClick={() => shift(1)} className="p-1.5 rounded-lg border hover:bg-muted" style={{ borderColor: "var(--border)" }} aria-label="Next month">
+          <button
+            onClick={() => shift(1)}
+            className="p-1.5 rounded-lg border hover:bg-muted"
+            style={{ borderColor: "var(--border)" }}
+            aria-label="Next month"
+          >
             <ChevronRight className="w-4 h-4" style={{ color: "var(--foreground)" }} />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px rounded-xl overflow-hidden border" style={{ borderColor: "var(--border)", background: "var(--border)" }}>
+      <div
+        className="grid grid-cols-7 gap-px rounded-xl overflow-hidden border"
+        style={{ borderColor: "var(--border)", background: "var(--border)" }}
+      >
         {WEEKDAY_LABELS.map((w) => (
-          <div key={w} className="text-[11px] font-semibold text-center py-1.5" style={{ background: "var(--card)", color: "var(--muted-foreground)" }}>
+          <div
+            key={w}
+            className="text-[11px] font-semibold text-center py-1.5"
+            style={{ background: "var(--card)", color: "var(--muted-foreground)" }}
+          >
             {w}
           </div>
         ))}
@@ -221,11 +267,18 @@ function CalendarView({ posts, onEdit }: Props) {
             <div
               key={i}
               className="min-h-[5.5rem] p-1.5 align-top"
-              style={{ background: cell.inMonth ? "var(--paper)" : "var(--card)", opacity: cell.inMonth ? 1 : 0.5 }}
+              style={{
+                background: cell.inMonth ? "var(--paper)" : "var(--card)",
+                opacity: cell.inMonth ? 1 : 0.5,
+              }}
             >
               <div
                 className="text-xs mb-1 flex items-center justify-center w-6 h-6 rounded-full"
-                style={isToday ? { background: "var(--primary)", color: "#fff", fontWeight: 700 } : { color: "var(--muted-foreground)" }}
+                style={
+                  isToday
+                    ? { background: "var(--primary)", color: "#fff", fontWeight: 700 }
+                    : { color: "var(--muted-foreground)" }
+                }
               >
                 {cell.date.getDate()}
               </div>
@@ -255,10 +308,18 @@ export function ScheduledView(props: Props) {
             style={
               view === v
                 ? { background: "var(--primary)", color: "#fff", borderColor: "var(--primary)" }
-                : { background: "var(--paper)", color: "var(--foreground)", borderColor: "var(--border)" }
+                : {
+                    background: "var(--paper)",
+                    color: "var(--foreground)",
+                    borderColor: "var(--border)",
+                  }
             }
           >
-            {v === "list" ? <ListIcon className="w-3.5 h-3.5" /> : <CalendarDays className="w-3.5 h-3.5" />}
+            {v === "list" ? (
+              <ListIcon className="w-3.5 h-3.5" />
+            ) : (
+              <CalendarDays className="w-3.5 h-3.5" />
+            )}
             {v === "list" ? "List" : "Calendar"}
           </button>
         ))}

@@ -30,7 +30,11 @@ describe("validateCompanyDraft", () => {
   });
 
   it("accepts valid URLs", () => {
-    const errors = validateCompanyDraft({ name: "Acme", website: "https://acme.com", logoUrl: "https://acme.com/l.png" });
+    const errors = validateCompanyDraft({
+      name: "Acme",
+      website: "https://acme.com",
+      logoUrl: "https://acme.com/l.png",
+    });
     expect(errors).toEqual({});
   });
 });

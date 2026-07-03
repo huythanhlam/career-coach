@@ -1,6 +1,9 @@
 import React from "react";
 
-export interface DocMessage { role: "user" | "model"; text: string; }
+export interface DocMessage {
+  role: "user" | "model";
+  text: string;
+}
 
 export interface DocStyle {
   templateId: string;

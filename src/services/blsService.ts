@@ -24,7 +24,9 @@ const blsIsFresh = (ts?: string) => !!ts && Date.now() - new Date(ts).getTime() 
 // Derive the BLS endpoint from the AI gateway URL — both the local Express
 // gateway (/api/ai/generate → /api/bls) and the Supabase Edge Function
 // (/functions/v1/ai-generate → /functions/v1/bls).
-const BLS_PROXY_URL = ((import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate")
+const BLS_PROXY_URL = (
+  (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate"
+)
   .replace(/\/api\/ai\/generate\/?$/, "/api/bls")
   .replace(/\/functions\/v1\/ai-generate\/?$/, "/functions/v1/bls");
 
@@ -32,29 +34,67 @@ const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? 
 
 /** Prepopulated role → BLS SOC occupation code (6 digits). */
 export const BLS_SOC_CODES: Record<string, string> = {
-  "Software Engineer": "151252",        // Software Developers
+  "Software Engineer": "151252", // Software Developers
   "Frontend Engineer": "151252",
   "Backend Engineer": "151252",
   "Full Stack Engineer": "151252",
   "DevOps Engineer": "151252",
   "Data Engineer": "151252",
   "Machine Learning Engineer": "151252",
-  "Data Scientist": "152051",           // Data Scientists
-  "Engineering Manager": "113021",      // Computer & Information Systems Managers
-  "UX/UI Designer": "151255",           // Web & Digital Interface Designers
-  "QA Engineer": "151253",              // Software QA Analysts & Testers
-  "Product Manager": "113021",          // closest BLS proxy (no exact PM SOC)
+  "Data Scientist": "152051", // Data Scientists
+  "Engineering Manager": "113021", // Computer & Information Systems Managers
+  "UX/UI Designer": "151255", // Web & Digital Interface Designers
+  "QA Engineer": "151253", // Software QA Analysts & Testers
+  "Product Manager": "113021", // closest BLS proxy (no exact PM SOC)
 };
 
 /** Location → BLS area (metro/national) + the public OEWS page for citation. */
-export const BLS_AREAS: Record<string, { areaType: "N" | "M"; code: string; label: string; page: string }> = {
-  "San Francisco, CA": { areaType: "M", code: "0041860", label: "San Francisco metro", page: "https://www.bls.gov/oes/current/oes_41860.htm" },
-  "New York, NY": { areaType: "M", code: "0035620", label: "New York metro", page: "https://www.bls.gov/oes/current/oes_35620.htm" },
-  "Seattle, WA": { areaType: "M", code: "0042660", label: "Seattle metro", page: "https://www.bls.gov/oes/current/oes_42660.htm" },
-  "Austin, TX": { areaType: "M", code: "0012420", label: "Austin metro", page: "https://www.bls.gov/oes/current/oes_12420.htm" },
-  "Boston, MA": { areaType: "M", code: "0014460", label: "Boston metro", page: "https://www.bls.gov/oes/current/oes_14460.htm" },
-  "Los Angeles, CA": { areaType: "M", code: "0031080", label: "Los Angeles metro", page: "https://www.bls.gov/oes/current/oes_31080.htm" },
-  "Remote (US)": { areaType: "N", code: "0000000", label: "United States (national)", page: "https://www.bls.gov/oes/current/oes_nat.htm" },
+export const BLS_AREAS: Record<
+  string,
+  { areaType: "N" | "M"; code: string; label: string; page: string }
+> = {
+  "San Francisco, CA": {
+    areaType: "M",
+    code: "0041860",
+    label: "San Francisco metro",
+    page: "https://www.bls.gov/oes/current/oes_41860.htm",
+  },
+  "New York, NY": {
+    areaType: "M",
+    code: "0035620",
+    label: "New York metro",
+    page: "https://www.bls.gov/oes/current/oes_35620.htm",
+  },
+  "Seattle, WA": {
+    areaType: "M",
+    code: "0042660",
+    label: "Seattle metro",
+    page: "https://www.bls.gov/oes/current/oes_42660.htm",
+  },
+  "Austin, TX": {
+    areaType: "M",
+    code: "0012420",
+    label: "Austin metro",
+    page: "https://www.bls.gov/oes/current/oes_12420.htm",
+  },
+  "Boston, MA": {
+    areaType: "M",
+    code: "0014460",
+    label: "Boston metro",
+    page: "https://www.bls.gov/oes/current/oes_14460.htm",
+  },
+  "Los Angeles, CA": {
+    areaType: "M",
+    code: "0031080",
+    label: "Los Angeles metro",
+    page: "https://www.bls.gov/oes/current/oes_31080.htm",
+  },
+  "Remote (US)": {
+    areaType: "N",
+    code: "0000000",
+    label: "United States (national)",
+    page: "https://www.bls.gov/oes/current/oes_nat.htm",
+  },
   // London, UK has no BLS coverage → falls back to the AI estimate.
 };
 
@@ -84,8 +124,14 @@ function matchSoc(role: string) {
 }
 
 export interface BlsBands {
-  min: number; q1: number; median: number; q3: number; max: number;
-  year: string; areaLabel: string; page: string;
+  min: number;
+  q1: number;
+  median: number;
+  q3: number;
+  max: number;
+  year: string;
+  areaLabel: string;
+  page: string;
 }
 
 /** Fetch real BLS base-wage percentile bands for a role + location, or null if unavailable. */
@@ -155,16 +201,28 @@ export async function fetchBlsBands(role: string, locationName: string): Promise
 export async function enrichWithBls(
   data: MarketCompData,
   role: string,
-  prior?: LocationCompData[]
+  prior?: LocationCompData[],
 ): Promise<MarketCompData> {
   const locations = await Promise.all(
     data.locations.map(async (loc) => {
       const prev = prior?.find((p) => p.locationName === loc.locationName);
-      if (prev?.blsCachedAt && blsIsFresh(prev.blsCachedAt) && prev.salaryBands.source?.label?.startsWith("BLS")) {
+      if (
+        prev?.blsCachedAt &&
+        blsIsFresh(prev.blsCachedAt) &&
+        prev.salaryBands.source?.label?.startsWith("BLS")
+      ) {
         const p = prev.salaryBands;
         return {
           ...loc,
-          salaryBands: { ...loc.salaryBands, min: p.min, q1: p.q1, median: p.median, q3: p.q3, max: p.max, source: p.source },
+          salaryBands: {
+            ...loc.salaryBands,
+            min: p.min,
+            q1: p.q1,
+            median: p.median,
+            q3: p.q3,
+            max: p.max,
+            source: p.source,
+          },
           dataAsOf: prev.dataAsOf,
           blsCachedAt: prev.blsCachedAt,
         };
@@ -185,7 +243,7 @@ export async function enrichWithBls(
         dataAsOf: bands.year,
         blsCachedAt: new Date().toISOString(),
       };
-    })
+    }),
   );
   return { ...data, locations };
 }

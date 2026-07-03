@@ -15,7 +15,16 @@ export function InterviewTipsCard({ section }: { section: CompanyResearchSection
       <SectionHeader Icon={Lightbulb} color="#B5651D" title="Interview tips" />
       <div style={{ padding: "18px 22px" }}>
         {section?.summary && (
-          <p style={{ fontSize: 14, color: "var(--foreground)", margin: "0 0 14px", lineHeight: 1.6 }}>{section.summary}</p>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--foreground)",
+              margin: "0 0 14px",
+              lineHeight: 1.6,
+            }}
+          >
+            {section.summary}
+          </p>
         )}
         {bullets.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -27,15 +36,35 @@ export function InterviewTipsCard({ section }: { section: CompanyResearchSection
                 transition={{ delay: i * 0.06, duration: 0.35, ease: "easeOut" }}
                 style={{ display: "flex", alignItems: "flex-start", gap: 12 }}
               >
-                <span style={{ width: 24, height: 24, borderRadius: 99, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#B5651D", background: "color-mix(in srgb, #B5651D 14%, transparent)" }}>
+                <span
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 99,
+                    flexShrink: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#B5651D",
+                    background: "color-mix(in srgb, #B5651D 14%, transparent)",
+                  }}
+                >
                   {i + 1}
                 </span>
-                <span style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.5 }}>{b}</span>
+                <span style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.5 }}>
+                  {b}
+                </span>
               </motion.div>
             ))}
           </div>
         ) : (
-          !section?.summary && <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No interview details found — use the source link to verify.</p>
+          !section?.summary && (
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
+              No interview details found — use the source link to verify.
+            </p>
+          )
         )}
         <SourceChips sources={section?.sources ?? []} />
       </div>

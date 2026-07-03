@@ -15,12 +15,7 @@ import { parseJsonArray } from "@/lib/looseJson";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { basePersona } from "@/config/workflows";
 import type { UserProfile } from "@/types/userProfile";
-import type {
-  OutreachTarget,
-  PersonaType,
-  OutreachType,
-  OutreachTone,
-} from "@/types/outreach";
+import type { OutreachTarget, PersonaType, OutreachType, OutreachTone } from "@/types/outreach";
 import { OUTREACH_LABELS, TONE_LABELS } from "@/types/outreach";
 
 const PERSONAS: readonly PersonaType[] = ["recruiter", "hiring_manager", "team_member", "alumni"];
@@ -32,7 +27,8 @@ const buildTargetsPrompt = (
   companyIntel: string,
   baseline: string,
   targetRole: string,
-): string => `
+): string =>
+  `
 The candidate wants to network into a role at ${company}. Suggest 4-6 outreach targets (people-by-role), prioritized by impact.
 
 Return ONLY a JSON array with this exact shape:

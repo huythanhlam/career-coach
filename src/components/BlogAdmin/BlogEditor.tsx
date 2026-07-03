@@ -158,7 +158,10 @@ export function BlogEditor({
 
   const handleSave = async () => {
     if (!form) return;
-    const tags = tagsText.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+    const tags = tagsText
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
     if (!form.title.trim() || !form.content.trim()) {
       setError("A title and body are required.");
       return;
@@ -253,11 +256,21 @@ export function BlogEditor({
 
   if (!profile.isAdmin) {
     return (
-      <div className="flex-1 min-h-0 flex items-center justify-center" style={{ background: "var(--background)" }}>
+      <div
+        className="flex-1 min-h-0 flex items-center justify-center"
+        style={{ background: "var(--background)" }}
+      >
         <div className="text-center max-w-sm px-6">
-          <ShieldAlert className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--muted-foreground)" }} />
-          <h2 className="font-semibold mb-1" style={{ color: "var(--foreground)" }}>Not authorized</h2>
-          <p className="text-sm text-muted-foreground">The Blog Admin area is restricted to administrators.</p>
+          <ShieldAlert
+            className="w-8 h-8 mx-auto mb-3"
+            style={{ color: "var(--muted-foreground)" }}
+          />
+          <h2 className="font-semibold mb-1" style={{ color: "var(--foreground)" }}>
+            Not authorized
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            The Blog Admin area is restricted to administrators.
+          </p>
         </div>
       </div>
     );
@@ -284,10 +297,15 @@ export function BlogEditor({
           <>
             <header className="flex items-start justify-between gap-4 mb-6 flex-wrap">
               <div className="min-w-0">
-                <h1 className="font-display text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
+                <h1
+                  className="font-display text-2xl font-semibold"
+                  style={{ color: "var(--foreground)" }}
+                >
                   Edit post
                 </h1>
-                <p className="text-xs text-muted-foreground mt-1 font-mono break-all">/{post.slug}</p>
+                <p className="text-xs text-muted-foreground mt-1 font-mono break-all">
+                  /{post.slug}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <StatusPill post={post} />
@@ -306,7 +324,11 @@ export function BlogEditor({
             {error && (
               <div
                 className="rounded-xl border px-4 py-3 mb-5 text-sm"
-                style={{ background: "rgba(220,38,38,0.08)", borderColor: "rgba(220,38,38,0.3)", color: "#B91C1C" }}
+                style={{
+                  background: "rgba(220,38,38,0.08)",
+                  borderColor: "rgba(220,38,38,0.3)",
+                  color: "#B91C1C",
+                }}
               >
                 {error}
               </div>
@@ -341,8 +363,13 @@ export function BlogEditor({
                   value={form.category}
                   onChange={(e) => patch({ category: e.target.value })}
                 >
-                  {(CATEGORIES.includes(form.category) ? CATEGORIES : [form.category, ...CATEGORIES]).map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  {(CATEGORIES.includes(form.category)
+                    ? CATEGORIES
+                    : [form.category, ...CATEGORIES]
+                  ).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -434,12 +461,20 @@ export function BlogEditor({
             </div>
 
             {/* Schedule */}
-            <div className="rounded-xl border px-4 py-3 mb-6" style={{ background: "var(--paper)", borderColor: "var(--border)" }}>
+            <div
+              className="rounded-xl border px-4 py-3 mb-6"
+              style={{ background: "var(--paper)", borderColor: "var(--border)" }}
+            >
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <CalendarClock className="w-4 h-4" style={{ color: "#8B5CF6" }} />
-                <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Schedule</span>
+                <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                  Schedule
+                </span>
                 {post.status === "scheduled" && post.scheduledFor && (
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.15)", color: "#8B5CF6" }}>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(139,92,246,0.15)", color: "#8B5CF6" }}
+                  >
                     Auto-publishes {formatScheduleDateTime(post.scheduledFor)}
                   </span>
                 )}
@@ -453,7 +488,11 @@ export function BlogEditor({
                   value={scheduleValue}
                   onChange={(e) => setScheduleValue(e.target.value)}
                   className="rounded-lg border px-2 py-1.5 text-sm"
-                  style={{ background: "var(--background)", borderColor: "var(--border)", color: "var(--foreground)" }}
+                  style={{
+                    background: "var(--background)",
+                    borderColor: "var(--border)",
+                    color: "var(--foreground)",
+                  }}
                 />
                 <button
                   onClick={handleSchedule}
@@ -461,7 +500,11 @@ export function BlogEditor({
                   className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-50"
                   style={{ background: "#8B5CF6" }}
                 >
-                  {busy === "schedule" ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarClock className="w-4 h-4" />}
+                  {busy === "schedule" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CalendarClock className="w-4 h-4" />
+                  )}
                   {post.status === "scheduled" ? "Reschedule" : "Schedule"}
                 </button>
                 {post.status === "scheduled" && (
@@ -478,14 +521,21 @@ export function BlogEditor({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3 flex-wrap sticky bottom-0 py-3" style={{ background: "var(--background)" }}>
+            <div
+              className="flex items-center gap-3 flex-wrap sticky bottom-0 py-3"
+              style={{ background: "var(--background)" }}
+            >
               <button
                 onClick={handleSave}
                 disabled={busy !== null || !dirty}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-50"
                 style={{ background: "var(--primary)" }}
               >
-                {busy === "save" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {busy === "save" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
                 {dirty ? "Save changes" : "Saved"}
               </button>
 
@@ -511,7 +561,11 @@ export function BlogEditor({
                 className="inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl border ml-auto disabled:opacity-50"
                 style={{ borderColor: "rgba(220,38,38,0.3)", color: "#B91C1C" }}
               >
-                {busy === "delete" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {busy === "delete" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
                 Delete
               </button>
             </div>

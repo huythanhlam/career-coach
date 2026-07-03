@@ -30,7 +30,10 @@ export function nextRun(now: Date = new Date()): Date {
   // Advance one day at a time until we land on the target weekday strictly in the
   // future. Bounded to a week+ so it always terminates.
   let guard = 0;
-  while ((d.getUTCDay() !== BLOG_SCHEDULE.weekdayUTC || d.getTime() <= now.getTime()) && guard < 14) {
+  while (
+    (d.getUTCDay() !== BLOG_SCHEDULE.weekdayUTC || d.getTime() <= now.getTime()) &&
+    guard < 14
+  ) {
     d.setUTCDate(d.getUTCDate() + 1);
     guard++;
   }

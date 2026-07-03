@@ -48,8 +48,15 @@ export function AccountTypeStep({ onSelect }: Props) {
               <Icon className="w-5 h-5" style={{ color: "var(--primary)" }} />
             </div>
             <div>
-              <div className="text-base font-semibold" style={{ color: "var(--foreground)" }}>{title}</div>
-              <div className="text-sm mt-1" style={{ color: "var(--muted-foreground)", lineHeight: 1.5 }}>{blurb}</div>
+              <div className="text-base font-semibold" style={{ color: "var(--foreground)" }}>
+                {title}
+              </div>
+              <div
+                className="text-sm mt-1"
+                style={{ color: "var(--muted-foreground)", lineHeight: 1.5 }}
+              >
+                {blurb}
+              </div>
             </div>
           </button>
         ))}

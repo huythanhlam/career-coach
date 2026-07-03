@@ -1,9 +1,12 @@
 import { useCallback, useState } from "react";
-import {
-  createTechCoachChat, sendMessageStream,
-} from "@/services/geminiService";
+import { createTechCoachChat, sendMessageStream } from "@/services/geminiService";
 import { MarketCompData, marketToMarkdown } from "@/components/MarketCompensationViz";
-import { marketCacheKey, getCachedMarketData, putCachedMarketData, getStaleRow } from "@/services/marketDataCache";
+import {
+  marketCacheKey,
+  getCachedMarketData,
+  putCachedMarketData,
+  getStaleRow,
+} from "@/services/marketDataCache";
 import { enrichWithBls } from "@/services/blsService";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { workflowsConfig } from "@/config/workflows";
@@ -27,7 +30,9 @@ export function useMarketHandlers(
     setMarketSaveState("saving");
     try {
       await persistMarketAnalysis({
-        jobInput: [formData.role, formData.location, formData.secondaryLocation].filter(Boolean).join(" · "),
+        jobInput: [formData.role, formData.location, formData.secondaryLocation]
+          .filter(Boolean)
+          .join(" · "),
         yoe: formData.yoe ?? "",
         level: "",
         marketData,
@@ -61,7 +66,9 @@ export function useMarketHandlers(
         const parsed = JSON.parse(match[1]);
         if (parsed.locations && Array.isArray(parsed.locations)) return parsed;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return null;
   };
 
@@ -95,7 +102,9 @@ export function useMarketHandlers(
       const prompt = config.generatePrompt(formData);
       const chat = createTechCoachChat(config.systemInstruction, config.enableSearch);
       let full = "";
-      await sendMessageStream(chat, prompt as string, chunk => { full += chunk; });
+      await sendMessageStream(chat, prompt as string, (chunk) => {
+        full += chunk;
+      });
       const parsed = tryParseMarketData(full);
       if (parsed) {
         const prior = forceRefresh ? undefined : (await getStaleRow(key))?.locations;

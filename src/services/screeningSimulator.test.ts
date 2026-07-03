@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the gateway call so we test only the normalizer/defenses.
 const generateWorkflowData = vi.fn();
-vi.mock("@/services/geminiService", () => ({ generateWorkflowData: (...a: unknown[]) => generateWorkflowData(...a) }));
+vi.mock("@/services/geminiService", () => ({
+  generateWorkflowData: (...a: unknown[]) => generateWorkflowData(...a),
+}));
 
 import { screenResume } from "@/services/screeningSimulator";
 
@@ -10,18 +12,20 @@ describe("screenResume", () => {
   beforeEach(() => generateWorkflowData.mockReset());
 
   it("normalizes a well-formed response", async () => {
-    generateWorkflowData.mockResolvedValue(JSON.stringify({
-      verdict: "advance",
-      score: 82,
-      summary: "Strong match.",
-      knockouts: [
-        { requirement: "5+ years React", met: true, evidence: "6 years at Acme" },
-        { requirement: "AWS", met: false, evidence: "not mentioned" },
-        { badrow: true },
-      ],
-      missingKeywords: ["AWS", "Kubernetes", ""],
-      fixes: [{ priority: "high", label: "Add AWS", detail: "Mention cloud work" }],
-    }));
+    generateWorkflowData.mockResolvedValue(
+      JSON.stringify({
+        verdict: "advance",
+        score: 82,
+        summary: "Strong match.",
+        knockouts: [
+          { requirement: "5+ years React", met: true, evidence: "6 years at Acme" },
+          { requirement: "AWS", met: false, evidence: "not mentioned" },
+          { badrow: true },
+        ],
+        missingKeywords: ["AWS", "Kubernetes", ""],
+        fixes: [{ priority: "high", label: "Add AWS", detail: "Mention cloud work" }],
+      }),
+    );
 
     const r = await screenResume("resume", "jd", { jobTitle: "SWE" });
     expect(r.verdict).toBe("advance");
@@ -41,10 +45,13 @@ describe("screenResume", () => {
   });
 
   it("coerces an invalid fix priority to medium", async () => {
-    generateWorkflowData.mockResolvedValue(JSON.stringify({
-      verdict: "reject", score: 30,
-      fixes: [{ priority: "urgent", label: "x", detail: "y" }],
-    }));
+    generateWorkflowData.mockResolvedValue(
+      JSON.stringify({
+        verdict: "reject",
+        score: 30,
+        fixes: [{ priority: "urgent", label: "x", detail: "y" }],
+      }),
+    );
     const r = await screenResume("resume", "jd");
     expect(r.fixes[0].priority).toBe("medium");
   });

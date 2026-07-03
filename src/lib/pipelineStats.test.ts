@@ -61,19 +61,29 @@ describe("computePipelineStats", () => {
   });
 
   it("falls back to updatedAt for staleness when appliedAt is missing", () => {
-    const p = posting("applied", { appliedAt: undefined, updatedAt: daysAgo(STALE_AFTER_DAYS + 1) });
+    const p = posting("applied", {
+      appliedAt: undefined,
+      updatedAt: daysAgo(STALE_AFTER_DAYS + 1),
+    });
     expect(computePipelineStats([p], NOW).staleApplications).toHaveLength(1);
   });
 
   it("computes the tailored edge only when both groups have ≥3 applications", () => {
     const tailored = (status: JobStatus) => posting(status, { appliedResumeId: "r1" });
-    const small = computePipelineStats([tailored("interviewing"), posting("applied"), posting("applied"), posting("applied")], NOW);
+    const small = computePipelineStats(
+      [tailored("interviewing"), posting("applied"), posting("applied"), posting("applied")],
+      NOW,
+    );
     expect(small.tailoredEdge).toBeNull();
 
     const enough = computePipelineStats(
       [
-        tailored("interviewing"), tailored("offer"), tailored("applied"),
-        posting("applied"), posting("applied"), posting("rejected"),
+        tailored("interviewing"),
+        tailored("offer"),
+        tailored("applied"),
+        posting("applied"),
+        posting("applied"),
+        posting("rejected"),
       ],
       NOW,
     );

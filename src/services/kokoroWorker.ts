@@ -33,9 +33,11 @@ type InboundMsg = LoadMsg | GenerateMsg;
 // compiles with the DOM lib (not WebWorker), so reach postMessage through a
 // narrow cast to avoid the Window.postMessage signature clash.
 const post = (msg: unknown, transfer?: Transferable[]) =>
-  (globalThis as unknown as {
-    postMessage: (m: unknown, t?: Transferable[]) => void;
-  }).postMessage(msg, transfer);
+  (
+    globalThis as unknown as {
+      postMessage: (m: unknown, t?: Transferable[]) => void;
+    }
+  ).postMessage(msg, transfer);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let ttsPromise: Promise<any> | null = null;
@@ -60,9 +62,10 @@ async function load(forceCpu: boolean) {
     // isolated (COOP+COEP headers — see vite.config.ts / vercel.json). Without it
     // (e.g. Safari, which lacks COEP: credentialless) we stay single-threaded: slower,
     // but it still works. Cap threads to avoid oversubscribing.
-    const cores = typeof navigator !== "undefined" && navigator.hardwareConcurrency
-      ? navigator.hardwareConcurrency
-      : 4;
+    const cores =
+      typeof navigator !== "undefined" && navigator.hardwareConcurrency
+        ? navigator.hardwareConcurrency
+        : 4;
     wasm.numThreads = isolated ? Math.max(1, Math.min(cores, 8)) : 1;
   }
 
@@ -99,9 +102,11 @@ async function load(forceCpu: boolean) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function tryWebgpu(KokoroTTS: any): Promise<any | null> {
   try {
-    const gpu = (navigator as unknown as {
-      gpu?: { requestAdapter?: () => Promise<unknown | null> };
-    }).gpu;
+    const gpu = (
+      navigator as unknown as {
+        gpu?: { requestAdapter?: () => Promise<unknown | null> };
+      }
+    ).gpu;
     if (!gpu?.requestAdapter) return null;
     if (!(await gpu.requestAdapter())) return null;
 
@@ -121,7 +126,10 @@ function ensureLoad(forceCpu = false) {
   if (!ttsPromise) {
     // On failure, clear the promise so a later message retries the load instead
     // of being stuck on a rejected promise forever.
-    ttsPromise = load(forceCpu).catch((e) => { ttsPromise = null; throw e; });
+    ttsPromise = load(forceCpu).catch((e) => {
+      ttsPromise = null;
+      throw e;
+    });
   }
   return ttsPromise;
 }
@@ -137,7 +145,11 @@ addEventListener("message", async (event: MessageEvent<InboundMsg>) => {
       // cost. Harmless if it fails — the next real generate surfaces any issue.
       if (!warmed) {
         warmed = true;
-        try { await tts.generate("Hello.", { voice: DEFAULT_KOKORO_VOICE }); } catch { /* ignore */ }
+        try {
+          await tts.generate("Hello.", { voice: DEFAULT_KOKORO_VOICE });
+        } catch {
+          /* ignore */
+        }
       }
     } catch {
       post({ type: "loadfailed" });
@@ -152,10 +164,9 @@ addEventListener("message", async (event: MessageEvent<InboundMsg>) => {
       const audio = await tts.generate(text, { voice });
       if (audio?.audio instanceof Float32Array) {
         const samples: Float32Array = audio.audio;
-        post(
-          { type: "result", id, samples, sampleRate: audio.sampling_rate ?? 24000 },
-          [samples.buffer],
-        );
+        post({ type: "result", id, samples, sampleRate: audio.sampling_rate ?? 24000 }, [
+          samples.buffer,
+        ]);
       } else {
         // kokoro-js v1.2 always returns a Float32 `audio`; guard the unexpected.
         post({ type: "error", id, message: "Unexpected Kokoro audio shape" });

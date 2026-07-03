@@ -57,7 +57,9 @@ export function SelectWithOther({
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
         ))}
         <option value={OTHER}>{otherLabel}</option>
       </select>
