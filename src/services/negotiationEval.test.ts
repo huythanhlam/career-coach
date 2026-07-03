@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const generateWorkflowData = vi.fn();
-vi.mock("@/services/geminiService", () => ({
-  generateWorkflowData: (...a: unknown[]) => generateWorkflowData(...a),
+// Mock the gateway call so we test only the normalizer/defenses.
+const runWorkflow = vi.fn();
+vi.mock("@/ai/client", () => ({
+  runWorkflow: (...a: unknown[]) => runWorkflow(...a),
 }));
 
 import {
   evaluateNegotiationTranscript,
   buildRecruiterSystemInstruction,
 } from "@/services/negotiationEval";
+
+const ok = (data: unknown) => ({ status: "ok", data, sources: [], raw: "" });
 
 describe("buildRecruiterSystemInstruction", () => {
   it("keeps the counterpart in character and injects the scenario", () => {
@@ -26,11 +29,11 @@ describe("buildRecruiterSystemInstruction", () => {
 });
 
 describe("evaluateNegotiationTranscript", () => {
-  beforeEach(() => generateWorkflowData.mockReset());
+  beforeEach(() => runWorkflow.mockReset());
 
   it("clamps scores and normalizes move ratings", async () => {
-    generateWorkflowData.mockResolvedValue(
-      JSON.stringify({
+    runWorkflow.mockResolvedValue(
+      ok({
         scores: { anchoring: 120, justification: -5, composure: 70, outcome: 60 },
         overall: 999,
         summary: "Solid.",
@@ -58,12 +61,21 @@ describe("evaluateNegotiationTranscript", () => {
   });
 
   it("falls back to averaging when overall is missing", async () => {
-    generateWorkflowData.mockResolvedValue(
-      JSON.stringify({
-        scores: { anchoring: 80, justification: 60, composure: 80, outcome: 40 },
-      }),
+    runWorkflow.mockResolvedValue(
+      ok({ scores: { anchoring: 80, justification: 60, composure: 80, outcome: 40 } }),
     );
     const r = await evaluateNegotiationTranscript({ role: "SWE" }, []);
     expect(r.overall).toBe(65); // (80+60+80+40)/4
+  });
+
+  it("throws when the gateway returns an error", async () => {
+    runWorkflow.mockResolvedValue({
+      status: "error",
+      error: "The AI service is rate limited. Please try again.",
+      raw: "",
+    });
+    await expect(evaluateNegotiationTranscript({ role: "SWE" }, [])).rejects.toThrow(
+      /rate limited/,
+    );
   });
 });

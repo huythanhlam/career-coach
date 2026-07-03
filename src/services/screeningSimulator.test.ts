@@ -1,19 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the gateway call so we test only the normalizer/defenses.
-const generateWorkflowData = vi.fn();
-vi.mock("@/services/geminiService", () => ({
-  generateWorkflowData: (...a: unknown[]) => generateWorkflowData(...a),
+const runWorkflow = vi.fn();
+vi.mock("@/ai/client", () => ({
+  runWorkflow: (...a: unknown[]) => runWorkflow(...a),
 }));
 
 import { screenResume } from "@/services/screeningSimulator";
 
+const ok = (data: unknown) => ({ status: "ok", data, sources: [], raw: "" });
+
 describe("screenResume", () => {
-  beforeEach(() => generateWorkflowData.mockReset());
+  beforeEach(() => runWorkflow.mockReset());
 
   it("normalizes a well-formed response", async () => {
-    generateWorkflowData.mockResolvedValue(
-      JSON.stringify({
+    runWorkflow.mockResolvedValue(
+      ok({
         verdict: "advance",
         score: 82,
         summary: "Strong match.",
@@ -38,15 +40,15 @@ describe("screenResume", () => {
   });
 
   it("derives the verdict from score when it's invalid, and clamps", async () => {
-    generateWorkflowData.mockResolvedValue(JSON.stringify({ verdict: "maybe", score: 140 }));
+    runWorkflow.mockResolvedValue(ok({ verdict: "maybe", score: 140 }));
     const r = await screenResume("resume", "jd");
     expect(r.score).toBe(100); // clamped
     expect(r.verdict).toBe("advance"); // >=75 → advance
   });
 
   it("coerces an invalid fix priority to medium", async () => {
-    generateWorkflowData.mockResolvedValue(
-      JSON.stringify({
+    runWorkflow.mockResolvedValue(
+      ok({
         verdict: "reject",
         score: 30,
         fixes: [{ priority: "urgent", label: "x", detail: "y" }],
@@ -56,8 +58,12 @@ describe("screenResume", () => {
     expect(r.fixes[0].priority).toBe("medium");
   });
 
-  it("returns a safe fallback when the response isn't JSON", async () => {
-    generateWorkflowData.mockResolvedValue("The AI service is rate limited. Please try again.");
+  it("returns a safe fallback when the gateway errors", async () => {
+    runWorkflow.mockResolvedValue({
+      status: "error",
+      error: "The AI service is rate limited. Please try again.",
+      raw: "",
+    });
     const r = await screenResume("resume", "jd");
     expect(r.score).toBe(0);
     expect(r.knockouts).toEqual([]);

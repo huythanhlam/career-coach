@@ -5,14 +5,10 @@
 // and draft a cover letter — producing a review-and-approve package. NOTHING is
 // submitted here; approval/submission is a separate, explicit user action.
 
-import {
-  generateWorkflowData,
-  tailorResume,
-  type TailorSuggestion,
-} from "@/services/geminiService";
-import { MODELS } from "@/config/models";
+import { tailorResume, type TailorSuggestion } from "@/services/geminiService";
+import { runWorkflow } from "@/ai/client";
+import { coverLetterWorkflow } from "@/ai/workflows/coverLetter";
 import { scoreJobFit } from "@/services/jobRecommendation";
-import { basePersona } from "@/config/workflows";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import type { UserProfile } from "@/types/userProfile";
 import type { JobPosting } from "@/types/jobPosting";
@@ -43,28 +39,20 @@ export function applyTailorSuggestions(
   return out;
 }
 
-const COVER_LETTER_SYSTEM = `${basePersona}
-
-Now write a focused, one-page cover letter (roughly 250-380 words) for a specific job. Structure: a strong opening hook, one paragraph aligning the candidate's real experience to the job's needs, one paragraph on a concrete relevant achievement, and a brief close. Mirror key terms from the job description naturally. Never invent employers, titles, metrics, or facts not supported by the candidate's resume/profile — if a specific would help and you don't have it, leave a short [bracketed] placeholder. Return ONLY the letter text — no preamble, no markdown fences, no "Dear Hiring Manager" placeholder header unless natural.`;
-
 async function draftCoverLetter(
   posting: JobPosting,
   resumeText: string,
   baseline: string,
 ): Promise<string> {
-  const prompt = `JOB TITLE: ${posting.title}
-COMPANY: ${posting.company ?? ""}
-
-JOB DESCRIPTION:
-${posting.description ?? "(not provided)"}
-
-CANDIDATE RESUME:
-${resumeText}
-
-${baseline ? `CANDIDATE PROFILE:\n${baseline}\n` : ""}
-Write the cover letter per the rules.`;
-  const raw = await generateWorkflowData(COVER_LETTER_SYSTEM, prompt, MODELS.QUALITY);
-  return raw
+  const result = await runWorkflow(coverLetterWorkflow, {
+    jobTitle: posting.title,
+    company: posting.company ?? "",
+    jobDescription: posting.description ?? "",
+    resumeText,
+    baseline,
+  });
+  if (result.status !== "ok") throw new Error(result.error);
+  return result.data
     .trim()
     .replace(/^```[a-z]*\s*/i, "")
     .replace(/\s*```$/i, "")
