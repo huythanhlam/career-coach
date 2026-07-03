@@ -107,31 +107,39 @@ alter table public.employer_job_listings     enable row level security;
 alter table public.employer_boost_orders      enable row level security;
 
 -- employer_company_profiles: owner CRUD
+drop policy if exists "employer_company_profiles: owner can select" on public.employer_company_profiles;
 create policy "employer_company_profiles: owner can select"
   on public.employer_company_profiles for select
   using (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
+drop policy if exists "employer_company_profiles: owner can insert" on public.employer_company_profiles;
 create policy "employer_company_profiles: owner can insert"
   on public.employer_company_profiles for insert
   with check (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
+drop policy if exists "employer_company_profiles: owner can update" on public.employer_company_profiles;
 create policy "employer_company_profiles: owner can update"
   on public.employer_company_profiles for update
   using (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()))
   with check (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
+drop policy if exists "employer_company_profiles: owner can delete" on public.employer_company_profiles;
 create policy "employer_company_profiles: owner can delete"
   on public.employer_company_profiles for delete
   using (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
 
 -- employer_job_listings: owner CRUD
+drop policy if exists "employer_job_listings: owner can select" on public.employer_job_listings;
 create policy "employer_job_listings: owner can select"
   on public.employer_job_listings for select
   using (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
+drop policy if exists "employer_job_listings: owner can insert" on public.employer_job_listings;
 create policy "employer_job_listings: owner can insert"
   on public.employer_job_listings for insert
   with check (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
+drop policy if exists "employer_job_listings: owner can update" on public.employer_job_listings;
 create policy "employer_job_listings: owner can update"
   on public.employer_job_listings for update
   using (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()))
   with check (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
+drop policy if exists "employer_job_listings: owner can delete" on public.employer_job_listings;
 create policy "employer_job_listings: owner can delete"
   on public.employer_job_listings for delete
   using (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
@@ -139,15 +147,18 @@ create policy "employer_job_listings: owner can delete"
 -- employer_job_listings: PUBLIC featured read — any authenticated user may read
 -- a listing that is published AND has an unexpired boost (drives the seeker feed).
 -- RLS policies are OR'd, so this widens read access only for those rows.
+drop policy if exists "employer_job_listings: public featured read" on public.employer_job_listings;
 create policy "employer_job_listings: public featured read"
   on public.employer_job_listings for select
   to authenticated
   using (status = 'published' and boosted_until is not null and boosted_until > now());
 
 -- employer_boost_orders: owner CRUD (insert/select are what the app uses)
+drop policy if exists "employer_boost_orders: owner can select" on public.employer_boost_orders;
 create policy "employer_boost_orders: owner can select"
   on public.employer_boost_orders for select
   using (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
+drop policy if exists "employer_boost_orders: owner can insert" on public.employer_boost_orders;
 create policy "employer_boost_orders: owner can insert"
   on public.employer_boost_orders for insert
   with check (auth.uid() = user_id and public.session_aal_ok(public.current_user_mfa_enrolled()));
