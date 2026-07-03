@@ -22,7 +22,7 @@ import { useUserProfile } from "@/context/UserProfileContext";
 import { useNegotiationSessions } from "@/hooks/useNegotiationSessions";
 import { useSpeech } from "@/hooks/useSpeech";
 import { useDictation } from "@/hooks/useDictation";
-import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
+import { createCoachingSession, type CoachingSession } from "@/ai/coachingSession";
 import {
   buildRecruiterSystemInstruction,
   evaluateNegotiationTranscript,
@@ -74,8 +74,7 @@ export function NegotiationRoleplayWorkspace() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
   const [failedInput, setFailedInput] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chatRef = useRef<any>(null);
+  const chatRef = useRef<CoachingSession | null>(null);
   const setupRef = useRef<NegotiationSetup | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -158,10 +157,8 @@ export function NegotiationRoleplayWorkspace() {
     setFailedInput(null);
     setIsGenerating(true);
     try {
-      let full = "";
-      await sendMessageStream(chatRef.current, text, (chunk) => {
-        full += chunk;
-        setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: full }]);
+      const full = await chatRef.current.send(text, (running) => {
+        setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: running }]);
       });
       if (voiceEnabled) speech.speak(full, { voice: selectedVoice, onEnd: continueConversation });
       else continueConversation();
@@ -191,7 +188,7 @@ export function NegotiationRoleplayWorkspace() {
       baseline: buildProfileBaseline(profile),
     };
     setupRef.current = setup;
-    chatRef.current = createCoachingChat(buildRecruiterSystemInstruction(setup));
+    chatRef.current = createCoachingSession(buildRecruiterSystemInstruction(setup));
     setMessages([
       { role: "user", text: `Let's begin the negotiation for the ${setup.role} offer.` },
       { role: "model", text: "" },
