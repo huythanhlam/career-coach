@@ -18,8 +18,16 @@ import { kokoroGenerate, kokoroFailed, isKokoroVoice } from "@/services/kokoroTt
  * (not on cancel) so the caller can resume a hands-free conversation.
  */
 
+// Time-to-first-audio is gated by generating chunk 0, so if the first chunk is a
+// long sentence, break it at its first clause boundary (comma/semicolon/colon) —
+// the interviewer starts talking sooner and the pipeline hides the rest. Keep a
+// minimum so we never isolate a tiny opener ("Hi,"), and only bother past a length
+// where the latency saving is worth the extra prosody break.
+const FIRST_CHUNK_SPLIT_MIN = 24;
+const FIRST_CHUNK_SPLIT_MAX = 90;
+
 /** Break text into short, natural speech chunks (≈ one sentence each). */
-function splitForSpeech(text: string): string[] {
+export function splitForSpeech(text: string): string[] {
   const pieces = text.match(/[^.!?\n]+[.!?]*(\s+|$)/g) ?? [text];
   const chunks: string[] = [];
   let buf = "";
@@ -32,7 +40,19 @@ function splitForSpeech(text: string): string[] {
     }
   }
   if (buf.trim()) chunks.push(buf.trim());
-  return chunks.length ? chunks : [text];
+  if (!chunks.length) return [text];
+
+  if (chunks[0].length > FIRST_CHUNK_SPLIT_MAX) {
+    const head = chunks[0];
+    const rel = head.slice(FIRST_CHUNK_SPLIT_MIN).search(/[,;:]\s/);
+    if (rel !== -1) {
+      const cut = FIRST_CHUNK_SPLIT_MIN + rel + 1; // keep the punctuation with the first part
+      const first = head.slice(0, cut).trim();
+      const rest = head.slice(cut).trim();
+      if (first && rest) { chunks[0] = rest; chunks.unshift(first); }
+    }
+  }
+  return chunks;
 }
 
 export interface SpeakOptions {

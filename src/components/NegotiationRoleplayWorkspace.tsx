@@ -123,9 +123,12 @@ export function NegotiationRoleplayWorkspace() {
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+  // Only warm the ~80MB model when the recruiter voice is on (the default); a user
+  // who muted it shouldn't download the model speculatively. Unmuting flips
+  // voiceEnabled and re-runs this to warm it then.
   useEffect(() => {
-    if (mode.kind === "setup") preloadKokoro();
-  }, [mode.kind]);
+    if (mode.kind === "setup" && voiceEnabled) preloadKokoro();
+  }, [mode.kind, voiceEnabled]);
   useEffect(
     () => () => {
       speech.cancel();

@@ -81,6 +81,21 @@ function clearReadyTimer() {
   }
 }
 
+// Transformers.js caches the ~80–330MB model weights in the Cache API, but that
+// storage is *best-effort* — browsers evict it under pressure, so a returning user
+// re-downloads the whole model. Requesting persistent storage marks the origin as
+// non-evictable, turning repeat interviews into a warm start (and saving the user's
+// bandwidth). Fire-and-forget, once, at first load; harmless where unsupported.
+let persistRequested = false;
+function requestPersistentStorage() {
+  if (persistRequested) return;
+  persistRequested = true;
+  try {
+    const storage = typeof navigator !== "undefined" ? navigator.storage : undefined;
+    storage?.persist?.().catch(() => { /* best-effort */ });
+  } catch { /* ignore */ }
+}
+
 /** Build the inference worker and wire up its message/error handlers. */
 function spawnWorker(): Worker | null {
   if (failed || typeof Worker === "undefined") return null;
@@ -169,6 +184,7 @@ function ensureLoad(): Worker | null {
   if (!w) return null;
   if (!loadRequested) {
     loadRequested = true;
+    requestPersistentStorage();
     w.postMessage({ type: "load", forceCpu });
     // Only the WebGPU path can wedge, and the worker only takes it when the page is
     // NOT cross-origin isolated (isolated → straight to multi-threaded q8 WASM). So
