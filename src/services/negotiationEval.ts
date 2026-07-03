@@ -5,10 +5,8 @@
 // stays in character via a strong system instruction; scoring grades the
 // CANDIDATE's negotiation moves against a fixed rubric so progress is comparable.
 
-import { generateWorkflowData } from "@/services/geminiService";
-import { MODELS } from "@/config/models";
-import { parseLooseJsonObject } from "@/lib/looseJson";
-import { basePersona } from "@/config/workflows";
+import { runWorkflow } from "@/ai/client";
+import { negotiationEvaluationWorkflow } from "@/ai/workflows/negotiationEvaluation";
 import type { ChatTurn } from "@/types/interviewSession";
 import type {
   Counterpart,
@@ -60,26 +58,6 @@ ${setup.baseline ? `\nABOUT THE CANDIDATE (so your pushback feels personalized):
 Begin by greeting the candidate and opening the negotiation.`;
 }
 
-const EVAL_SYSTEM = `${basePersona}
-
-Now switch roles: you are a rigorous negotiation coach grading a finished salary-negotiation roleplay. Evaluate ONLY the CANDIDATE's turns (the "User" turns) — never the counterpart. Return ONLY a JSON object, no markdown fences, matching exactly:
-{
-  "scores": { "anchoring": 0-100, "justification": 0-100, "composure": 0-100, "outcome": 0-100 },
-  "overall": 0-100,
-  "summary": "string (2-3 sentences on overall negotiation performance)",
-  "strengths": ["2-3 short, specific strengths"],
-  "improvements": ["2-3 short, specific, highest-impact things to practice"],
-  "moveFeedback": [
-    { "move": "brief paraphrase of a specific thing the candidate said/did", "feedback": "1-2 sentences of specific feedback", "rating": "Strong" | "Adequate" | "Weak" }
-  ]
-}
-Rubric (0-100, calibrated so 50 = a typical unprepared candidate, 80+ = expert):
-- anchoring: did they set an ambitious, specific target rather than accepting/echoing the first number?
-- justification: did they back asks with market data, competing offers, or concrete value they bring?
-- composure: did they stay calm, collaborative, and non-defensive under pushback?
-- outcome: did they actually improve the offer or keep leverage/options open (vs. caving or blowing it up)?
-Be honest and consistent — scores must reflect the actual transcript. Add 3-6 moveFeedback entries for the most consequential candidate moves.`;
-
 const clamp = (n: unknown): number =>
   Math.min(100, Math.max(0, Math.round(typeof n === "number" ? n : parseFloat(String(n)) || 0)));
 const strings = (v: unknown): string[] =>
@@ -93,9 +71,12 @@ export async function evaluateNegotiationTranscript(
     .map((t) => `${t.role === "user" ? "Candidate" : "Counterpart"}: ${t.text}`)
     .join("\n\n")
     .slice(-20000);
-  const prompt = `Role being negotiated: ${setup.role || "unspecified"}\n\nTRANSCRIPT:\n${serialized}\n\nScore the candidate's negotiation per the rubric.`;
-  const raw = await generateWorkflowData(EVAL_SYSTEM, prompt, MODELS.QUALITY);
-  const parsed = parseLooseJsonObject(raw);
+  const result = await runWorkflow(negotiationEvaluationWorkflow, {
+    role: setup.role,
+    transcript: serialized,
+  });
+  if (result.status !== "ok") throw new Error(result.error);
+  const parsed = result.data;
 
   const scores: NegotiationScores = {
     anchoring: clamp(parsed?.scores?.anchoring),
