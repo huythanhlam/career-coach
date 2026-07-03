@@ -130,6 +130,57 @@ async function meter(row: MeterRow): Promise<void> {
   if (error) console.warn("Usage metering insert failed:", error.message);
 }
 
+const encoder = new TextEncoder();
+/** Frame one named SSE event. */
+function sse(event: string, data: unknown): Uint8Array {
+  return encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/**
+ * Verify a conversation belongs to the caller before we persist turns to it —
+ * a client could pass any id, so scope writes to the owner. Returns false (skip
+ * persistence, don't fail the generation) on mismatch or DB error.
+ */
+async function conversationOwnedBy(conversationId: string, userId: string): Promise<boolean> {
+  const { data, error } = await serviceClient
+    .from("ai_conversations")
+    .select("id")
+    .eq("id", conversationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.warn("Conversation ownership check failed:", error.message);
+    return false;
+  }
+  return !!data;
+}
+
+/** Append one turn to a conversation. Best-effort — never blocks the response. */
+async function appendMessage(
+  conversationId: string,
+  userId: string,
+  role: "user" | "model",
+  content: string,
+): Promise<void> {
+  const { error } = await serviceClient
+    .from("ai_messages")
+    .insert({ conversation_id: conversationId, user_id: userId, role, content });
+  if (error) console.warn(`ai_messages insert (${role}) failed:`, error.message);
+  else {
+    // Bump the header so "recent conversations" ordering reflects this turn.
+    await serviceClient
+      .from("ai_conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", conversationId);
+  }
+}
+
+// Pull grounding sources off a streamed chunk (they appear on the final chunk's
+// candidates) — same shape as extractGroundingSources for the non-stream path.
+function chunkSources(chunk: unknown): { label: string; url: string }[] {
+  return extractGroundingSources(chunk);
+}
+
 Deno.serve(async (req) => {
   const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -155,6 +206,9 @@ Deno.serve(async (req) => {
       model: legacyModel,
       enableSearch,
       responseSchema,
+      stream,
+      conversationId,
+      userMessage,
     } = await req.json();
 
     // Resolve the model: explicit tier wins; fall back to a passed-through
@@ -183,6 +237,83 @@ Deno.serve(async (req) => {
     if (responseSchema && !enableSearch) {
       config.responseMimeType = "application/json";
       config.responseJsonSchema = responseSchema;
+    }
+
+    // ── Streaming (SSE) branch ────────────────────────────────────────────────
+    // text/event-stream driven by generateContentStream. Emits token/sources/
+    // done/error frames, meters with a real TTFT, and — when conversationId is
+    // set and owned by the caller — appends the turn to ai_messages.
+    if (stream === true) {
+      const convoId =
+        typeof conversationId === "string" && conversationId ? conversationId : null;
+      const turnText = typeof userMessage === "string" ? userMessage : "";
+      const owns = convoId ? await conversationOwnedBy(convoId, user.id) : false;
+      if (owns && turnText) await appendMessage(convoId!, user.id, "user", turnText);
+
+      const body = new ReadableStream({
+        async start(controller) {
+          const started = Date.now();
+          let ttftMs: number | null = null;
+          let full = "";
+          // deno-lint-ignore no-explicit-any
+          let usage: any = {};
+          let sources: { label: string; url: string }[] = [];
+          try {
+            const iterator = await ai.models.generateContentStream({
+              model,
+              contents: prompt ?? "",
+              config,
+            });
+            for await (const chunk of iterator) {
+              // deno-lint-ignore no-explicit-any
+              const delta = (chunk as any)?.text ?? "";
+              if (delta) {
+                if (ttftMs === null) ttftMs = Date.now() - started;
+                full += delta;
+                controller.enqueue(sse("token", { delta }));
+              }
+              // deno-lint-ignore no-explicit-any
+              const u = (chunk as any)?.usageMetadata;
+              if (u) usage = u;
+              const s = chunkSources(chunk);
+              if (s.length) sources = s; // grounding lands on the final chunk
+            }
+            if (sources.length) controller.enqueue(sse("sources", sources));
+
+            const inputTokens = Number(usage.promptTokenCount ?? 0);
+            const outputTokens = Number(usage.candidatesTokenCount ?? 0);
+            controller.enqueue(sse("done", { usage: { inputTokens, outputTokens, ttftMs } }));
+
+            // Persist the model reply and meter with the real TTFT (fire-and-forget).
+            if (owns) appendMessage(convoId!, user.id, "model", full).catch(() => {});
+            meter({
+              userId: user.id,
+              workflowId: typeof workflowId === "string" ? workflowId : "unknown",
+              model,
+              inputTokens,
+              outputTokens,
+              latencyMs: Date.now() - started,
+              ttftMs,
+            }).catch(() => {});
+          } catch (err) {
+            // Log server-side; the client only ever sees a generic message.
+            console.error("ai-gateway stream error:", err);
+            controller.enqueue(sse("error", { message: "AI generation failed. Please try again." }));
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(body, {
+        status: 200,
+        headers: {
+          ...cors,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
     }
 
     const started = Date.now();

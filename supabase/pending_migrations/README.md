@@ -26,12 +26,18 @@ git mv supabase/pending_migrations/20260625000000_add_account_type.sql    supaba
 git mv supabase/pending_migrations/20260625000001_add_employer_studio.sql supabase/migrations/
 git mv supabase/pending_migrations/20260625000002_add_blog_scheduling.sql supabase/migrations/
 git mv supabase/pending_migrations/20260703000000_add_ai_usage.sql        supabase/migrations/
+git mv supabase/pending_migrations/20260703000001_add_ai_conversations.sql supabase/migrations/
 supabase db push          # or: supabase migration up
 ```
 
 > `20260703000000_add_ai_usage.sql` backs AI Core v2 (P1): the `ai_usage`
 > metering table + `check_ai_usage_cap()` RPC the `ai-gateway` edge function
 > uses. It sorts after the P0 set above.
+>
+> `20260703000001_add_ai_conversations.sql` backs AI Core v2 Slice 3: the
+> `ai_conversations` + `ai_messages` tables the gateway appends streaming chat
+> turns to (and `src/ai/conversation.ts` creates/reads). It sorts after
+> `…_add_ai_usage.sql`.
 
 Or paste each file's contents (in order) into the Supabase Dashboard → SQL
 Editor. Every file is idempotent (`add column if not exists`, guarded
@@ -68,6 +74,17 @@ already writes these; without the migration those writes fail the status check.
 See the migration's trailing note for the follow-up publisher cron that
 auto-publishes due posts.
 
+### `20260703000000_add_ai_usage.sql` — AI Core v2 metering (Slice 1)
+`ai_usage` (one row per Gemini generation: tokens, latency, TTFT, est_cost) +
+`check_ai_usage_cap()`. Owner-only read; the gateway inserts with the service
+key. Backs the hard monthly per-user token cap enforced before any provider call.
+
+### `20260703000001_add_ai_conversations.sql` — AI Core v2 conversations (Slice 3)
+`ai_conversations` + `ai_messages`, owner-only RLS. The `ai-gateway` streaming
+path appends the user turn and model reply to `ai_messages` when a
+`conversationId` is passed; `src/ai/conversation.ts` creates conversations and
+loads their messages. Depends only on `auth.users` (no extra helpers).
+
 ## Verify after applying
 
 - **Employer tables:** creating a company profile and a listing in the Studio
@@ -76,3 +93,8 @@ auto-publishes due posts.
 - **Blog scheduling:** scheduling a draft in Blog Admin sets `status='scheduled'`
   with a future `scheduled_for`, shows in the admin "scheduled" lane, and is not
   publicly readable until published.
+- **AI usage / cap:** an AI generation writes one `ai_usage` row; querying
+  another user's rows returns nothing (owner-only RLS).
+- **AI conversations:** sending a message in the Global Coach with a
+  conversation created writes a `user` then a `model` row to `ai_messages` under
+  a header in `ai_conversations`; another user reads zero rows from both.
