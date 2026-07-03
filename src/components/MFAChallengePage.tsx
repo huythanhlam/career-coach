@@ -46,8 +46,8 @@ function OTPInput({
                 border: isActive
                   ? "2px solid var(--primary)"
                   : ch
-                  ? "2px solid var(--border)"
-                  : "2px solid var(--border)",
+                    ? "2px solid var(--border)"
+                    : "2px solid var(--border)",
                 color: "var(--foreground)",
                 fontFamily: "var(--font-display)",
                 boxShadow: isActive ? "0 0 0 3px rgba(217,119,87,0.15)" : "none",
@@ -107,7 +107,10 @@ export function MFAChallengePage({ factorId, onSuccess }: Props) {
         <div className="flex justify-center mb-6">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ background: "rgba(217,119,87,0.12)", border: "1.5px solid rgba(217,119,87,0.25)" }}
+            style={{
+              background: "rgba(217,119,87,0.12)",
+              border: "1.5px solid rgba(217,119,87,0.25)",
+            }}
           >
             <ShieldCheck className="w-8 h-8" style={{ color: "var(--primary)" }} />
           </div>
@@ -158,9 +161,7 @@ export function MFAChallengePage({ factorId, onSuccess }: Props) {
             >
               {isVerifying ? (
                 <>
-                  <span
-                    className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"
-                  />
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   Verifying…
                 </>
               ) : (

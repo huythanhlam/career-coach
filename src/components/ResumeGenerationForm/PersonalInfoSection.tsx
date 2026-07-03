@@ -42,22 +42,42 @@ interface Props {
   dispatch: React.Dispatch<ResumeFormAction>;
 }
 
-export const PersonalInfoSection = React.memo(function PersonalInfoSection({ state, dispatch }: Props) {
+export const PersonalInfoSection = React.memo(function PersonalInfoSection({
+  state,
+  dispatch,
+}: Props) {
   const { personalInfo, targetRole, targetRoleSelect, template } = state;
   return (
     <>
       {/* Template + Target Role */}
-      <div style={{ padding: 20, background: "rgba(217,119,87,0.05)", border: "1px solid rgba(217,119,87,0.15)", borderRadius: 16 }}>
+      <div
+        style={{
+          padding: 20,
+          background: "rgba(217,119,87,0.05)",
+          border: "1px solid rgba(217,119,87,0.15)",
+          borderRadius: 16,
+        }}
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label style={labelStyle}>Selected Template</label>
-            <div style={{ ...fieldStyle, display: "flex", alignItems: "center", gap: 10, cursor: "default" }}>
+            <div
+              style={{
+                ...fieldStyle,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                cursor: "default",
+              }}
+            >
               <span style={{ color: "var(--primary)", flexShrink: 0 }}>⬜</span>
               {template}
             </div>
           </div>
           <div>
-            <label style={labelStyle}>Target Role <span style={{ color: "#e05c5c" }}>*</span></label>
+            <label style={labelStyle}>
+              Target Role <span style={{ color: "#e05c5c" }}>*</span>
+            </label>
             <select
               required
               style={{ ...fieldStyle }}
@@ -69,9 +89,13 @@ export const PersonalInfoSection = React.memo(function PersonalInfoSection({ sta
                 else dispatch({ type: "SET_TARGET_ROLE", payload: "" });
               }}
             >
-              <option value="" disabled>Select an option…</option>
+              <option value="" disabled>
+                Select an option…
+              </option>
               {COMMON_ROLES.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
             {targetRoleSelect === "Other" && (
@@ -89,7 +113,10 @@ export const PersonalInfoSection = React.memo(function PersonalInfoSection({ sta
 
       {/* Personal Info */}
       <div>
-        <div style={sectionHeadStyle}><User className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} /> Personal Information</div>
+        <div style={sectionHeadStyle}>
+          <User className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} /> Personal
+          Information
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
             { label: "Full Name", key: "name", required: true },
@@ -100,12 +127,16 @@ export const PersonalInfoSection = React.memo(function PersonalInfoSection({ sta
             { label: "Portfolio / Website", key: "portfolio" },
           ].map(({ label, key, required, type }) => (
             <div key={key}>
-              <label style={labelStyle}>{label} {required && <span style={{ color: "#e05c5c" }}>*</span>}</label>
+              <label style={labelStyle}>
+                {label} {required && <span style={{ color: "#e05c5c" }}>*</span>}
+              </label>
               <Input
                 type={type || "text"}
                 required={required}
                 value={(personalInfo as any)[key]}
-                onChange={e => dispatch({ type: "SET_PERSONAL_INFO", payload: { [key]: e.target.value } })}
+                onChange={(e) =>
+                  dispatch({ type: "SET_PERSONAL_INFO", payload: { [key]: e.target.value } })
+                }
                 style={fieldStyle}
               />
             </div>

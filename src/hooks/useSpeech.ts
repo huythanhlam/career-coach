@@ -3,7 +3,12 @@ import { stripMarkdown } from "@/lib/speechText";
 import { pickVoice } from "@/lib/voicePick";
 import { synthesizeSpeech, ttsConfigured, TtsUnavailableError } from "@/services/ttsService";
 import { kokoroGenerateSamples, kokoroFailed, isKokoroVoice } from "@/services/kokoroTts";
-import { getAudioContext, samplesToAudioBuffer, nextStartTime, MIN_LEAD_S } from "@/services/kokoroAudio";
+import {
+  getAudioContext,
+  samplesToAudioBuffer,
+  nextStartTime,
+  MIN_LEAD_S,
+} from "@/services/kokoroAudio";
 
 /**
  * Speak text aloud for the interview agent. Voice priority:
@@ -50,7 +55,10 @@ export function splitForSpeech(text: string): string[] {
       const cut = FIRST_CHUNK_SPLIT_MIN + rel + 1; // keep the punctuation with the first part
       const first = head.slice(0, cut).trim();
       const rest = head.slice(cut).trim();
-      if (first && rest) { chunks[0] = rest; chunks.unshift(first); }
+      if (first && rest) {
+        chunks[0] = rest;
+        chunks.unshift(first);
+      }
     }
   }
   return chunks;
@@ -92,7 +100,15 @@ export function useSpeech() {
 
   const stopAudio = () => {
     const a = audioRef.current;
-    if (a) { try { a.pause(); } catch { /* ignore */ } a.src = ""; audioRef.current = null; }
+    if (a) {
+      try {
+        a.pause();
+      } catch {
+        /* ignore */
+      }
+      a.src = "";
+      audioRef.current = null;
+    }
     audioDoneRef.current?.();
     audioDoneRef.current = null;
   };
@@ -102,7 +118,11 @@ export function useSpeech() {
   // token guard then keeps the (stale) onEnd from firing.
   const stopKokoro = () => {
     for (const node of kokoroNodesRef.current) {
-      try { node.stop(); } catch { /* ignore */ }
+      try {
+        node.stop();
+      } catch {
+        /* ignore */
+      }
     }
     kokoroNodesRef.current.clear();
     cursorRef.current = 0;
@@ -114,28 +134,40 @@ export function useSpeech() {
     abortRef.current = null;
     stopAudio();
     stopKokoro();
-    try { synth?.cancel(); } catch { /* ignore */ }
+    try {
+      synth?.cancel();
+    } catch {
+      /* ignore */
+    }
     setSpeaking(false);
   }, [synth]);
 
   /** Play an audio Blob; resolves when it finishes (or is cancelled/errors). */
-  const playBlobAwait = useCallback((blob: Blob, token: number) => new Promise<void>((resolve) => {
-    if (token !== tokenRef.current) { resolve(); return; }
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    let done = false;
-    const finish = () => {
-      if (done) return; done = true;
-      URL.revokeObjectURL(url);
-      if (audioDoneRef.current === finish) audioDoneRef.current = null;
-      resolve();
-    };
-    audioDoneRef.current = finish;
-    audio.onended = finish;
-    audio.onerror = finish;
-    audio.play().catch(finish);
-  }), []);
+  const playBlobAwait = useCallback(
+    (blob: Blob, token: number) =>
+      new Promise<void>((resolve) => {
+        if (token !== tokenRef.current) {
+          resolve();
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          URL.revokeObjectURL(url);
+          if (audioDoneRef.current === finish) audioDoneRef.current = null;
+          resolve();
+        };
+        audioDoneRef.current = finish;
+        audio.onended = finish;
+        audio.onerror = finish;
+        audio.play().catch(finish);
+      }),
+    [],
+  );
 
   /**
    * Schedule one Kokoro clip on the shared AudioContext at the running cursor —
@@ -143,21 +175,35 @@ export function useSpeech() {
    * doesn't. Returns a promise that resolves when the clip finishes (or is
    * stopped by cancel(), which leaves onended attached so this still resolves).
    */
-  const scheduleKokoroClip = useCallback((
-    ctx: AudioContext, samples: Float32Array, sampleRate: number, token: number,
-  ): Promise<void> => new Promise<void>((resolve) => {
-    if (token !== tokenRef.current || samples.length === 0) { resolve(); return; }
-    const src = ctx.createBufferSource();
-    src.buffer = samplesToAudioBuffer(ctx, samples, sampleRate);
-    src.connect(ctx.destination);
-    const startAt = nextStartTime(ctx.currentTime, cursorRef.current, MIN_LEAD_S);
-    cursorRef.current = startAt + src.buffer.duration;
-    kokoroNodesRef.current.add(src);
-    let done = false;
-    const finish = () => { if (done) return; done = true; kokoroNodesRef.current.delete(src); resolve(); };
-    src.onended = finish;
-    try { src.start(startAt); } catch { finish(); }
-  }), []);
+  const scheduleKokoroClip = useCallback(
+    (ctx: AudioContext, samples: Float32Array, sampleRate: number, token: number): Promise<void> =>
+      new Promise<void>((resolve) => {
+        if (token !== tokenRef.current || samples.length === 0) {
+          resolve();
+          return;
+        }
+        const src = ctx.createBufferSource();
+        src.buffer = samplesToAudioBuffer(ctx, samples, sampleRate);
+        src.connect(ctx.destination);
+        const startAt = nextStartTime(ctx.currentTime, cursorRef.current, MIN_LEAD_S);
+        cursorRef.current = startAt + src.buffer.duration;
+        kokoroNodesRef.current.add(src);
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          kokoroNodesRef.current.delete(src);
+          resolve();
+        };
+        src.onended = finish;
+        try {
+          src.start(startAt);
+        } catch {
+          finish();
+        }
+      }),
+    [],
+  );
 
   /**
    * Kokoro, pipelined: generate sentence i+1 while sentence i plays, scheduling
@@ -165,97 +211,135 @@ export function useSpeech() {
    * Returns false if it couldn't even start (model loading/failed) so the
    * caller can fall back; true if it handled playback (incl. cancellation).
    */
-  const speakKokoroStreaming = useCallback(async (
-    clean: string, voice: string, token: number, onEnd?: () => void,
-  ): Promise<boolean> => {
-    const ctx = getAudioContext();
-    if (!ctx) return false; // no Web Audio → let the caller fall back
-    const chunks = splitForSpeech(clean);
-    // First sentence: don't block on model load — bail fast to a fallback.
-    let first: { samples: Float32Array; sampleRate: number };
-    try {
-      first = await kokoroGenerateSamples(chunks[0], voice, { waitForLoad: false });
-    } catch {
-      return false;
-    }
-    if (token !== tokenRef.current) return true;
-    cursorRef.current = 0;
-    // Schedule each clip onto the audio timeline as soon as it's generated —
-    // subsequent sentences generate (model is warm now) while earlier ones play,
-    // and each is queued at the running cursor so it butts against the previous
-    // with no gap. `lastPlayed` tracks the final clip so we fire onEnd on its end.
-    let lastPlayed = scheduleKokoroClip(ctx, first.samples, first.sampleRate, token);
-    for (let i = 1; i < chunks.length; i++) {
-      let next: { samples: Float32Array; sampleRate: number };
+  const speakKokoroStreaming = useCallback(
+    async (clean: string, voice: string, token: number, onEnd?: () => void): Promise<boolean> => {
+      const ctx = getAudioContext();
+      if (!ctx) return false; // no Web Audio → let the caller fall back
+      const chunks = splitForSpeech(clean);
+      // First sentence: don't block on model load — bail fast to a fallback.
+      let first: { samples: Float32Array; sampleRate: number };
       try {
-        next = await kokoroGenerateSamples(chunks[i], voice, { waitForLoad: true });
+        first = await kokoroGenerateSamples(chunks[0], voice, { waitForLoad: false });
       } catch {
-        break; // a later sentence failed to synthesize — play what's queued, then stop
+        return false;
       }
       if (token !== tokenRef.current) return true;
-      lastPlayed = scheduleKokoroClip(ctx, next.samples, next.sampleRate, token);
-    }
-    await lastPlayed;
-    if (token === tokenRef.current) { setSpeaking(false); onEnd?.(); }
-    return true;
-  }, [scheduleKokoroClip]);
+      cursorRef.current = 0;
+      // Schedule each clip onto the audio timeline as soon as it's generated —
+      // subsequent sentences generate (model is warm now) while earlier ones play,
+      // and each is queued at the running cursor so it butts against the previous
+      // with no gap. `lastPlayed` tracks the final clip so we fire onEnd on its end.
+      let lastPlayed = scheduleKokoroClip(ctx, first.samples, first.sampleRate, token);
+      for (let i = 1; i < chunks.length; i++) {
+        let next: { samples: Float32Array; sampleRate: number };
+        try {
+          next = await kokoroGenerateSamples(chunks[i], voice, { waitForLoad: true });
+        } catch {
+          break; // a later sentence failed to synthesize — play what's queued, then stop
+        }
+        if (token !== tokenRef.current) return true;
+        lastPlayed = scheduleKokoroClip(ctx, next.samples, next.sampleRate, token);
+      }
+      await lastPlayed;
+      if (token === tokenRef.current) {
+        setSpeaking(false);
+        onEnd?.();
+      }
+      return true;
+    },
+    [scheduleKokoroClip],
+  );
 
   /** Browser Web Speech, sentence-chunked for a more natural cadence. */
-  const speakBrowser = useCallback((clean: string, token: number, onEnd?: () => void) => {
-    if (!synth) { if (token === tokenRef.current) { setSpeaking(false); onEnd?.(); } return; }
-    const chunks = splitForSpeech(clean);
-    let i = 0;
-    const next = () => {
-      if (token !== tokenRef.current) return;
-      if (i >= chunks.length) { setSpeaking(false); onEnd?.(); return; }
-      const u = new SpeechSynthesisUtterance(chunks[i++]);
-      if (voiceRef.current) u.voice = voiceRef.current;
-      u.lang = voiceRef.current?.lang || "en-US";
-      u.rate = 0.97;
-      u.pitch = 1.05;
-      u.onend = () => { if (token === tokenRef.current) setTimeout(next, 90); };
-      u.onerror = () => { if (token === tokenRef.current) { setSpeaking(false); onEnd?.(); } };
-      synth.speak(u);
-    };
-    next();
-  }, [synth]);
-
-  const speak = useCallback(async (text: string, opts?: SpeakOptions) => {
-    const clean = stripMarkdown(text);
-    if (!clean) { opts?.onEnd?.(); return; }
-    cancel();
-    const token = tokenRef.current;
-    setSpeaking(true);
-
-    // 1. Kokoro in-browser, pipelined for low latency.
-    if (isKokoroVoice(opts?.voice) && !kokoroFailed()) {
-      const handled = await speakKokoroStreaming(clean, opts!.voice!, token, opts?.onEnd);
-      if (handled || token !== tokenRef.current) return;
-      // not handled → model still loading; fall through to a fast fallback
-    }
-
-    // 2. Configured remote neural TTS backend.
-    if (ttsConfigured && !remoteDownRef.current) {
-      const ac = new AbortController();
-      abortRef.current = ac;
-      try {
-        const blob = await synthesizeSpeech(clean, opts?.voice, ac.signal);
-        if (token !== tokenRef.current) return;
-        await playBlobAwait(blob, token);
-        if (token === tokenRef.current) { setSpeaking(false); opts?.onEnd?.(); }
+  const speakBrowser = useCallback(
+    (clean: string, token: number, onEnd?: () => void) => {
+      if (!synth) {
+        if (token === tokenRef.current) {
+          setSpeaking(false);
+          onEnd?.();
+        }
         return;
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        if (err instanceof TtsUnavailableError) remoteDownRef.current = true;
-        if (token !== tokenRef.current) return;
       }
-    }
+      const chunks = splitForSpeech(clean);
+      let i = 0;
+      const next = () => {
+        if (token !== tokenRef.current) return;
+        if (i >= chunks.length) {
+          setSpeaking(false);
+          onEnd?.();
+          return;
+        }
+        const u = new SpeechSynthesisUtterance(chunks[i++]);
+        if (voiceRef.current) u.voice = voiceRef.current;
+        u.lang = voiceRef.current?.lang || "en-US";
+        u.rate = 0.97;
+        u.pitch = 1.05;
+        u.onend = () => {
+          if (token === tokenRef.current) setTimeout(next, 90);
+        };
+        u.onerror = () => {
+          if (token === tokenRef.current) {
+            setSpeaking(false);
+            onEnd?.();
+          }
+        };
+        synth.speak(u);
+      };
+      next();
+    },
+    [synth],
+  );
 
-    // 3. Browser speech synthesis.
-    speakBrowser(clean, token, opts?.onEnd);
-  }, [cancel, playBlobAwait, speakKokoroStreaming, speakBrowser]);
+  const speak = useCallback(
+    async (text: string, opts?: SpeakOptions) => {
+      const clean = stripMarkdown(text);
+      if (!clean) {
+        opts?.onEnd?.();
+        return;
+      }
+      cancel();
+      const token = tokenRef.current;
+      setSpeaking(true);
 
-  useEffect(() => () => { cancel(); }, [cancel]);
+      // 1. Kokoro in-browser, pipelined for low latency.
+      if (isKokoroVoice(opts?.voice) && !kokoroFailed()) {
+        const handled = await speakKokoroStreaming(clean, opts!.voice!, token, opts?.onEnd);
+        if (handled || token !== tokenRef.current) return;
+        // not handled → model still loading; fall through to a fast fallback
+      }
+
+      // 2. Configured remote neural TTS backend.
+      if (ttsConfigured && !remoteDownRef.current) {
+        const ac = new AbortController();
+        abortRef.current = ac;
+        try {
+          const blob = await synthesizeSpeech(clean, opts?.voice, ac.signal);
+          if (token !== tokenRef.current) return;
+          await playBlobAwait(blob, token);
+          if (token === tokenRef.current) {
+            setSpeaking(false);
+            opts?.onEnd?.();
+          }
+          return;
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          if (err instanceof TtsUnavailableError) remoteDownRef.current = true;
+          if (token !== tokenRef.current) return;
+        }
+      }
+
+      // 3. Browser speech synthesis.
+      speakBrowser(clean, token, opts?.onEnd);
+    },
+    [cancel, playBlobAwait, speakKokoroStreaming, speakBrowser],
+  );
+
+  useEffect(
+    () => () => {
+      cancel();
+    },
+    [cancel],
+  );
 
   return { supported, speaking, speak, cancel };
 }

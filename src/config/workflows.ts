@@ -78,7 +78,8 @@ export const workflowsConfig: Record<WorkflowId, WorkflowConfig> = {
   linkedin: {
     id: "linkedin",
     title: "LinkedIn Profile Optimization",
-    description: "Analyze and rewrite your LinkedIn profile to be keyword-rich and impactful for recruiters.",
+    description:
+      "Analyze and rewrite your LinkedIn profile to be keyword-rich and impactful for recruiters.",
     fields: [
       {
         id: "url",
@@ -105,7 +106,8 @@ Structure your response in these Markdown sections:
 
 Rules: Keep the Headline rewrite under 220 characters. Use only the user's real experience — never invent roles, employers, metrics, or skills.`,
     generatePrompt: (data) => {
-      let prompt = "Please analyze my LinkedIn profile. Highlight the pros and cons, and provide suggestions for each section.\n\n";
+      let prompt =
+        "Please analyze my LinkedIn profile. Highlight the pros and cons, and provide suggestions for each section.\n\n";
       if (data.url) prompt += `URL: ${data.url}\n\n`;
       if (data.profile) prompt += `Profile Text:\n${data.profile}\n`;
       return prompt;
@@ -120,7 +122,8 @@ Rules: Keep the Headline rewrite under 220 characters. Use only the user's real 
   salary: {
     id: "salary",
     title: "Salary Negotiation Strategist",
-    description: "Draft negotiation emails and scripts based on your offer and target compensation.",
+    description:
+      "Draft negotiation emails and scripts based on your offer and target compensation.",
     fields: [
       {
         id: "offerFile",
@@ -153,21 +156,25 @@ First, restate the offer back as a short Markdown table covering base salary, bo
 
 Rules: Use only the numbers and facts the user provides. Never invent competing offers, market figures, or company-specific pay data; if you cite a typical range from general knowledge, label it clearly as a rough estimate and mark any assumption with "[assumption]". Frame advice around maximizing the probability of a better outcome — never guarantee a result.`,
     generatePrompt: (data) => {
-      const parts: any[] = [{ text: `Here is my target compensation:\n\n${data.target}\n\nPlease help me strategize my negotiation based on the provided offer details.\n\n` }];
-      
+      const parts: any[] = [
+        {
+          text: `Here is my target compensation:\n\n${data.target}\n\nPlease help me strategize my negotiation based on the provided offer details.\n\n`,
+        },
+      ];
+
       if (data.offer) {
         parts[0].text += `Job Offer Details:\n${data.offer}\n\n`;
       }
-      
+
       if (data.offerFile && data.offerFile.data) {
         parts.push({
           inlineData: {
             data: data.offerFile.data,
-            mimeType: data.offerFile.mimeType || "application/pdf"
-          }
+            mimeType: data.offerFile.mimeType || "application/pdf",
+          },
         });
       }
-      
+
       return parts;
     },
     suggestedPrompts: [
@@ -275,7 +282,8 @@ Tailor every section to the user's actual field and seniority. Ask a clarifying 
   goal_planning: {
     id: "goal_planning",
     title: "Career Goal Planning",
-    description: "Set a career goal and get a personalized development plan grounded in your profile — then coach through it interactively.",
+    description:
+      "Set a career goal and get a personalized development plan grounded in your profile — then coach through it interactively.",
     fields: [],
     systemInstruction: `${basePersona}
 
@@ -302,7 +310,9 @@ Be specific and realistic. Reference their actual roles, companies, and skills b
         ? data.goals
         : [{ goalType: data.goalType, detail: data.goalDetail }];
       const goalsBlock = goals
-        .map((g, i) => `${i + 1}. ${g.goalType || "Career goal"}${g.detail ? ` — ${g.detail}` : ""}`)
+        .map(
+          (g, i) => `${i + 1}. ${g.goalType || "Career goal"}${g.detail ? ` — ${g.detail}` : ""}`,
+        )
         .join("\n");
       let prompt = `Please create my career development plan.\n\n`;
       prompt += `MY GOALS FOR THE YEAR:\n${goalsBlock}\n`;
@@ -321,7 +331,8 @@ Be specific and realistic. Reference their actual roles, companies, and skills b
   company_research: {
     id: "company_research",
     title: "Research Company",
-    description: "Live research on what a company values when hiring, its benefits, role-relevant news, and recent financials — every claim linked to a verifiable source.",
+    description:
+      "Live research on what a company values when hiring, its benefits, role-relevant news, and recent financials — every claim linked to a verifiable source.",
     // The dedicated WorkflowView branch renders the shared JobDetailsSection card
     // and calls researchCompany() in geminiService, so no generic form fields are
     // used here. systemInstruction/generatePrompt are kept only to satisfy the
@@ -385,7 +396,7 @@ Be specific and realistic. Reference their actual roles, companies, and skills b
         ],
         allowCustom: false,
         required: true,
-      }
+      },
     ],
     systemInstruction: `${basePersona}\n\nWorkflow: Mock Behavioral Interview (spoken)\nAction: Conduct a realistic behavioral job interview, tailored to the candidate's target role, field, and focus area. Your messages are read aloud by text-to-speech, so write the way a real interviewer speaks: warm, natural, and concise. Avoid markdown formatting, bullet lists, and headings — use plain conversational sentences. You cannot open URLs — if the user references a job description by link, ask them to paste the text.
 
@@ -406,7 +417,8 @@ Behave like a real interviewer, NOT a coach:
       const numQuestions = Math.max(1, Math.round(minutes / 3.5));
       let prompt = `Let's begin a mock behavioral interview for a ${data.role} role.\n\n`;
       prompt += `Ask behavioral questions that are specific to the real responsibilities of a ${data.role} — the scenarios, stakeholders, and challenges someone in that exact role actually faces. Do not ask generic questions that ignore the role.\n\n`;
-      if (data.focus) prompt += `Focus area: ${data.focus}. Keep every question on this competency, framed for a ${data.role}.\n\n`;
+      if (data.focus)
+        prompt += `Focus area: ${data.focus}. Keep every question on this competency, framed for a ${data.role}.\n\n`;
       prompt += `Target length: about ${minutes} minutes. Real interviews spend ~3-4 minutes per question (the answer plus a follow-up or two), so ask only about ${numQuestions} main question${numQuestions === 1 ? "" : "s"} total — go deep with follow-ups rather than rushing through many questions.\n\n`;
       if (data.jdUrl) prompt += `Job Description URL:\n${data.jdUrl}\n\n`;
       prompt += `Greet me briefly and ask the first question.`;
@@ -473,7 +485,7 @@ Behave like a real interviewer, NOT a coach:
         type: "textarea",
         placeholder: "Skills, tools, certifications, languages...",
         required: false,
-      }
+      },
     ],
     systemInstruction: `${basePersona}\n\nWorkflow: Resume Generator\nAction: You are an expert resume writer. Scaffold a clean, professional, Markdown-formatted resume from the information the user provides.
 
@@ -483,39 +495,57 @@ Structure: order sections to suit the template and the user's strengths — typi
 
 When the user later asks you to improve or generate bullet points, you may then craft high-impact, results-oriented content using the XYZ pattern (accomplished X, measured by Y, by doing Z) — and ask the user for any real metrics you need rather than inventing them. When updating the resume, always return the complete updated document.`,
     generatePrompt: (data) => {
-      const { template, targetRole, personalInfo, workHistory, education, skills, jobDescription, uploadedResumeText } = data;
+      const {
+        template,
+        targetRole,
+        personalInfo,
+        workHistory,
+        education,
+        skills,
+        jobDescription,
+        uploadedResumeText,
+      } = data;
 
       const contactSection = `
 NAME: ${personalInfo.name}
 EMAIL: ${personalInfo.email}
-PHONE: ${personalInfo.phone || 'Not provided'}
-LINKEDIN: ${personalInfo.linkedin || 'Not provided'}
-GITHUB: ${personalInfo.github || 'Not provided'}
-PORTFOLIO: ${personalInfo.portfolio || 'Not provided'}
+PHONE: ${personalInfo.phone || "Not provided"}
+LINKEDIN: ${personalInfo.linkedin || "Not provided"}
+GITHUB: ${personalInfo.github || "Not provided"}
+PORTFOLIO: ${personalInfo.portfolio || "Not provided"}
 `.trim();
 
       const workSection = Array.isArray(workHistory)
-        ? workHistory.map((w, i) => `
+        ? workHistory
+            .map((w, i) =>
+              `
 JOB #${i + 1}:
 Role: ${w.role}
-Company: ${w.company || 'Not specified'}
-Dates: ${w.startDate || 'N/A'} - ${w.current ? 'Present' : (w.endDate || 'Present')}
-Responsibilities: ${w.responsibilities || '[EMPTY]'}
-`.trim()).join("\n\n")
+Company: ${w.company || "Not specified"}
+Dates: ${w.startDate || "N/A"} - ${w.current ? "Present" : w.endDate || "Present"}
+Responsibilities: ${w.responsibilities || "[EMPTY]"}
+`.trim(),
+            )
+            .join("\n\n")
         : workHistory;
 
       const eduSection = Array.isArray(education)
-        ? education.map((e, i) => `
+        ? education
+            .map((e, i) =>
+              `
 EDUCATION #${i + 1}:
-Degree: ${e.degree || 'Degree Not Specified'}
+Degree: ${e.degree || "Degree Not Specified"}
 University: ${e.university}
-Year: ${e.year || 'N/A'}
-`.trim()).join("\n\n")
+Year: ${e.year || "N/A"}
+`.trim(),
+            )
+            .join("\n\n")
         : education;
 
-      const templateInstruction = template === "Match uploaded style" && uploadedResumeText
-        ? `Mirror the exact formatting, section order, and visual structure of the uploaded resume below. Preserve its layout style while updating all content with the new information provided.\n\n--- UPLOADED RESUME TO MATCH STYLE ---\n${uploadedResumeText.slice(0, 3000)}\n---`
-        : `Use the **${template}** template style.`;
+      const templateInstruction =
+        template === "Match uploaded style" && uploadedResumeText
+          ? `Mirror the exact formatting, section order, and visual structure of the uploaded resume below. Preserve its layout style while updating all content with the new information provided.\n\n--- UPLOADED RESUME TO MATCH STYLE ---\n${uploadedResumeText.slice(0, 3000)}\n---`
+          : `Use the **${template}** template style.`;
 
       return `
 Please scaffold a resume. ${templateInstruction}
@@ -533,7 +563,7 @@ ${workSection}
 ${eduSection}
 
 --- SKILLS & ADDITIONAL INFO ---
-${skills || 'Not provided'}
+${skills || "Not provided"}
 ${jobDescription ? `\n--- TARGET JOB DESCRIPTION (for keyword alignment in skills/summary only) ---\n${jobDescription}` : ""}
 `.trim();
     },
@@ -541,13 +571,14 @@ ${jobDescription ? `\n--- TARGET JOB DESCRIPTION (for keyword alignment in skill
       "Can we make the bullet points sound more impactful?",
       "Add a professional summary at the top.",
       "Summarize my older experience to keep it to one page.",
-    ]
+    ],
   },
 
   cover_letter: {
     id: "cover_letter",
     title: "Cover Letter Creator",
-    description: "Generate a tailored, one-page cover letter from your resume or profile and the job description.",
+    description:
+      "Generate a tailored, one-page cover letter from your resume or profile and the job description.",
     fields: [],
     systemInstruction: `${basePersona}
 
@@ -640,7 +671,8 @@ RULES:
   autopilot: {
     id: "autopilot",
     title: "Application Autopilot",
-    description: "Generate tailored resume + cover-letter packages for your saved jobs, ready to review and approve.",
+    description:
+      "Generate tailored resume + cover-letter packages for your saved jobs, ready to review and approve.",
     fields: [],
     systemInstruction: `${basePersona}\n\nWorkflow: Application Autopilot`,
     generatePrompt: () => "",

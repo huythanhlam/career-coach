@@ -13,7 +13,10 @@ interface ExportOptions {
 export function exportToPDF({ title, docStyle, html, content }: ExportOptions): void {
   const fonts = TEMPLATE_FONTS[docStyle.templateId] ?? { heading: "Inter", body: "Inter" };
   const win = window.open("", "_blank");
-  if (!win) { window.print(); return; }
+  if (!win) {
+    window.print();
+    return;
+  }
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
     <meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none';">
     <title>${title}</title>
@@ -31,7 +34,9 @@ export function exportToPDF({ title, docStyle, html, content }: ExportOptions): 
       @media print{body{padding:20px 30px;}}
     </style>
   </head><body>${html || markdownToHtml(content)}</body></html>`);
-  win.document.close(); win.focus(); setTimeout(() => win.print(), 500);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 500);
 }
 
 interface DocxOptions {
@@ -43,7 +48,14 @@ interface DocxOptions {
   headerHtml?: string;
 }
 
-export async function exportToDocx({ docStyle, html, content, exportFileName, title, headerHtml }: DocxOptions): Promise<void> {
+export async function exportToDocx({
+  docStyle,
+  html,
+  content,
+  exportFileName,
+  title,
+  headerHtml,
+}: DocxOptions): Promise<void> {
   const fonts = TEMPLATE_FONTS[docStyle.templateId] ?? { heading: "Inter", body: "Inter" };
   await exportHtmlToDocx({
     html: html || markdownToHtml(content),

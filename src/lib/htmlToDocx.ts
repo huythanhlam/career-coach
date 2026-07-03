@@ -6,8 +6,16 @@
  * in the browser via Packer.toBlob(); no server needed.
  */
 import {
-  Document, Packer, Paragraph, TextRun, HeadingLevel, LevelFormat,
-  AlignmentType, ExternalHyperlink, ImageRun, BorderStyle,
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  LevelFormat,
+  AlignmentType,
+  ExternalHyperlink,
+  ImageRun,
+  BorderStyle,
 } from "docx";
 
 export interface DocxExportOptions {
@@ -31,8 +39,24 @@ type InlineFlags = { bold?: boolean; italics?: boolean; code?: boolean; link?: b
 type InlineChild = TextRun | ExternalHyperlink | ImageRun;
 
 const BLOCK_TAGS = new Set([
-  "p", "div", "section", "h1", "h2", "h3", "h4", "h5", "h6",
-  "ul", "ol", "li", "hr", "table", "header", "footer", "article", "blockquote",
+  "p",
+  "div",
+  "section",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "ul",
+  "ol",
+  "li",
+  "hr",
+  "table",
+  "header",
+  "footer",
+  "article",
+  "blockquote",
 ]);
 
 function normalizeHex(hex?: string): string | undefined {
@@ -76,13 +100,15 @@ function collectInline(node: Node, flags: InlineFlags): InlineChild[] {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = child.textContent ?? "";
       if (text) {
-        runs.push(new TextRun({
-          text,
-          bold: flags.bold,
-          italics: flags.italics,
-          font: flags.code ? "Courier New" : undefined,
-          style: flags.link ? "Hyperlink" : undefined,
-        }));
+        runs.push(
+          new TextRun({
+            text,
+            bold: flags.bold,
+            italics: flags.italics,
+            font: flags.code ? "Courier New" : undefined,
+            style: flags.link ? "Hyperlink" : undefined,
+          }),
+        );
       }
       return;
     }
@@ -90,14 +116,20 @@ function collectInline(node: Node, flags: InlineFlags): InlineChild[] {
     const el = child as Element;
     const tag = el.tagName.toLowerCase();
     switch (tag) {
-      case "strong": case "b":
-        runs.push(...collectInline(el, { ...flags, bold: true })); break;
-      case "em": case "i":
-        runs.push(...collectInline(el, { ...flags, italics: true })); break;
+      case "strong":
+      case "b":
+        runs.push(...collectInline(el, { ...flags, bold: true }));
+        break;
+      case "em":
+      case "i":
+        runs.push(...collectInline(el, { ...flags, italics: true }));
+        break;
       case "code":
-        runs.push(...collectInline(el, { ...flags, code: true })); break;
+        runs.push(...collectInline(el, { ...flags, code: true }));
+        break;
       case "br":
-        runs.push(new TextRun({ break: 1 })); break;
+        runs.push(new TextRun({ break: 1 }));
+        break;
       case "img": {
         const img = imageRunFromEl(el);
         if (img) runs.push(img);
@@ -130,10 +162,11 @@ function paragraphFromInline(el: Element): Paragraph[] {
   return [new Paragraph({ children })];
 }
 
-const HR_PARAGRAPH = () => new Paragraph({
-  border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC", space: 1 } },
-  children: [],
-});
+const HR_PARAGRAPH = () =>
+  new Paragraph({
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC", space: 1 } },
+    children: [],
+  });
 
 /** Walk block-level nodes into docx Paragraphs. */
 function walkBlocks(root: Node): Paragraph[] {
@@ -148,37 +181,62 @@ function walkBlocks(root: Node): Paragraph[] {
     const el = node as Element;
     const tag = el.tagName.toLowerCase();
     switch (tag) {
-      case "h1": paras.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children: collectInline(el, {}) })); break;
-      case "h2": paras.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: collectInline(el, {}) })); break;
-      case "h3": case "h4": case "h5": case "h6":
-        paras.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: collectInline(el, {}) })); break;
-      case "ul": case "ol": {
+      case "h1":
+        paras.push(
+          new Paragraph({ heading: HeadingLevel.HEADING_1, children: collectInline(el, {}) }),
+        );
+        break;
+      case "h2":
+        paras.push(
+          new Paragraph({ heading: HeadingLevel.HEADING_2, children: collectInline(el, {}) }),
+        );
+        break;
+      case "h3":
+      case "h4":
+      case "h5":
+      case "h6":
+        paras.push(
+          new Paragraph({ heading: HeadingLevel.HEADING_3, children: collectInline(el, {}) }),
+        );
+        break;
+      case "ul":
+      case "ol": {
         const ref = tag === "ul" ? "bullets" : "numbers";
         Array.from(el.children)
           .filter((c) => c.tagName.toLowerCase() === "li")
           .forEach((li) => {
-            paras.push(new Paragraph({
-              numbering: { reference: ref, level: 0 },
-              children: collectInline(li, {}),
-            }));
+            paras.push(
+              new Paragraph({
+                numbering: { reference: ref, level: 0 },
+                children: collectInline(li, {}),
+              }),
+            );
           });
         break;
       }
       case "hr":
-        paras.push(HR_PARAGRAPH()); break;
+        paras.push(HR_PARAGRAPH());
+        break;
       case "br":
-        paras.push(new Paragraph({ children: [] })); break;
+        paras.push(new Paragraph({ children: [] }));
+        break;
       case "img": {
         const img = imageRunFromEl(el);
         if (img) paras.push(new Paragraph({ children: [img] }));
         break;
       }
       case "p":
-        paras.push(...(paragraphFromInline(el).length ? paragraphFromInline(el) : [new Paragraph({ children: [] })]));
+        paras.push(
+          ...(paragraphFromInline(el).length
+            ? paragraphFromInline(el)
+            : [new Paragraph({ children: [] })]),
+        );
         break;
       case "table": {
         // Flatten table cells to paragraphs (resumes/letters rarely need real tables in export).
-        el.querySelectorAll("td, th").forEach((cell) => paras.push(...paragraphFromInline(cell as Element)));
+        el.querySelectorAll("td, th").forEach((cell) =>
+          paras.push(...paragraphFromInline(cell as Element)),
+        );
         break;
       }
       default:
@@ -211,17 +269,29 @@ export async function exportHtmlToDocx(opts: DocxExportOptions): Promise<void> {
       default: { document: { run: { font: bodyFont, size: 22 } } }, // 11pt
       paragraphStyles: [
         {
-          id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
+          id: "Heading1",
+          name: "Heading 1",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
           run: { size: 40, bold: true, font: headingFont, color: accent },
           paragraph: { spacing: { before: 120, after: 120 }, outlineLevel: 0 },
         },
         {
-          id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
+          id: "Heading2",
+          name: "Heading 2",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
           run: { size: 28, bold: true, font: headingFont, color: accent },
           paragraph: { spacing: { before: 240, after: 80 }, outlineLevel: 1 },
         },
         {
-          id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
+          id: "Heading3",
+          name: "Heading 3",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
           run: { size: 24, bold: true, font: headingFont, color: accent },
           paragraph: { spacing: { before: 160, after: 60 }, outlineLevel: 2 },
         },
@@ -231,29 +301,41 @@ export async function exportHtmlToDocx(opts: DocxExportOptions): Promise<void> {
       config: [
         {
           reference: "bullets",
-          levels: [{
-            level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT,
-            style: { paragraph: { indent: { left: 720, hanging: 360 } } },
-          }],
+          levels: [
+            {
+              level: 0,
+              format: LevelFormat.BULLET,
+              text: "•",
+              alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 720, hanging: 360 } } },
+            },
+          ],
         },
         {
           reference: "numbers",
-          levels: [{
-            level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT,
-            style: { paragraph: { indent: { left: 720, hanging: 360 } } },
-          }],
+          levels: [
+            {
+              level: 0,
+              format: LevelFormat.DECIMAL,
+              text: "%1.",
+              alignment: AlignmentType.LEFT,
+              style: { paragraph: { indent: { left: 720, hanging: 360 } } },
+            },
+          ],
         },
       ],
     },
-    sections: [{
-      properties: {
-        page: {
-          size: { width: 12240, height: 15840 }, // US Letter
-          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }, // 1 inch
+    sections: [
+      {
+        properties: {
+          page: {
+            size: { width: 12240, height: 15840 }, // US Letter
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }, // 1 inch
+          },
         },
+        children,
       },
-      children,
-    }],
+    ],
   });
 
   const blob = await Packer.toBlob(doc);

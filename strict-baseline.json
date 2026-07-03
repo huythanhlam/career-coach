@@ -1,0 +1,4 @@
+{
+  "//": "Max allowed `strict: true` TypeScript errors (see scripts/strict-ratchet.mjs). Ratchet only — this number may go DOWN, never up. Goal: 0, then fold strict into tsconfig.json.",
+  "maxErrors": 16
+}

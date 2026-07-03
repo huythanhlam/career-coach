@@ -28,9 +28,7 @@ function escapeInline(value: string): string {
 
 /** Build the contact line: "email · phone · linkedin · github · portfolio". */
 function contactLine(p: ResumeData): string {
-  const parts = [p.email, p.phone, p.linkedin, p.github, p.portfolio]
-    .map(clean)
-    .filter(Boolean);
+  const parts = [p.email, p.phone, p.linkedin, p.github, p.portfolio].map(clean).filter(Boolean);
   return parts.join(" · ");
 }
 
@@ -114,7 +112,7 @@ const SECTION_BUILDERS: Record<string, (p: ResumeData) => string> = {
  */
 export function profileToResumeMarkdown(
   profile: ResumeData,
-  sectionOrder: string[] = DEFAULT_STYLE_CONFIG.sectionOrder
+  sectionOrder: string[] = DEFAULT_STYLE_CONFIG.sectionOrder,
 ): string {
   const blocks: string[] = [];
 

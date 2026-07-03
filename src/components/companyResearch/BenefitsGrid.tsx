@@ -1,6 +1,15 @@
 import { motion, useReducedMotion } from "motion/react";
 import {
-  Gift, HeartPulse, TrendingUp, Home, GraduationCap, Baby, PiggyBank, Plane, Dumbbell, Coins,
+  Gift,
+  HeartPulse,
+  TrendingUp,
+  Home,
+  GraduationCap,
+  Baby,
+  PiggyBank,
+  Plane,
+  Dumbbell,
+  Coins,
 } from "lucide-react";
 import type { CompanyResearchSection } from "@/services/geminiService";
 import { MentorCard, SectionHeader, SourceChips } from "./shared";
@@ -31,10 +40,25 @@ export function BenefitsGrid({ section }: { section: CompanyResearchSection }) {
       <SectionHeader Icon={Gift} color="#2F6B4F" title="Key benefits & perks" />
       <div style={{ padding: "18px 22px" }}>
         {section?.summary && (
-          <p style={{ fontSize: 14, color: "var(--foreground)", margin: "0 0 14px", lineHeight: 1.6 }}>{section.summary}</p>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--foreground)",
+              margin: "0 0 14px",
+              lineHeight: 1.6,
+            }}
+          >
+            {section.summary}
+          </p>
         )}
         {bullets.length > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+              gap: 10,
+            }}
+          >
             {bullets.map((b, i) => {
               const Icon = iconFor(b);
               return (
@@ -44,20 +68,42 @@ export function BenefitsGrid({ section }: { section: CompanyResearchSection }) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06, duration: 0.35, ease: "easeOut" }}
                   style={{
-                    display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px",
-                    borderRadius: 14, background: "var(--muted)", border: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    padding: "12px 14px",
+                    borderRadius: 14,
+                    background: "var(--muted)",
+                    border: "1px solid var(--border)",
                   }}
                 >
-                  <span style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "color-mix(in srgb, #2F6B4F 14%, transparent)" }}>
+                  <span
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 9,
+                      flexShrink: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "color-mix(in srgb, #2F6B4F 14%, transparent)",
+                    }}
+                  >
                     <Icon className="w-4 h-4" style={{ color: "#2F6B4F" }} />
                   </span>
-                  <span style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.45 }}>{b}</span>
+                  <span style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.45 }}>
+                    {b}
+                  </span>
                 </motion.div>
               );
             })}
           </div>
         ) : (
-          !section?.summary && <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No details found — use the source link to verify.</p>
+          !section?.summary && (
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
+              No details found — use the source link to verify.
+            </p>
+          )
         )}
         <SourceChips sources={section?.sources ?? []} />
       </div>

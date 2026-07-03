@@ -60,7 +60,10 @@ describe("createDraftFromTopic", () => {
     const q = makeQuery({ single: { data: null, error: null } }); // slug not taken
     fromMock.mockReturnValue(q);
 
-    const res = await createDraftFromTopic({ title: "How to Pivot Careers", category: "career-growth" });
+    const res = await createDraftFromTopic({
+      title: "How to Pivot Careers",
+      category: "career-growth",
+    });
 
     expect(res).toEqual({ kind: "created", slug: draft.slug });
     expect(q.insert).toHaveBeenCalledTimes(1);
@@ -81,7 +84,10 @@ describe("createDraftFromTopic", () => {
     const q = makeQuery({ single: { data: { slug: draft.slug }, error: null } });
     fromMock.mockReturnValue(q);
 
-    const res = await createDraftFromTopic({ title: "How to Pivot Careers", category: "career-growth" });
+    const res = await createDraftFromTopic({
+      title: "How to Pivot Careers",
+      category: "career-growth",
+    });
 
     expect(res).toEqual({ kind: "exists", slug: draft.slug });
     expect(q.insert).not.toHaveBeenCalled();
@@ -91,7 +97,7 @@ describe("createDraftFromTopic", () => {
     generateBlogDraft.mockResolvedValue(draft);
     fromMock.mockReturnValue(makeQuery({ result: { data: null, error: { message: "denied" } } }));
     await expect(
-      createDraftFromTopic({ title: "How to Pivot Careers", category: "career-growth" })
+      createDraftFromTopic({ title: "How to Pivot Careers", category: "career-growth" }),
     ).rejects.toThrow("denied");
   });
 });
@@ -112,7 +118,12 @@ describe("savePost", () => {
     });
 
     const patch = q.update.mock.calls[0][0];
-    expect(patch).toMatchObject({ title: "T", category: "resume", hero_emoji: "📝", reading_minutes: 2 });
+    expect(patch).toMatchObject({
+      title: "T",
+      category: "resume",
+      hero_emoji: "📝",
+      reading_minutes: 2,
+    });
     expect(q.eq).toHaveBeenCalledWith("slug", "s");
   });
 });
@@ -142,7 +153,11 @@ describe("setPublished", () => {
     const q = makeQuery();
     fromMock.mockReturnValue(q);
     await setPublished("s", true);
-    expect(q.update.mock.calls[0][0]).toMatchObject({ published: true, status: "published", scheduled_for: null });
+    expect(q.update.mock.calls[0][0]).toMatchObject({
+      published: true,
+      status: "published",
+      scheduled_for: null,
+    });
   });
 });
 

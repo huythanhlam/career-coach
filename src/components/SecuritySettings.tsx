@@ -6,19 +6,36 @@ import { MFAEnrollSection } from "@/components/MFAEnrollSection";
 import { supabase } from "@/lib/supabaseClient";
 
 const iStyle: React.CSSProperties = {
-  background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12,
-  height: 42, fontSize: 14, padding: "0 14px", color: "var(--foreground)",
-  width: "100%", outline: "none", fontFamily: "inherit",
+  background: "var(--muted)",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  height: 42,
+  fontSize: 14,
+  padding: "0 14px",
+  color: "var(--foreground)",
+  width: "100%",
+  outline: "none",
+  fontFamily: "inherit",
 };
 const lStyle: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 6,
-  display: "block", textTransform: "uppercase", letterSpacing: "0.05em",
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--muted-foreground)",
+  marginBottom: 6,
+  display: "block",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-      <h2 className="text-sm font-bold mb-5" style={{ color: "var(--foreground)" }}>{title}</h2>
+    <div
+      className="rounded-2xl p-6"
+      style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+    >
+      <h2 className="text-sm font-bold mb-5" style={{ color: "var(--foreground)" }}>
+        {title}
+      </h2>
       {children}
     </div>
   );
@@ -27,7 +44,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function StatusMsg({ msg }: { msg: { text: string; error: boolean } | null }) {
   if (!msg) return null;
   return (
-    <p className="text-xs mt-2" role="status" style={{ color: msg.error ? "var(--destructive)" : "var(--forest)" }}>
+    <p
+      className="text-xs mt-2"
+      role="status"
+      style={{ color: msg.error ? "var(--destructive)" : "var(--forest)" }}
+    >
       {msg.text}
     </p>
   );
@@ -72,7 +93,10 @@ export function SecuritySettings() {
       if (error) {
         setIdentityMsg({ text: `Could not update email: ${error.message}`, error: true });
       } else {
-        setIdentityMsg({ text: `Confirmation sent to ${newEmail}. Check your inbox.`, error: false });
+        setIdentityMsg({
+          text: `Confirmation sent to ${newEmail}. Check your inbox.`,
+          error: false,
+        });
       }
     } else {
       setIdentityMsg({ text: "Details saved.", error: false });
@@ -106,11 +130,16 @@ export function SecuritySettings() {
     if (!confirm("Permanently delete your account and all data? This cannot be undone.")) return;
     setDeletingAccount(true);
     setDeleteError(null);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
-      { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` } }
-    );
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+    });
     if (res.ok) {
       await signOut();
     } else {
@@ -121,11 +150,19 @@ export function SecuritySettings() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto" style={{ background: "var(--background)" }}>
-
+    <div
+      className="flex flex-col h-full overflow-y-auto"
+      style={{ background: "var(--background)" }}
+    >
       {/* Header */}
-      <div className="px-8 py-6 flex-shrink-0" style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}>
-        <h1 className="text-xl font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+      <div
+        className="px-8 py-6 flex-shrink-0"
+        style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}
+      >
+        <h1
+          className="text-xl font-bold"
+          style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+        >
           Security & Account
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
@@ -134,25 +171,59 @@ export function SecuritySettings() {
       </div>
 
       <div className="flex-1 p-4 sm:p-8 flex flex-col gap-6 max-w-2xl">
-
         {/* Identity */}
         <Section title="Personal Details">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label style={lStyle}><User className="w-3 h-3 inline mr-1" />Full Name</label>
-              <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Smith" style={iStyle} />
+              <label style={lStyle}>
+                <User className="w-3 h-3 inline mr-1" />
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Jane Smith"
+                style={iStyle}
+              />
             </div>
             <div>
               <label style={lStyle}>Preferred Name</label>
-              <input type="text" value={preferredName} onChange={(e) => setPreferredName(e.target.value)} placeholder="Jane" style={iStyle} />
+              <input
+                type="text"
+                value={preferredName}
+                onChange={(e) => setPreferredName(e.target.value)}
+                placeholder="Jane"
+                style={iStyle}
+              />
             </div>
             <div>
-              <label style={lStyle}><Mail className="w-3 h-3 inline mr-1" />Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@example.com" autoComplete="email" style={iStyle} />
+              <label style={lStyle}>
+                <Mail className="w-3 h-3 inline mr-1" />
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jane@example.com"
+                autoComplete="email"
+                style={iStyle}
+              />
             </div>
             <div>
-              <label style={lStyle}><Phone className="w-3 h-3 inline mr-1" />Phone</label>
-              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" autoComplete="tel" style={iStyle} />
+              <label style={lStyle}>
+                <Phone className="w-3 h-3 inline mr-1" />
+                Phone
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+1 (555) 000-0000"
+                autoComplete="tel"
+                style={iStyle}
+              />
             </div>
           </div>
           <StatusMsg msg={identityMsg} />
@@ -171,14 +242,29 @@ export function SecuritySettings() {
         <Section title="Change Password">
           <div className="flex flex-col gap-3">
             <div>
-              <label style={lStyle}><KeyRound className="w-3 h-3 inline mr-1" />New Password</label>
-              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min. 8 characters" autoComplete="new-password" style={iStyle} />
+              <label style={lStyle}>
+                <KeyRound className="w-3 h-3 inline mr-1" />
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min. 8 characters"
+                autoComplete="new-password"
+                style={iStyle}
+              />
             </div>
             <div>
               <label style={lStyle}>Confirm Password</label>
-              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat new password" autoComplete="new-password" style={iStyle} />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat new password"
+                autoComplete="new-password"
+                style={iStyle}
+              />
             </div>
           </div>
           <StatusMsg msg={passwordMsg} />
@@ -196,7 +282,8 @@ export function SecuritySettings() {
         {/* MFA */}
         <Section title="Two-Factor Authentication">
           <p className="text-xs mb-4" style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-            Add an authenticator app to require a 6-digit code every time you sign in. Strongly recommended.
+            Add an authenticator app to require a 6-digit code every time you sign in. Strongly
+            recommended.
           </p>
           <MFAEnrollSection />
         </Section>
@@ -205,7 +292,9 @@ export function SecuritySettings() {
         <Section title="Account Actions">
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => confirm("Reset your career profile and re-run onboarding?") && resetProfile()}
+              onClick={() =>
+                confirm("Reset your career profile and re-run onboarding?") && resetProfile()
+              }
               className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 w-full text-left"
               style={{ color: "var(--muted-foreground)" }}
             >
@@ -232,15 +321,17 @@ export function SecuritySettings() {
                 {deletingAccount ? "Deleting account…" : "Delete account permanently"}
               </button>
               {deleteError && (
-                <p className="text-xs mt-2" role="alert" style={{ color: "var(--destructive)" }}>{deleteError}</p>
+                <p className="text-xs mt-2" role="alert" style={{ color: "var(--destructive)" }}>
+                  {deleteError}
+                </p>
               )}
               <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>
-                This permanently deletes your account, profile, and all saved data. Cannot be undone.
+                This permanently deletes your account, profile, and all saved data. Cannot be
+                undone.
               </p>
             </div>
           </div>
         </Section>
-
       </div>
     </div>
   );

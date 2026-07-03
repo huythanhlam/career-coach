@@ -49,20 +49,30 @@ export function useDictation({ onText, onError }: UseDictationArgs) {
 
   const onTextRef = useRef(onText);
   const onErrorRef = useRef(onError);
-  useEffect(() => { onTextRef.current = onText; }, [onText]);
-  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  useEffect(() => {
+    onTextRef.current = onText;
+  }, [onText]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   const supported = getRecognitionCtor() !== null;
 
   const stop = useCallback(() => {
-    try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
     setListening(false);
   }, []);
 
   const start = useCallback(() => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) {
-      onErrorRef.current?.("Voice input isn't supported in this browser. Try Chrome, Edge, or Safari.");
+      onErrorRef.current?.(
+        "Voice input isn't supported in this browser. Try Chrome, Edge, or Safari.",
+      );
       return;
     }
     if (recognitionRef.current) return;
@@ -104,16 +114,28 @@ export function useDictation({ onText, onError }: UseDictationArgs) {
     } catch (err) {
       recognitionRef.current = null;
       setListening(false);
-      onErrorRef.current?.("Couldn't start voice input. Make sure you're on http://localhost and a mic is connected.");
+      onErrorRef.current?.(
+        "Couldn't start voice input. Make sure you're on http://localhost and a mic is connected.",
+      );
     }
   }, []);
 
   const toggle = useCallback(() => {
-    if (listening) stop(); else start();
+    if (listening) stop();
+    else start();
   }, [listening, start, stop]);
 
   // Clean up if the component unmounts mid-recording.
-  useEffect(() => () => { try { recognitionRef.current?.stop(); } catch { /* ignore */ } }, []);
+  useEffect(
+    () => () => {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+    },
+    [],
+  );
 
   return { supported, listening, start, stop, toggle };
 }

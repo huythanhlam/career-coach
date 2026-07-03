@@ -35,7 +35,14 @@ export function ModeSwitch({ onSwitched, size = "sm" }: ModeSwitchProps) {
     <div
       role="group"
       aria-label="Switch between job seeker and employer mode"
-      style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--muted)", border: "1px solid var(--border)" }}
+      style={{
+        display: "flex",
+        gap: 4,
+        padding: 4,
+        borderRadius: 12,
+        background: "var(--muted)",
+        border: "1px solid var(--border)",
+      }}
     >
       {ACCOUNT_TYPES.map((type) => {
         const Icon = ICONS[type];
@@ -47,9 +54,18 @@ export function ModeSwitch({ onSwitched, size = "sm" }: ModeSwitchProps) {
             onClick={() => choose(type)}
             aria-pressed={isActive}
             style={{
-              flex: 1, height: h, borderRadius: 9, border: "none", cursor: isActive ? "default" : "pointer",
-              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-              fontFamily: "inherit", fontSize: size === "sm" ? 12 : 13, fontWeight: 600,
+              flex: 1,
+              height: h,
+              borderRadius: 9,
+              border: "none",
+              cursor: isActive ? "default" : "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              fontFamily: "inherit",
+              fontSize: size === "sm" ? 12 : 13,
+              fontWeight: 600,
               background: isActive ? "var(--card)" : "transparent",
               color: isActive ? "var(--primary)" : "var(--muted-foreground)",
               boxShadow: isActive ? "0 1px 2px rgba(0,0,0,0.06)" : "none",

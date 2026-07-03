@@ -21,7 +21,10 @@ export function buildReviewLinks(company: string): ReviewLink[] {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return [
-    { label: "Glassdoor reviews", url: `https://www.glassdoor.com/Search/results.htm?keyword=${q}` },
+    {
+      label: "Glassdoor reviews",
+      url: `https://www.glassdoor.com/Search/results.htm?keyword=${q}`,
+    },
     { label: "Indeed company reviews", url: `https://www.indeed.com/cmp/${dashed}/reviews` },
     { label: "Blind", url: `https://www.teamblind.com/search/${q}` },
     { label: "Comparably", url: `https://www.comparably.com/companies/${slug}` },

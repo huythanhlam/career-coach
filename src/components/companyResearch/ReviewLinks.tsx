@@ -27,11 +27,31 @@ function ScoreRow({ rating, index }: { rating: CompanyRating; index: number }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Star className="w-3.5 h-3.5" style={{ color, fill: color }} />
-        <a href={rating.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
-          {rating.source} <ExternalLink className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
+        <a
+          href={rating.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--foreground)",
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          {rating.source}{" "}
+          <ExternalLink className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
         </a>
-        <span style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
-          {rating.score.toFixed(1)}<span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)" }}> / {rating.scale}</span>
+        <span
+          style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}
+        >
+          {rating.score.toFixed(1)}
+          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)" }}>
+            {" "}
+            / {rating.scale}
+          </span>
         </span>
       </div>
       <div style={{ height: 8, borderRadius: 99, background: "var(--muted)", overflow: "hidden" }}>
@@ -43,8 +63,17 @@ function ScoreRow({ rating, index }: { rating: CompanyRating; index: number }) {
         />
       </div>
       {rating.reviewCount != null && (
-        <span style={{ fontSize: 11, color: "var(--muted-foreground)", display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <Users className="w-3 h-3" /> {fmtCount(rating.reviewCount)} reviews · scraped from {rating.source}
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--muted-foreground)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <Users className="w-3 h-3" /> {fmtCount(rating.reviewCount)} reviews · scraped from{" "}
+          {rating.source}
         </span>
       )}
     </div>
@@ -56,7 +85,13 @@ function ScoreRow({ rating, index }: { rating: CompanyRating; index: number }) {
  * read them directly, and links to every review site. We never show a guessed
  * score: the CAPTCHA-walled sites (Glassdoor/Indeed/Comparably) are links only.
  */
-export function ReviewLinksCard({ company, ratings = [] }: { company: string; ratings?: CompanyRating[] }) {
+export function ReviewLinksCard({
+  company,
+  ratings = [],
+}: {
+  company: string;
+  ratings?: CompanyRating[];
+}) {
   const links = buildReviewLinks(company);
   const scraped = ratings.filter((r) => Number.isFinite(r?.score) && r?.url);
   // Keep role-specific scores (e.g. RepVue = sales only) out of the general
@@ -74,31 +109,85 @@ export function ReviewLinksCard({ company, ratings = [] }: { company: string; ra
       <div style={{ padding: "16px 22px" }}>
         {scraped.length > 0 ? (
           <>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "#2F6B4F", background: "color-mix(in srgb, #2F6B4F 12%, transparent)", padding: "3px 9px", borderRadius: 999, marginBottom: 14 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#2F6B4F",
+                background: "color-mix(in srgb, #2F6B4F 12%, transparent)",
+                padding: "3px 9px",
+                borderRadius: 999,
+                marginBottom: 14,
+              }}
+            >
               <ShieldCheck className="w-3.5 h-3.5" /> Real scores, read from the source
             </div>
             {general.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: sales.length || otherLinks.length ? 16 : 0 }}>
-                {general.map((r, i) => <ScoreRow key={r.source} rating={r} index={i} />)}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 14,
+                  marginBottom: sales.length || otherLinks.length ? 16 : 0,
+                }}
+              >
+                {general.map((r, i) => (
+                  <ScoreRow key={r.source} rating={r} index={i} />
+                ))}
               </div>
             )}
             {sales.length > 0 && (
-              <div style={{ marginBottom: otherLinks.length ? 16 : 0, paddingTop: general.length ? 14 : 0, borderTop: general.length ? "1px solid var(--border)" : "none" }}>
+              <div
+                style={{
+                  marginBottom: otherLinks.length ? 16 : 0,
+                  paddingTop: general.length ? 14 : 0,
+                  borderTop: general.length ? "1px solid var(--border)" : "none",
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                   <Briefcase className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)" }}>Sales roles only</span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    Sales roles only
+                  </span>
                 </div>
-                <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 12px", lineHeight: 1.5 }}>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--muted-foreground)",
+                    margin: "0 0 12px",
+                    lineHeight: 1.5,
+                  }}
+                >
                   Rated by sales professionals — not the company's overall rating.
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {sales.map((r, i) => <ScoreRow key={r.source} rating={r} index={i} />)}
+                  {sales.map((r, i) => (
+                    <ScoreRow key={r.source} rating={r} index={i} />
+                  ))}
                 </div>
               </div>
             )}
           </>
         ) : (
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "0 0 12px", lineHeight: 1.5 }}>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--muted-foreground)",
+              margin: "0 0 12px",
+              lineHeight: 1.5,
+            }}
+          >
             See current ratings straight from the source — we don't show guessed scores.
           </p>
         )}
@@ -106,17 +195,43 @@ export function ReviewLinksCard({ company, ratings = [] }: { company: string; ra
         {otherLinks.length > 0 && (
           <>
             {scraped.length > 0 && (
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-foreground)", marginBottom: 8 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  color: "var(--muted-foreground)",
+                  marginBottom: 8,
+                }}
+              >
                 More reviews
               </div>
             )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {otherLinks.map((l, i) => (
                 <a
-                  key={i} href={l.url} target="_blank" rel="noopener noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 14px", borderRadius: 10, background: "var(--muted)", border: "1px solid var(--border)", fontSize: 13, fontWeight: 500, color: "var(--foreground)", textDecoration: "none" }}
+                  key={i}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    height: 34,
+                    padding: "0 14px",
+                    borderRadius: 10,
+                    background: "var(--muted)",
+                    border: "1px solid var(--border)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "var(--foreground)",
+                    textDecoration: "none",
+                  }}
                 >
-                  <Star className="w-3.5 h-3.5" style={{ color: "#E8B948", fill: "#E8B948" }} /> {l.label}
+                  <Star className="w-3.5 h-3.5" style={{ color: "#E8B948", fill: "#E8B948" }} />{" "}
+                  {l.label}
                   <ExternalLink className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
                 </a>
               ))}

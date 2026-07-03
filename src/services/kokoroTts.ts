@@ -23,13 +23,7 @@ import {
 
 // Re-export the shared public surface so existing importers (and the unit test)
 // keep importing from "@/services/kokoroTts" unchanged.
-export {
-  DEFAULT_KOKORO_VOICE,
-  KOKORO_VOICES,
-  isKokoroVoice,
-  kokoroWasmBase,
-  type KokoroVoice,
-};
+export { DEFAULT_KOKORO_VOICE, KOKORO_VOICES, isKokoroVoice, kokoroWasmBase, type KokoroVoice };
 
 /** Thrown when the model is still downloading/initializing — caller should fall back this turn. */
 export class KokoroLoadingError extends Error {}
@@ -66,10 +60,13 @@ let resolveReady: (() => void) | null = null;
 let rejectReady: ((e: unknown) => void) | null = null;
 
 let nextId = 1;
-const pending = new Map<number, {
-  resolve: (r: { samples: Float32Array; sampleRate: number }) => void;
-  reject: (e: unknown) => void;
-}>();
+const pending = new Map<
+  number,
+  {
+    resolve: (r: { samples: Float32Array; sampleRate: number }) => void;
+    reject: (e: unknown) => void;
+  }
+>();
 
 function failPending(err: unknown) {
   for (const { reject } of pending.values()) reject(err);
@@ -77,7 +74,10 @@ function failPending(err: unknown) {
 }
 
 function clearReadyTimer() {
-  if (readyTimer !== null) { clearTimeout(readyTimer); readyTimer = null; }
+  if (readyTimer !== null) {
+    clearTimeout(readyTimer);
+    readyTimer = null;
+  }
 }
 
 // Transformers.js caches the ~80–330MB model weights in the Cache API, but that
@@ -119,16 +119,25 @@ function spawnWorker(): Worker | null {
       failPending(err);
     } else if (msg.type === "result") {
       const p = pending.get(msg.id);
-      if (p) { pending.delete(msg.id); p.resolve({ samples: msg.samples, sampleRate: msg.sampleRate }); }
+      if (p) {
+        pending.delete(msg.id);
+        p.resolve({ samples: msg.samples, sampleRate: msg.sampleRate });
+      }
     } else if (msg.type === "error") {
       const p = pending.get(msg.id);
-      if (p) { pending.delete(msg.id); p.reject(new Error(msg.message)); }
+      if (p) {
+        pending.delete(msg.id);
+        p.reject(new Error(msg.message));
+      }
     }
   };
   w.onerror = () => {
     // A crash before the model is ready is just another way the GPU path can fail —
     // respawn on CPU instead of giving up. After that (or once ready), it's fatal.
-    if (!ready && !failed && !forceCpu) { restartOnCpu(); return; }
+    if (!ready && !failed && !forceCpu) {
+      restartOnCpu();
+      return;
+    }
     failed = true;
     clearReadyTimer();
     const err = new Error("Kokoro worker crashed");
@@ -142,7 +151,11 @@ function spawnWorker(): Worker | null {
 function restartOnCpu() {
   clearReadyTimer();
   forceCpu = true;
-  try { worker?.terminate(); } catch { /* ignore */ }
+  try {
+    worker?.terminate();
+  } catch {
+    /* ignore */
+  }
   worker = null;
   loadRequested = false;
   // Drop any in-flight generates; this only fires during the initial bring-up it
@@ -161,7 +174,10 @@ function getWorker(): Worker | null {
 /** Ensure the worker exists and has been asked to load the model (idempotent). */
 function ensureLoad(): Worker | null {
   if (!readyPromise) {
-    readyPromise = new Promise<void>((res, rej) => { resolveReady = res; rejectReady = rej; });
+    readyPromise = new Promise<void>((res, rej) => {
+      resolveReady = res;
+      rejectReady = rej;
+    });
   }
   const w = getWorker();
   if (!w) return null;
@@ -175,7 +191,9 @@ function ensureLoad(): Worker | null {
     const isolated = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
     if (!forceCpu && !isolated) {
       clearReadyTimer();
-      readyTimer = setTimeout(() => { if (!ready && !failed) restartOnCpu(); }, WORKER_READY_DEADLINE_MS);
+      readyTimer = setTimeout(() => {
+        if (!ready && !failed) restartOnCpu();
+      }, WORKER_READY_DEADLINE_MS);
     }
   }
   return w;

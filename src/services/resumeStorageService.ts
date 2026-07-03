@@ -5,7 +5,7 @@ const BUCKET = "resumes";
 export async function uploadResume(
   userId: string,
   resumeId: string,
-  text: string
+  text: string,
 ): Promise<string> {
   const path = `${userId}/${resumeId}.md`;
   const { error } = await supabase.storage

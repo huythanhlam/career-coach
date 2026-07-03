@@ -22,17 +22,19 @@ export type CompanyResearchKind = "profile" | "news";
 
 const TTL_MS: Record<CompanyResearchKind, number> = {
   profile: 45 * 24 * 60 * 60 * 1000, // ~quarterly; careers/values/financials move slowly
-  news: 1 * 24 * 60 * 60 * 1000,     // news goes stale fast — keep it within ~a day
+  news: 1 * 24 * 60 * 60 * 1000, // news goes stale fast — keep it within ~a day
 };
 
 const LS_PREFIX = "crcache:";
 
-type DataFor<K extends CompanyResearchKind> = K extends "profile" ? CompanyProfileData : CompanyNewsData;
+type DataFor<K extends CompanyResearchKind> = K extends "profile"
+  ? CompanyProfileData
+  : CompanyNewsData;
 
 export interface CachedEntry<T> {
   data: T;
   cachedAt: string; // ISO timestamp
-  fresh: boolean;   // within TTL?
+  fresh: boolean; // within TTL?
 }
 
 // Resolve aliases to a canonical name first ("Google" → "Alphabet (Google)") so
@@ -49,7 +51,10 @@ function isFresh(ts: string, kind: CompanyResearchKind): boolean {
   return Date.now() - new Date(ts).getTime() < TTL_MS[kind];
 }
 
-function readLocal<K extends CompanyResearchKind>(key: string, kind: K): CachedEntry<DataFor<K>> | null {
+function readLocal<K extends CompanyResearchKind>(
+  key: string,
+  kind: K,
+): CachedEntry<DataFor<K>> | null {
   try {
     const raw = localStorage.getItem(LS_PREFIX + key);
     if (!raw) return null;
@@ -78,7 +83,7 @@ function writeLocal(key: string, data: unknown, cachedAt: string): void {
  */
 export async function getCachedCompanyResearch<K extends CompanyResearchKind>(
   company: string,
-  kind: K
+  kind: K,
 ): Promise<CachedEntry<DataFor<K>> | null> {
   const key = companyResearchCacheKey(company, kind);
   const local = readLocal(key, kind);
@@ -92,16 +97,21 @@ export async function getCachedCompanyResearch<K extends CompanyResearchKind>(
       .eq("cache_key", key)
       .maybeSingle();
     if (!error && data?.updated_at) {
-      shared = { data: data.data as DataFor<K>, cachedAt: data.updated_at as string, fresh: isFresh(data.updated_at as string, kind) };
+      shared = {
+        data: data.data as DataFor<K>,
+        cachedAt: data.updated_at as string,
+        fresh: isFresh(data.updated_at as string, kind),
+      };
     }
   } catch {
     /* offline / RLS — fall back to local */
   }
 
   // Prefer the newer of the two; warm localStorage if the shared copy wins.
-  const newest = [local, shared]
-    .filter((e): e is CachedEntry<DataFor<K>> => !!e)
-    .sort((a, b) => new Date(b.cachedAt).getTime() - new Date(a.cachedAt).getTime())[0] ?? null;
+  const newest =
+    [local, shared]
+      .filter((e): e is CachedEntry<DataFor<K>> => !!e)
+      .sort((a, b) => new Date(b.cachedAt).getTime() - new Date(a.cachedAt).getTime())[0] ?? null;
   if (newest && newest === shared) writeLocal(key, shared.data, shared.cachedAt);
   return newest;
 }
@@ -110,7 +120,7 @@ export async function getCachedCompanyResearch<K extends CompanyResearchKind>(
 export async function putCachedCompanyResearch<K extends CompanyResearchKind>(
   company: string,
   kind: K,
-  data: DataFor<K>
+  data: DataFor<K>,
 ): Promise<string> {
   const key = companyResearchCacheKey(company, kind);
   const cachedAt = new Date().toISOString();
