@@ -37,12 +37,8 @@ import { useInterviewSessions } from "@/hooks/useInterviewSessions";
 import { useSpeech } from "@/hooks/useSpeech";
 import { useDictation } from "@/hooks/useDictation";
 import { workflowsConfig } from "@/config/workflows";
-import {
-  createCoachingChat,
-  sendMessageStream,
-  evaluateInterviewTranscript,
-  type InterviewEvaluation,
-} from "@/services/geminiService";
+import { evaluateInterviewTranscript, type InterviewEvaluation } from "@/services/geminiService";
+import { createCoachingSession, type CoachingSession } from "@/ai/coachingSession";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { deriveChatStatus } from "@/lib/chatStatus";
 import { stripMarkdown } from "@/lib/speechText";
@@ -643,8 +639,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const [isScoring, setIsScoring] = useState(false);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chatRef = useRef<any>(null);
+  const chatRef = useRef<CoachingSession | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // ── Voice: the interviewer speaks (TTS), the user can answer by mic (STT) ──
@@ -803,10 +798,8 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     setFailedInput(null);
     setIsGenerating(true);
     try {
-      let full = "";
-      await sendMessageStream(chatRef.current, text, (chunk) => {
-        full += chunk;
-        setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: full }]);
+      const full = await chatRef.current.send(text, (running) => {
+        setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: running }]);
       });
       // Speak the question, then (hands-free) reopen the mic when it finishes.
       if (voiceEnabled) speech.speak(full, { voice: selectedVoice, onEnd: continueConversation });
@@ -862,7 +855,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const handleStart = async () => {
     if (!requiredOk || isGenerating) return;
     if (voiceEnabled) preloadKokoro(); // warm the in-browser voice model
-    chatRef.current = createCoachingChat(buildSystemInstruction());
+    chatRef.current = createCoachingSession(buildSystemInstruction());
     // generatePrompt is typed string | parts[], but the mock workflows always build a string.
     const generated = config.generatePrompt(formData);
     let request = typeof generated === "string" ? generated : String(generated);
