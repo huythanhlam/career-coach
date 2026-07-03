@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import { X, Megaphone, Loader2, Copy, Check, Rocket, Sparkles, Star } from "lucide-react";
-import type {
-  EmployerJobListing,
-  PromoAssets,
-  PromoPack,
-} from "@/types/employerListing";
+import type { EmployerJobListing, PromoAssets, PromoPack } from "@/types/employerListing";
 import { LISTING_STATUSES, LISTING_STATUS_META, isBoostActive } from "@/types/employerListing";
 import { generatePromoAssets, generateBoostedPromoPack } from "@/services/employerService";
 import { primaryBtn, ghostBtn, pillBtn, featuredBadge } from "./styles";

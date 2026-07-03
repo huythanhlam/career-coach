@@ -2,15 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Send,
-  X,
-  MessageSquare,
-  Loader2,
-  Sparkles,
-  Trash2,
-  RotateCcw,
-} from "lucide-react";
+import { Send, X, MessageSquare, Loader2, Sparkles, Trash2, RotateCcw } from "lucide-react";
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { createCoachingChat, sendMessageStream } from "@/services/geminiService";

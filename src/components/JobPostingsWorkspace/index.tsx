@@ -29,11 +29,7 @@ import {
   type Industry,
 } from "@/lib/jobFilters";
 import { expandRoleQuery, roleSearchTerms } from "@/lib/roleSynonyms";
-import {
-  type JobPosting,
-  type AggregatorJob,
-  type ScannedJob,
-} from "@/types/jobPosting";
+import { type JobPosting, type AggregatorJob, type ScannedJob } from "@/types/jobPosting";
 import type { ViewId } from "@/components/Sidebar";
 import { cardStyle, primaryBtn, ghostBtn } from "./styles";
 import { CompanyLogo } from "./_shared";
