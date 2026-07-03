@@ -1,8 +1,17 @@
 import { supabase } from "@/lib/supabaseClient";
 import { MODELS } from "@/config/models";
 import { zodToResponseSchema } from "@/ai/schema";
+import { parseSseBuffer } from "@/ai/sse";
 import type { Workflow } from "@/ai/defineWorkflow";
-import type { GatewayRequest, GatewayResponse, SourceLink, WorkflowResult } from "@/ai/types";
+import type {
+  GatewayRequest,
+  GatewayResponse,
+  SourceLink,
+  StreamOptions,
+  StreamResult,
+  StreamUsage,
+  WorkflowResult,
+} from "@/ai/types";
 
 /**
  * The single client for the `ai-gateway` edge function. Replaces
@@ -172,5 +181,202 @@ function describeParseFailure(raw: string): string {
     : "The AI response couldn't be read. Please try again.";
 }
 
+// ─── Streaming (SSE) ─────────────────────────────────────────────────────────
+
+// A stream that never delivers a first token shouldn't hang the UI forever, but
+// an actively-streaming reply must not be cut off. So instead of one blanket
+// timeout we run a watchdog: abort if the first token doesn't arrive within
+// STREAM_CONNECT_TIMEOUT_MS, then abort if the gap between tokens exceeds
+// STREAM_IDLE_TIMEOUT_MS.
+const STREAM_CONNECT_TIMEOUT_MS = 30_000;
+const STREAM_IDLE_TIMEOUT_MS = 60_000;
+
+/** Errors we may retry — but only before the first token has streamed. */
+function isRetryable(error: unknown): boolean {
+  return error instanceof Error && (error as { retryable?: boolean }).retryable === true;
+}
+
+function retryable(error: Error): Error {
+  (error as { retryable?: boolean }).retryable = true;
+  return error;
+}
+
+/**
+ * Stream a free-text workflow (chat, plan generation) from the gateway,
+ * delivering tokens progressively via `onToken`. Consumes the gateway's SSE
+ * frames (`token` / `sources` / `done` / `error`), supports real cancellation
+ * through `signal`, and — when `conversationId` is set — the gateway persists
+ * the turn to `ai_messages`.
+ *
+ * Retries only transient connection failures that occur BEFORE the first token
+ * (a partially-streamed reply must never be silently restarted). Throws on
+ * terminal failure or caller abort so the UI can render a message / stop.
+ */
+export async function streamWorkflow<TInput>(
+  wf: Workflow<TInput, unknown>,
+  input: TInput,
+  opts: StreamOptions = {},
+): Promise<StreamResult> {
+  const parsedInput = wf.inputSchema.parse(input);
+  const body: GatewayRequest = {
+    workflowId: wf.id,
+    systemInstruction: wf.buildSystem(parsedInput),
+    prompt: wf.buildPrompt(parsedInput),
+    tier: wf.tier,
+    enableSearch: wf.enableSearch,
+    stream: true,
+    conversationId: opts.conversationId,
+    userMessage: opts.userMessage,
+  };
+
+  const authHeader = await getAuthHeader();
+  let firstTokenSeen = false;
+  const markFirstToken = () => {
+    firstTokenSeen = true;
+  };
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < GATEWAY_MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
+    try {
+      return await streamOnce(body, authHeader, opts, markFirstToken);
+    } catch (error) {
+      lastError = error;
+      // Caller-initiated abort: propagate immediately, never retry.
+      if (opts.signal?.aborted) throw error;
+      // Once tokens have flowed we cannot safely restart the reply.
+      if (firstTokenSeen) throw error;
+      if (!isRetryable(error)) throw error;
+    }
+  }
+  throw lastError;
+}
+
+/** One SSE connection attempt. Resolves when the stream completes cleanly. */
+async function streamOnce(
+  body: GatewayRequest,
+  authHeader: string,
+  opts: StreamOptions,
+  markFirstToken: () => void,
+): Promise<StreamResult> {
+  // Watchdog: an internal controller we trip on inactivity, combined with the
+  // caller's signal so either can cancel the fetch/reader.
+  const watchdogController = new AbortController();
+  const combined = opts.signal
+    ? AbortSignal.any([opts.signal, watchdogController.signal])
+    : watchdogController.signal;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const arm = (ms: number) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(
+      () => watchdogController.abort(new DOMException("Stream timed out", "TimeoutError")),
+      ms,
+    );
+  };
+  const disarm = () => {
+    if (timer) clearTimeout(timer);
+  };
+
+  arm(STREAM_CONNECT_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: authHeader,
+      },
+      body: JSON.stringify(body),
+      signal: combined,
+    });
+  } catch (error) {
+    disarm();
+    if (opts.signal?.aborted) throw error; // caller abort — propagate
+    // Network-level failure before any byte: safe to retry.
+    throw retryable(error instanceof Error ? error : new Error(String(error)));
+  }
+
+  if (!response.ok || !response.body) {
+    disarm();
+    const errBody = await response.text().catch(() => "(no body)");
+    const error = new Error(`Gateway ${response.status}: ${errBody}`);
+    // Same transient statuses runWorkflow retries — but only pre-first-token.
+    if (RETRYABLE_STATUS.has(response.status)) throw retryable(error);
+    throw error;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let sources: SourceLink[] = [];
+  let usage: StreamUsage | null = null;
+
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parsed = parseSseBuffer(buffer);
+      buffer = parsed.rest;
+      for (const evt of parsed.events) {
+        const data = safeJsonParse(evt.data);
+        switch (evt.event) {
+          case "token": {
+            const delta = typeof data?.delta === "string" ? data.delta : "";
+            if (delta) {
+              if (!text) markFirstToken();
+              text += delta;
+              arm(STREAM_IDLE_TIMEOUT_MS);
+              opts.onToken?.(delta);
+            }
+            break;
+          }
+          case "sources": {
+            if (Array.isArray(data)) {
+              sources = data as SourceLink[];
+              opts.onSources?.(sources);
+            }
+            break;
+          }
+          case "done": {
+            const u = data?.usage;
+            if (u && typeof u === "object") {
+              usage = {
+                inputTokens: Number(u.inputTokens ?? 0),
+                outputTokens: Number(u.outputTokens ?? 0),
+                ttftMs: u.ttftMs == null ? null : Number(u.ttftMs),
+              };
+            }
+            break;
+          }
+          case "error": {
+            // Server signalled failure mid-stream — generic message only, never
+            // retried (the gateway already gave up).
+            const message = typeof data?.message === "string" ? data.message : "";
+            throw new Error(message || "The AI service hit a temporary error. Please try again.");
+          }
+        }
+      }
+    }
+  } finally {
+    disarm();
+    reader.cancel().catch(() => {});
+  }
+
+  return { text, sources, usage };
+}
+
+/** Parse an SSE `data:` payload, tolerating the occasional malformed frame. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeJsonParse(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export { MODELS };
-export type { SourceLink, WorkflowResult };
+export type { SourceLink, StreamOptions, StreamResult, StreamUsage, WorkflowResult };

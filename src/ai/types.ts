@@ -19,8 +19,44 @@ export interface GatewayRequest {
   enableSearch?: boolean;
   /** Standard JSON Schema; the gateway forwards it as Gemini `responseJsonSchema`. */
   responseSchema?: unknown;
+  /** Ask the gateway for a `text/event-stream` response (Slice 3). */
+  stream?: boolean;
   /** When set, the gateway appends this turn to `ai_messages` (Slice 3). */
   conversationId?: string;
+  /**
+   * The raw user message for this turn, persisted to `ai_messages` when
+   * `conversationId` is set. Distinct from `prompt`, which carries the full
+   * replayed transcript the model needs but should not be stored verbatim.
+   */
+  userMessage?: string;
+}
+
+/** Token accounting the gateway reports in the streaming `done` event. */
+export interface StreamUsage {
+  inputTokens: number;
+  outputTokens: number;
+  ttftMs: number | null;
+}
+
+/** Result of a completed `streamWorkflow` call. */
+export interface StreamResult {
+  text: string;
+  sources: SourceLink[];
+  usage: StreamUsage | null;
+}
+
+/** Callbacks + options for `streamWorkflow`. */
+export interface StreamOptions {
+  /** Called with each token delta as it arrives. */
+  onToken?: (delta: string) => void;
+  /** Called once with grounding sources, when the model used search. */
+  onSources?: (sources: SourceLink[]) => void;
+  /** Aborts the request (real cancellation, propagated to the provider). */
+  signal?: AbortSignal;
+  /** When set, the gateway persists this turn to the conversation. */
+  conversationId?: string;
+  /** The raw user message to persist (see `GatewayRequest.userMessage`). */
+  userMessage?: string;
 }
 
 /** The gateway's non-streaming response body. */

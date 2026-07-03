@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Send, X, MessageSquare, Loader2, Sparkles, Trash2, RotateCcw } from "lucide-react";
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
-import { createCoachingChat, sendMessageStream } from "@/services/geminiService";
+import { streamWorkflow } from "@/ai/client";
+import { coachingChatWorkflow } from "@/ai/workflows/coachingChat";
+import { createConversation } from "@/ai/conversation";
 import { workflowsConfig, basePersona } from "@/config/workflows";
 import { ViewId } from "@/components/Sidebar";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -25,6 +27,9 @@ interface GlobalChatPanelProps {
 }
 
 const CHAT_STORAGE_KEY = "coachChatHistory";
+// Durable conversation id (ai_conversations) reused across reloads so the
+// gateway keeps appending to the same conversation.
+const CONVO_STORAGE_KEY = "coachConversationId";
 const CHAT_HISTORY_LIMIT = 40; // turns kept across reloads
 
 function restoreMessages(): Message[] {
@@ -47,13 +52,23 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   const { profile } = useUserProfile();
   const { postings } = useJobPostings();
   const [messages, setMessages] = useState<Message[]>(restoreMessages);
-  const [chatInstance, setChatInstance] = useState<ReturnType<typeof createCoachingChat> | null>(
-    null,
-  );
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [failedInput, setFailedInput] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Durable conversation id; created lazily on the first send, then reused.
+  const conversationIdRef = useRef<string | null>(
+    (() => {
+      try {
+        return localStorage.getItem(CONVO_STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    })(),
+  );
+  // Cancels an in-flight stream on clear/unmount (real AbortController).
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Persist the conversation so a refresh doesn't lose it. Skipped while
   // streaming to avoid a write per chunk.
@@ -67,11 +82,13 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   }, [messages, isGenerating]);
 
   const clearConversation = () => {
+    abortRef.current?.abort();
     setMessages([]);
-    setChatInstance(null);
     setFailedInput(null);
+    conversationIdRef.current = null;
     try {
       localStorage.removeItem(CHAT_STORAGE_KEY);
+      localStorage.removeItem(CONVO_STORAGE_KEY);
     } catch {}
   };
 
@@ -109,30 +126,49 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
     return `${systemInstruction}\n\nWHAT YOU ALREADY KNOW ABOUT THIS USER (from their profile and activity in the app — use it naturally, don't re-ask for it):\n${context}`;
   };
 
-  // Stream a model reply to `text`, which already has its trailing empty model
-  // bubble in place. On failure, leave a calm message and remember `text` so the
+  // Stream a model reply to `text` (the trailing empty model bubble is already
+  // in place). `history` is the transcript BEFORE this turn — the coach workflow
+  // replays it for context, and the gateway persists the turn to the durable
+  // conversation. On failure, leave a calm message and remember `text` so the
   // user can retry the same turn without retyping.
-  const streamReply = async (text: string) => {
+  const streamReply = async (text: string, history: Message[]) => {
     setIsGenerating(true);
     setFailedInput(null);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      let currentChat = chatInstance;
-      if (!currentChat) {
-        // Create once, seeded with transcript + profile/pipeline context.
-        currentChat = createCoachingChat(buildContextualInstruction(), messages);
-        setChatInstance(currentChat);
+      // Create the durable conversation lazily on the first send, then reuse it.
+      if (!conversationIdRef.current) {
+        const id = await createConversation(coachingChatWorkflow.id);
+        if (id) {
+          conversationIdRef.current = id;
+          try {
+            localStorage.setItem(CONVO_STORAGE_KEY, id);
+          } catch {}
+        }
       }
 
-      await sendMessageStream(currentChat, text, (chunk) => {
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last.role === "model") {
-            return [...prev.slice(0, -1), { ...last, text: last.text + chunk }];
-          }
-          return prev;
-        });
-      });
+      await streamWorkflow(
+        coachingChatWorkflow,
+        { systemInstruction: buildContextualInstruction(), history, message: text },
+        {
+          signal: controller.signal,
+          conversationId: conversationIdRef.current ?? undefined,
+          userMessage: text,
+          onToken: (delta) => {
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last.role === "model") {
+                return [...prev.slice(0, -1), { ...last, text: last.text + delta }];
+              }
+              return prev;
+            });
+          },
+        },
+      );
     } catch (err) {
+      // A user-initiated cancel leaves the partial reply in place, no error.
+      if (controller.signal.aborted) return;
       console.error(err);
       setMessages((prev) => [
         ...prev.slice(0, -1),
@@ -144,6 +180,7 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
       setFailedInput(text);
     } finally {
       setIsGenerating(false);
+      abortRef.current = null;
     }
   };
 
@@ -152,18 +189,21 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
     const text = overrideText || input.trim();
     if (!text || isGenerating) return;
 
+    const history = messages; // transcript before this turn
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text }, { role: "model", text: "" }]);
-    await streamReply(text);
+    await streamReply(text, history);
   };
 
   // Re-attempt the last failed turn: swap the error bubble for a fresh empty one
-  // and stream again, without re-adding the user's message.
+  // and stream again, without re-adding the user's message. The trailing two
+  // entries (the user turn + the error bubble) aren't part of the replay history.
   const retry = async () => {
     if (!failedInput || isGenerating) return;
     const text = failedInput;
+    const history = messages.slice(0, -2);
     setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: "" }]);
-    await streamReply(text);
+    await streamReply(text, history);
   };
 
   if (!isOpen) return null;

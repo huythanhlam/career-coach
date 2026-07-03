@@ -2,11 +2,9 @@ import React, { useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { generateId, type SavedCareerPlan, type PlanMilestone } from "@/types/userProfile";
 import { workflowsConfig } from "@/config/workflows";
-import {
-  createCoachingChat,
-  sendMessageStream,
-  extractPlanMilestones,
-} from "@/services/geminiService";
+import { extractPlanMilestones } from "@/services/geminiService";
+import { streamWorkflow } from "@/ai/client";
+import { coachingChatWorkflow } from "@/ai/workflows/coachingChat";
 import {
   buildProfileBaseline,
   buildSurveySummary,
@@ -21,6 +19,15 @@ import type { CareerSurvey, UserProfile } from "@/types/userProfile";
 const BUCKET = "user-documents";
 
 type ChatMsg = { role: "user" | "model"; text: string };
+
+/**
+ * A live coaching session held in `chatRef`. The AI gateway is stateless, so we
+ * keep the running transcript here and replay it into the coach workflow each
+ * turn (mirrors the retired `createCoachingChat` helper). `turns` uses the exact
+ * prompts the model saw (e.g. the detailed plan request), which can differ from
+ * the friendlier text shown in the visible message list.
+ */
+type CoachSession = { systemInstruction: string; turns: ChatMsg[] };
 
 interface StoredPlanPayload {
   version: 1;
@@ -218,8 +225,8 @@ export function useGoalPlanningActions({
       setMode("plan");
       setIsGenerating(true);
 
-      const chat = createCoachingChat(buildSystemInstruction());
-      chatRef.current = chat;
+      const session: CoachSession = { systemInstruction: buildSystemInstruction(), turns: [] };
+      chatRef.current = session;
 
       const goalsBlock = intake.goals
         .map((g, i) => {
@@ -246,19 +253,30 @@ export function useGoalPlanningActions({
 
       try {
         let full = "";
-        await sendMessageStream(chat, request, (chunk) => {
-          full += chunk;
-          setPlanMarkdown(full);
-          setMessages((prev) => {
-            const m = [...prev];
-            m[m.length - 1] = { role: "model", text: full };
-            return m;
-          });
-        });
+        await streamWorkflow(
+          coachingChatWorkflow,
+          {
+            systemInstruction: session.systemInstruction,
+            history: session.turns,
+            message: request,
+          },
+          {
+            onToken: (delta) => {
+              full += delta;
+              setPlanMarkdown(full);
+              setMessages((prev) => {
+                const m = [...prev];
+                m[m.length - 1] = { role: "model", text: full };
+                return m;
+              });
+            },
+          },
+        );
+        session.turns.push({ role: "user", text: request }, { role: "model", text: full });
       } catch (err) {
         console.error("Plan generation failed:", err);
         const msg =
-          "**Error:** Could not generate your plan. Make sure the local AI gateway is running (`npx tsx server.ts`).";
+          "**Error:** Could not generate your plan. Make sure the local AI gateway is running (`npm run dev:functions`).";
         setPlanMarkdown(msg);
         setMessages((prev) => {
           const m = [...prev];
@@ -277,7 +295,8 @@ export function useGoalPlanningActions({
     async (e?: React.FormEvent, overrideText?: string) => {
       if (e) e.preventDefault();
       const text = (overrideText ?? input).trim();
-      if (!text || isGenerating || !chatRef.current) return;
+      const session = chatRef.current as CoachSession | null;
+      if (!text || isGenerating || !session) return;
 
       setInput("");
       setIsGenerating(true);
@@ -285,14 +304,21 @@ export function useGoalPlanningActions({
 
       try {
         let full = "";
-        await sendMessageStream(chatRef.current, text, (chunk) => {
-          full += chunk;
-          setMessages((prev) => {
-            const m = [...prev];
-            m[m.length - 1] = { role: "model", text: full };
-            return m;
-          });
-        });
+        await streamWorkflow(
+          coachingChatWorkflow,
+          { systemInstruction: session.systemInstruction, history: session.turns, message: text },
+          {
+            onToken: (delta) => {
+              full += delta;
+              setMessages((prev) => {
+                const m = [...prev];
+                m[m.length - 1] = { role: "model", text: full };
+                return m;
+              });
+            },
+          },
+        );
+        session.turns.push({ role: "user", text }, { role: "model", text: full });
       } catch (err) {
         console.error("Coaching reply failed:", err);
         setMessages((prev) => {
@@ -319,7 +345,14 @@ export function useGoalPlanningActions({
         if (error || !data) throw error ?? new Error("No data");
         const payload = JSON.parse(await data.text()) as StoredPlanPayload;
         const transcript = payload.transcript ?? [];
-        chatRef.current = createCoachingChat(buildSystemInstruction(), transcript);
+        // Seed a live coach session with the saved transcript so follow-ups
+        // replay the prior conversation (copy so replay pushes don't mutate the
+        // array we hand to the message list).
+        const session: CoachSession = {
+          systemInstruction: buildSystemInstruction(),
+          turns: [...transcript],
+        };
+        chatRef.current = session;
         setPlanMarkdown(payload.planMarkdown);
         setGoalType(payload.goalType);
         setGoalSummary(payload.goalSummary);
