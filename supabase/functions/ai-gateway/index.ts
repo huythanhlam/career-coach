@@ -18,10 +18,12 @@ import { corsHeaders } from "../_shared/cors.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Real Gemini model ids per tier. MUST mirror `src/config/models.ts` MODELS
- *  (a CI assertion keeps them in lockstep — dev == prod). */
+ *  (a CI assertion keeps them in lockstep — dev == prod). All tiers point at
+ *  gemini-2.5-flash for now: the 3.x flash family 429s "quota exceeded" on this
+ *  Gemini plan (PR #76). The eval suite gates any bump back to 3.x. */
 const TIER_MODELS: Record<string, string> = {
-  FAST: "gemini-3.1-flash-lite",
-  QUALITY: "gemini-3.5-flash",
+  FAST: "gemini-2.5-flash",
+  QUALITY: "gemini-2.5-flash",
   RESEARCH: "gemini-2.5-flash",
 };
 
