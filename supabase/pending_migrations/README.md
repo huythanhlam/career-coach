@@ -25,8 +25,13 @@ Move the files into `supabase/migrations/` **in filename order** and push:
 git mv supabase/pending_migrations/20260625000000_add_account_type.sql    supabase/migrations/
 git mv supabase/pending_migrations/20260625000001_add_employer_studio.sql supabase/migrations/
 git mv supabase/pending_migrations/20260625000002_add_blog_scheduling.sql supabase/migrations/
+git mv supabase/pending_migrations/20260703000000_add_ai_usage.sql        supabase/migrations/
 supabase db push          # or: supabase migration up
 ```
+
+> `20260703000000_add_ai_usage.sql` backs AI Core v2 (P1): the `ai_usage`
+> metering table + `check_ai_usage_cap()` RPC the `ai-gateway` edge function
+> uses. It sorts after the P0 set above.
 
 Or paste each file's contents (in order) into the Supabase Dashboard → SQL
 Editor. Every file is idempotent (`add column if not exists`, guarded
