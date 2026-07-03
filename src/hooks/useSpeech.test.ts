@@ -16,9 +16,7 @@ describe("splitForSpeech", () => {
       "Thank you so much for taking the time to meet with me today, I really do appreciate this opportunity a lot.";
     const chunks = splitForSpeech(text);
     // First chunk is broken at the comma so time-to-first-audio is small…
-    expect(chunks[0]).toBe(
-      "Thank you so much for taking the time to meet with me today,",
-    );
+    expect(chunks[0]).toBe("Thank you so much for taking the time to meet with me today,");
     // …and the remainder is preserved as the next chunk.
     expect(chunks[1]).toBe("I really do appreciate this opportunity a lot.");
     // No text is lost.

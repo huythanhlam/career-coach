@@ -49,7 +49,10 @@ export function splitForSpeech(text: string): string[] {
       const cut = FIRST_CHUNK_SPLIT_MIN + rel + 1; // keep the punctuation with the first part
       const first = head.slice(0, cut).trim();
       const rest = head.slice(cut).trim();
-      if (first && rest) { chunks[0] = rest; chunks.unshift(first); }
+      if (first && rest) {
+        chunks[0] = rest;
+        chunks.unshift(first);
+      }
     }
   }
   return chunks;

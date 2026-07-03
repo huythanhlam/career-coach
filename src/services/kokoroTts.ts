@@ -92,8 +92,12 @@ function requestPersistentStorage() {
   persistRequested = true;
   try {
     const storage = typeof navigator !== "undefined" ? navigator.storage : undefined;
-    storage?.persist?.().catch(() => { /* best-effort */ });
-  } catch { /* ignore */ }
+    storage?.persist?.().catch(() => {
+      /* best-effort */
+    });
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Build the inference worker and wire up its message/error handlers. */
