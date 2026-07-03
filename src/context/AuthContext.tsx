@@ -1,16 +1,10 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { migrateFromLocalStorage } from "@/lib/migrateFromLocalStorage";
 
 export type AuthStep =
-  | "idle"        // not signed in
+  | "idle" // not signed in
   | "authenticated" // fully signed in (MFA passed or not enrolled)
   | "mfa_challenge"; // signed in with password, MFA required
 

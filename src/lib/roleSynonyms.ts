@@ -7,7 +7,15 @@
 // space) expand to the full-name variants, which is what we actually search.
 
 const GROUPS: string[][] = [
-  ["software engineer", "software developer", "software development engineer", "swe", "sde", "programmer", "coder"],
+  [
+    "software engineer",
+    "software developer",
+    "software development engineer",
+    "swe",
+    "sde",
+    "programmer",
+    "coder",
+  ],
   ["technical program manager", "tpm", "technical project manager"],
   ["program manager", "program management"],
   ["product manager", "product management", "pm"],
@@ -21,11 +29,30 @@ const GROUPS: string[][] = [
   ["devops engineer", "devops"],
   ["platform engineer"],
   ["security engineer", "infosec engineer"],
-  ["frontend engineer", "front end engineer", "frontend developer", "front end developer", "fe engineer"],
-  ["backend engineer", "back end engineer", "backend developer", "back end developer", "be engineer"],
+  [
+    "frontend engineer",
+    "front end engineer",
+    "frontend developer",
+    "front end developer",
+    "fe engineer",
+  ],
+  [
+    "backend engineer",
+    "back end engineer",
+    "backend developer",
+    "back end developer",
+    "be engineer",
+  ],
   ["full stack engineer", "fullstack engineer", "full stack developer", "fullstack developer"],
   ["mobile engineer", "mobile developer", "ios engineer", "android engineer"],
-  ["qa engineer", "quality assurance engineer", "quality assurance", "qa", "sdet", "software development engineer in test"],
+  [
+    "qa engineer",
+    "quality assurance engineer",
+    "quality assurance",
+    "qa",
+    "sdet",
+    "software development engineer in test",
+  ],
   ["ux designer", "user experience designer"],
   ["ui designer", "user interface designer"],
   ["product designer", "ux/ui designer", "ui/ux designer"],
@@ -48,7 +75,11 @@ const GROUPS: string[][] = [
 const MAX_PHRASES = 3;
 
 function norm(s: string): string {
-  return s.toLowerCase().replace(/[._/]+/g, " ").replace(/\s+/g, " ").trim();
+  return s
+    .toLowerCase()
+    .replace(/[._/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // Precompute: normalized groups + an index from short alias → spelled-out names.
@@ -70,7 +101,10 @@ function dedupeCI(list: string[]): string[] {
   const out: string[] = [];
   for (const s of list) {
     const k = s.toLowerCase();
-    if (!seen.has(k)) { seen.add(k); out.push(s); }
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(s);
+    }
   }
   return out;
 }
@@ -110,7 +144,11 @@ export function expandRoleQuery(query: string): string[] {
   let list = dedupeCI([...out]);
   // If the user typed a bare abbreviation, prefer the spelled-out variants in the
   // limited slots and push the raw abbreviation to the end.
-  if (ABBREV_INDEX.has(q)) list = [...list.filter((s) => s.toLowerCase() !== q), ...list.filter((s) => s.toLowerCase() === q)];
+  if (ABBREV_INDEX.has(q))
+    list = [
+      ...list.filter((s) => s.toLowerCase() !== q),
+      ...list.filter((s) => s.toLowerCase() === q),
+    ];
   return list.slice(0, MAX_PHRASES);
 }
 
@@ -140,10 +178,12 @@ export function expandRoleTokens(text: string): Set<string> {
 
 /** Significant search terms across all expanded phrases — used for the ATS title filter. */
 export function roleSearchTerms(phrases: string[]): string[] {
-  return Array.from(new Set(
-    phrases
-      .flatMap((p) => p.split(/[^a-zA-Z0-9+#]+/))
-      .map((t) => t.trim().toLowerCase())
-      .filter((t) => t.length >= 2),
-  ));
+  return Array.from(
+    new Set(
+      phrases
+        .flatMap((p) => p.split(/[^a-zA-Z0-9+#]+/))
+        .map((t) => t.trim().toLowerCase())
+        .filter((t) => t.length >= 2),
+    ),
+  );
 }

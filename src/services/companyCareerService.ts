@@ -23,7 +23,9 @@ import type { SourceLink } from "@/config/companyResearchSources";
 // resolves to the local Express gateway in dev (/api/ai/generate → /api/fetch-url)
 // and the Supabase Edge Function in prod — otherwise the careers crawl can't run
 // in local dev.
-const FETCH_URL_ENDPOINT = ((import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate")
+const FETCH_URL_ENDPOINT = (
+  (import.meta.env.VITE_API_URL as string) ?? "http://localhost:4000/api/ai/generate"
+)
   .replace(/\/api\/ai\/generate\/?$/, "/api/fetch-url")
   .replace(/\/functions\/v1\/ai-generate\/?$/, "/functions/v1/fetch-url");
 
@@ -72,7 +74,10 @@ export async function fetchCareerPageContext(
     // Dedupe by URL (the model often returns the same landing page for several keys).
     const seen = new Set<string>();
     const pages = candidates.filter((p) => {
-      const key = p.url.replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+      const key = p.url
+        .replace(/^https?:\/\//, "")
+        .replace(/\/+$/, "")
+        .toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

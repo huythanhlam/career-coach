@@ -61,7 +61,10 @@ function postingToRow(p: Partial<JobPosting>): Record<string, unknown> {
   return row;
 }
 
-export type NewPosting = Omit<JobPosting, "id" | "createdAt" | "updatedAt" | "status" | "favorite"> &
+export type NewPosting = Omit<
+  JobPosting,
+  "id" | "createdAt" | "updatedAt" | "status" | "favorite"
+> &
   Partial<Pick<JobPosting, "status" | "favorite">>;
 
 export function useJobPostings() {
@@ -90,7 +93,9 @@ export function useJobPostings() {
       // suggested), promote/return it instead of hitting the
       // (user_id, source, external_id) unique index and failing silently.
       if (posting.externalId) {
-        const dup = postings.find((p) => p.source === posting.source && p.externalId === posting.externalId);
+        const dup = postings.find(
+          (p) => p.source === posting.source && p.externalId === posting.externalId,
+        );
         if (dup) {
           if (dup.status === "suggested") {
             await supabase.from("job_postings").update({ status: "saved" }).eq("id", dup.id);

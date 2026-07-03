@@ -56,8 +56,8 @@ export async function parseDocumentToText(file: File): Promise<string> {
         pdf
           .getPage(i + 1)
           .then((p) => p.getTextContent())
-          .then((c) => c.items.map((item) => ("str" in item ? item.str : "")).join(" "))
-      )
+          .then((c) => c.items.map((item) => ("str" in item ? item.str : "")).join(" ")),
+      ),
     );
     return pages.join("\n");
   }

@@ -33,8 +33,10 @@ export interface NegotiationSetup {
 
 const DIFFICULTY_HINT: Record<Difficulty, string> = {
   easy: "You have some flexibility and want to close the deal; concede a little when the candidate justifies an ask.",
-  standard: "You have a real but limited budget; push back, but reward well-justified, specific asks with modest movement.",
-  tough: "Budget is tight and you negotiate hard; defend the number firmly, probe for the candidate's walk-away, and concede slowly and only for strong justification.",
+  standard:
+    "You have a real but limited budget; push back, but reward well-justified, specific asks with modest movement.",
+  tough:
+    "Budget is tight and you negotiate hard; defend the number firmly, probe for the candidate's walk-away, and concede slowly and only for strong justification.",
 };
 
 /** System instruction that keeps the AI fully in character as the counterpart. */

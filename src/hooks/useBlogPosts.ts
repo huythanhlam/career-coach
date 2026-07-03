@@ -38,7 +38,9 @@ export function useBlogPosts() {
     setLoading(true);
     supabase
       .from("blog_posts")
-      .select("slug,title,excerpt,category,tags,hero_emoji,reading_minutes,published_at,generated_at")
+      .select(
+        "slug,title,excerpt,category,tags,hero_emoji,reading_minutes,published_at,generated_at",
+      )
       .eq("published", true)
       .order("published_at", { ascending: false })
       .then(({ data }) => {
@@ -103,7 +105,9 @@ export function useBlogAdminPosts(refreshKey = 0) {
     setLoading(true);
     supabase
       .from("blog_posts")
-      .select("slug,title,excerpt,category,tags,hero_emoji,model,reading_minutes,editor_score,editor_rounds,status,scheduled_for,published,published_at,generated_at")
+      .select(
+        "slug,title,excerpt,category,tags,hero_emoji,model,reading_minutes,editor_score,editor_rounds,status,scheduled_for,published,published_at,generated_at",
+      )
       .order("generated_at", { ascending: false })
       .then(({ data }) => {
         if (!active) return;
@@ -112,7 +116,7 @@ export function useBlogAdminPosts(refreshKey = 0) {
         setScheduled(
           posts
             .filter((p) => !p.published && p.status === "scheduled" && p.scheduledFor)
-            .sort((a, b) => (a.scheduledFor! < b.scheduledFor! ? -1 : 1))
+            .sort((a, b) => (a.scheduledFor! < b.scheduledFor! ? -1 : 1)),
         );
         setQueued(posts.filter((p) => !p.published && p.status !== "scheduled"));
         setLoading(false);

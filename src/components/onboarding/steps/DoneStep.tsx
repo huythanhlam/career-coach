@@ -8,15 +8,31 @@ interface Props {
 }
 
 const SEEKER_CALLOUTS = [
-  { icon: "📄", label: "Resume Builder", desc: "Pre-filled with your work history, education & skills" },
+  {
+    icon: "📄",
+    label: "Resume Builder",
+    desc: "Pre-filled with your work history, education & skills",
+  },
   { icon: "🔍", label: "Resume Analyzer", desc: "Uses your resume text as the starting point" },
-  { icon: "💼", label: "LinkedIn Optimization", desc: "Scores your LinkedIn PDF export and suggests improvements" },
+  {
+    icon: "💼",
+    label: "LinkedIn Optimization",
+    desc: "Scores your LinkedIn PDF export and suggests improvements",
+  },
 ];
 
 const EMPLOYER_CALLOUTS = [
-  { icon: "🏢", label: "Company Profile", desc: "Draft your About, mission, culture & benefits with AI" },
+  {
+    icon: "🏢",
+    label: "Company Profile",
+    desc: "Draft your About, mission, culture & benefits with AI",
+  },
   { icon: "📝", label: "Job Listings", desc: "Generate a full job description from a short brief" },
-  { icon: "🚀", label: "Promote & Boost", desc: "Create promo content and feature your roles to candidates" },
+  {
+    icon: "🚀",
+    label: "Promote & Boost",
+    desc: "Create promo content and feature your roles to candidates",
+  },
 ];
 
 export function DoneStep({ name, onStart, accountType = "seeker" }: Props) {
@@ -53,8 +69,12 @@ export function DoneStep({ name, onStart, accountType = "seeker" }: Props) {
           >
             <span className="text-base mt-0.5">{icon}</span>
             <div>
-              <div className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{label}</div>
-              <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>{desc}</div>
+              <div className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                {label}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                {desc}
+              </div>
             </div>
           </li>
         ))}

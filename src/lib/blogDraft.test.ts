@@ -124,14 +124,16 @@ describe("buildEditorPrompt", () => {
 describe("parseEditorVerdict", () => {
   it("parses an approval and applies a polished copy-edit", () => {
     const v = parseEditorVerdict(
-      JSON.stringify({ decision: "approve", score: 92, issues: [], polishedContent: "## Tighter" })
+      JSON.stringify({ decision: "approve", score: 92, issues: [], polishedContent: "## Tighter" }),
     );
     expect(v.decision).toBe("approve");
     expect(v.score).toBe(92);
     expect(v.polishedContent).toBe("## Tighter");
   });
   it("ignores polishedContent unless approving", () => {
-    const v = parseEditorVerdict(JSON.stringify({ decision: "revise", score: 50, polishedContent: "x" }));
+    const v = parseEditorVerdict(
+      JSON.stringify({ decision: "revise", score: 50, polishedContent: "x" }),
+    );
     expect(v.polishedContent).toBeUndefined();
   });
   it("clamps the score to 0–100", () => {

@@ -21,13 +21,19 @@ export function ConsentStep({ onAgree }: Props) {
         How your data is used
       </h2>
 
-      <p className="text-sm mb-6 text-left w-full" style={{ color: "var(--muted-foreground)", lineHeight: 1.7 }}>
-        Career Coach AI uses large language models to power its features. When you use tools like the
-        Resume Builder, Resume Analyzer, or Cover Letter Creator, the following data is sent to
+      <p
+        className="text-sm mb-6 text-left w-full"
+        style={{ color: "var(--muted-foreground)", lineHeight: 1.7 }}
+      >
+        Career Coach AI uses large language models to power its features. When you use tools like
+        the Resume Builder, Resume Analyzer, or Cover Letter Creator, the following data is sent to
         Google Gemini AI for processing:
       </p>
 
-      <ul className="text-sm text-left w-full mb-6 space-y-2" style={{ color: "var(--foreground)" }}>
+      <ul
+        className="text-sm text-left w-full mb-6 space-y-2"
+        style={{ color: "var(--foreground)" }}
+      >
         {[
           "Your resume content and work history",
           "Personal contact details you enter (name, email, phone)",
@@ -35,7 +41,10 @@ export function ConsentStep({ onAgree }: Props) {
           "LinkedIn profile text you import",
         ].map((item) => (
           <li key={item} className="flex items-start gap-2">
-            <span className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: "var(--primary)", marginTop: 7 }} />
+            <span
+              className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full"
+              style={{ background: "var(--primary)", marginTop: 7 }}
+            />
             {item}
           </li>
         ))}
@@ -43,7 +52,11 @@ export function ConsentStep({ onAgree }: Props) {
 
       <div
         className="w-full rounded-xl p-4 mb-6 text-left text-sm"
-        style={{ background: "rgba(217,119,87,0.07)", color: "var(--muted-foreground)", lineHeight: 1.6 }}
+        style={{
+          background: "rgba(217,119,87,0.07)",
+          color: "var(--muted-foreground)",
+          lineHeight: 1.6,
+        }}
       >
         We do not sell your data. AI providers process your data under their own privacy policies.
         You can delete your account and all associated data at any time from Settings.{" "}

@@ -12,10 +12,28 @@ export const EMPLOYMENT_TYPES: { label: string; value: string }[] = [
   { label: "Freelance", value: "Freelance" },
 ];
 
-export const LISTING_STATUS_META: Record<ListingStatus, { label: string; fg: string; bg: string; border: string }> = {
-  draft:     { label: "Draft",     fg: "#71717A", bg: "rgba(113,113,122,0.10)", border: "rgba(113,113,122,0.25)" },
-  published: { label: "Published", fg: "#2F6B4F", bg: "rgba(47,107,79,0.12)",   border: "rgba(47,107,79,0.30)" },
-  closed:    { label: "Closed",    fg: "#A1A1AA", bg: "rgba(161,161,170,0.10)", border: "rgba(161,161,170,0.22)" },
+export const LISTING_STATUS_META: Record<
+  ListingStatus,
+  { label: string; fg: string; bg: string; border: string }
+> = {
+  draft: {
+    label: "Draft",
+    fg: "#71717A",
+    bg: "rgba(113,113,122,0.10)",
+    border: "rgba(113,113,122,0.25)",
+  },
+  published: {
+    label: "Published",
+    fg: "#2F6B4F",
+    bg: "rgba(47,107,79,0.12)",
+    border: "rgba(47,107,79,0.30)",
+  },
+  closed: {
+    label: "Closed",
+    fg: "#A1A1AA",
+    bg: "rgba(161,161,170,0.10)",
+    border: "rgba(161,161,170,0.22)",
+  },
 };
 
 /** AI-generated promotional copy saved onto a listing. */

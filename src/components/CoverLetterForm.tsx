@@ -1,5 +1,14 @@
 import React, { useState, useRef } from "react";
-import { Loader2, Sparkles, Upload, ChevronDown, ChevronUp, User, FileText, Paperclip } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  Upload,
+  ChevronDown,
+  ChevronUp,
+  User,
+  FileText,
+  Paperclip,
+} from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { UserProfile } from "@/types/userProfile";
 import { TEMPLATES } from "@/components/TemplateGallery";
@@ -54,7 +63,9 @@ function buildProfileSummary(profile: UserProfile): string {
   if (profile.workHistory?.length) {
     lines.push("\nWORK HISTORY:");
     profile.workHistory.forEach((w) => {
-      lines.push(`- ${w.role} at ${w.company} (${w.startDate} – ${w.current ? "Present" : w.endDate})`);
+      lines.push(
+        `- ${w.role} at ${w.company} (${w.startDate} – ${w.current ? "Present" : w.endDate})`,
+      );
       if (w.responsibilities?.trim()) {
         lines.push(`  Responsibilities: ${w.responsibilities}`);
       }
@@ -64,7 +75,9 @@ function buildProfileSummary(profile: UserProfile): string {
   if (profile.education?.length) {
     lines.push("\nEDUCATION:");
     profile.education.forEach((e) => {
-      lines.push(`- ${e.degree}${e.major ? `, ${e.major}` : ""} — ${e.university} (${e.graduationYear})`);
+      lines.push(
+        `- ${e.degree}${e.major ? `, ${e.major}` : ""} — ${e.university} (${e.graduationYear})`,
+      );
     });
   }
 
@@ -79,7 +92,11 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
   const { profile } = useUserProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [jobDetails, setJobDetails] = useState<JobDetailsValue>({ jobTitle: "", companyName: "", jobDescription: "" });
+  const [jobDetails, setJobDetails] = useState<JobDetailsValue>({
+    jobTitle: "",
+    companyName: "",
+    jobDescription: "",
+  });
   const [tone, setTone] = useState<CoverLetterFormData["tone"]>("professional");
   const [templateId, setTemplateId] = useState("modern-clean");
   const [achievements, setAchievements] = useState("");
@@ -143,10 +160,30 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
     }
   };
 
-  const sourceOptions: { id: CoverLetterFormData["resumeSource"]; label: string; icon: React.ReactNode; desc: string }[] = [
-    { id: "profile", icon: <User className="w-4 h-4" />, label: "My Profile", desc: "Use your saved work history and skills" },
-    { id: "saved", icon: <FileText className="w-4 h-4" />, label: "Saved Resume", desc: "Select from your saved resumes" },
-    { id: "upload", icon: <Paperclip className="w-4 h-4" />, label: "Upload File", desc: "Upload a PDF or DOCX resume" },
+  const sourceOptions: {
+    id: CoverLetterFormData["resumeSource"];
+    label: string;
+    icon: React.ReactNode;
+    desc: string;
+  }[] = [
+    {
+      id: "profile",
+      icon: <User className="w-4 h-4" />,
+      label: "My Profile",
+      desc: "Use your saved work history and skills",
+    },
+    {
+      id: "saved",
+      icon: <FileText className="w-4 h-4" />,
+      label: "Saved Resume",
+      desc: "Select from your saved resumes",
+    },
+    {
+      id: "upload",
+      icon: <Paperclip className="w-4 h-4" />,
+      label: "Upload File",
+      desc: "Upload a PDF or DOCX resume",
+    },
   ];
 
   const toneOptions: { value: CoverLetterFormData["tone"]; label: string; desc: string }[] = [
@@ -158,13 +195,30 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
   return (
     <form onSubmit={handleSubmit} style={{ maxWidth: 760, margin: "0 auto" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
         {/* Job details — shared with the resume tailor flow */}
         <JobDetailsSection value={jobDetails} onChange={setJobDetails} />
 
         {/* Resume source */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>
+        <div
+          style={{
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: 18,
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "var(--muted-foreground)",
+            }}
+          >
             Your Experience
           </div>
 
@@ -178,7 +232,10 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
                   padding: "14px 16px",
                   border: `2px solid ${resumeSource === opt.id ? "var(--primary)" : "var(--border)"}`,
                   borderRadius: 12,
-                  background: resumeSource === opt.id ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "var(--muted)",
+                  background:
+                    resumeSource === opt.id
+                      ? "color-mix(in srgb, var(--primary) 8%, transparent)"
+                      : "var(--muted)",
                   cursor: "pointer",
                   textAlign: "left",
                   display: "flex",
@@ -187,11 +244,19 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
                   transition: "border-color 0.15s, background 0.15s",
                 }}
               >
-                <span style={{ color: resumeSource === opt.id ? "var(--primary)" : "var(--muted-foreground)" }}>
+                <span
+                  style={{
+                    color: resumeSource === opt.id ? "var(--primary)" : "var(--muted-foreground)",
+                  }}
+                >
                   {opt.icon}
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>{opt.label}</span>
-                <span style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.4 }}>{opt.desc}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                  {opt.label}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.4 }}>
+                  {opt.desc}
+                </span>
               </button>
             ))}
           </div>
@@ -199,8 +264,17 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
           {resumeSource === "saved" && (
             <div>
               {savedResumes.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--muted-foreground)", padding: "10px 14px", background: "var(--muted)", borderRadius: 10 }}>
-                  No saved resumes yet. Use Resume Builder to create one, or choose a different source.
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--muted-foreground)",
+                    padding: "10px 14px",
+                    background: "var(--muted)",
+                    borderRadius: 10,
+                  }}
+                >
+                  No saved resumes yet. Use Resume Builder to create one, or choose a different
+                  source.
                 </div>
               ) : (
                 <select
@@ -209,7 +283,9 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
                   style={{ ...fieldStyle, height: 48, padding: "0 14px" }}
                 >
                   {savedResumes.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
                   ))}
                 </select>
               )}
@@ -229,11 +305,18 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  height: 48, padding: "0 20px",
-                  background: "var(--muted)", border: "1px dashed var(--border)",
-                  borderRadius: 10, cursor: "pointer", fontSize: 13,
-                  color: "var(--foreground)", fontFamily: "inherit",
-                  display: "flex", alignItems: "center", gap: 8,
+                  height: 48,
+                  padding: "0 20px",
+                  background: "var(--muted)",
+                  border: "1px dashed var(--border)",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  color: "var(--foreground)",
+                  fontFamily: "inherit",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
                 <Upload className="w-4 h-4" style={{ color: "var(--primary)" }} />
@@ -247,8 +330,26 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
         </div>
 
         {/* Tone */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>
+        <div
+          style={{
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: 18,
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "var(--muted-foreground)",
+            }}
+          >
             Tone
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 10 }}>
@@ -261,22 +362,53 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
                   padding: "12px 14px",
                   border: `2px solid ${tone === opt.value ? "var(--primary)" : "var(--border)"}`,
                   borderRadius: 12,
-                  background: tone === opt.value ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "var(--muted)",
+                  background:
+                    tone === opt.value
+                      ? "color-mix(in srgb, var(--primary) 8%, transparent)"
+                      : "var(--muted)",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "border-color 0.15s, background 0.15s",
                 }}
               >
-                <div style={{ fontSize: 13, fontWeight: 600, color: tone === opt.value ? "var(--primary)" : "var(--foreground)" }}>{opt.label}</div>
-                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 3 }}>{opt.desc}</div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: tone === opt.value ? "var(--primary)" : "var(--foreground)",
+                  }}
+                >
+                  {opt.label}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 3 }}>
+                  {opt.desc}
+                </div>
               </button>
             ))}
           </div>
         </div>
 
         {/* Template */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>
+        <div
+          style={{
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: 18,
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "var(--muted-foreground)",
+            }}
+          >
             Template
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 8 }}>
@@ -291,7 +423,9 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
                     padding: "12px 10px",
                     border: `2px solid ${active ? "var(--primary)" : "var(--border)"}`,
                     borderRadius: 12,
-                    background: active ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "var(--muted)",
+                    background: active
+                      ? "color-mix(in srgb, var(--primary) 8%, transparent)"
+                      : "var(--muted)",
                     cursor: "pointer",
                     textAlign: "left",
                     display: "flex",
@@ -302,14 +436,50 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
                 >
                   {/* Colour swatch */}
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <div style={{ width: 6, height: 28, borderRadius: 3, background: tpl.accent, flexShrink: 0 }} />
+                    <div
+                      style={{
+                        width: 6,
+                        height: 28,
+                        borderRadius: 3,
+                        background: tpl.accent,
+                        flexShrink: 0,
+                      }}
+                    />
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
-                      <div style={{ height: 4, borderRadius: 2, background: active ? "var(--primary)" : "var(--border)", width: "80%" }} />
-                      <div style={{ height: 3, borderRadius: 2, background: "var(--border)", width: "60%" }} />
-                      <div style={{ height: 3, borderRadius: 2, background: "var(--border)", width: "70%" }} />
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 2,
+                          background: active ? "var(--primary)" : "var(--border)",
+                          width: "80%",
+                        }}
+                      />
+                      <div
+                        style={{
+                          height: 3,
+                          borderRadius: 2,
+                          background: "var(--border)",
+                          width: "60%",
+                        }}
+                      />
+                      <div
+                        style={{
+                          height: 3,
+                          borderRadius: 2,
+                          background: "var(--border)",
+                          width: "70%",
+                        }}
+                      />
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: active ? "var(--primary)" : "var(--foreground)", lineHeight: 1.3 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: active ? "var(--primary)" : "var(--foreground)",
+                      lineHeight: 1.3,
+                    }}
+                  >
                     {tpl.name}
                   </div>
                 </button>
@@ -319,21 +489,45 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
         </div>
 
         {/* Optional fields */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden" }}>
+        <div
+          style={{
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            borderRadius: 18,
+            overflow: "hidden",
+          }}
+        >
           <button
             type="button"
             onClick={() => setShowOptional((v) => !v)}
             style={{
-              width: "100%", padding: "16px 24px",
-              background: "transparent", border: "none", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
+              width: "100%",
+              padding: "16px 24px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
               fontFamily: "inherit",
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)" }}>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--muted-foreground)",
+              }}
+            >
               Optional: Achievements to Highlight
             </span>
-            {showOptional ? <ChevronUp className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />}
+            {showOptional ? (
+              <ChevronUp className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+            ) : (
+              <ChevronDown className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+            )}
           </button>
           {showOptional && (
             <div style={{ padding: "0 24px 24px" }}>
@@ -354,21 +548,40 @@ export function CoverLetterForm({ onSubmit, isGenerating }: CoverLetterFormProps
         {/* Submit */}
         <button
           type="submit"
-          disabled={isGenerating || isProcessing || !jobDetails.jobDescription.trim() || (resumeSource === "upload" && !uploadedFile)}
+          disabled={
+            isGenerating ||
+            isProcessing ||
+            !jobDetails.jobDescription.trim() ||
+            (resumeSource === "upload" && !uploadedFile)
+          }
           style={{
-            height: 52, width: "100%",
-            background: "var(--primary)", color: "#fff", border: "none",
-            borderRadius: 14, fontFamily: "inherit", fontSize: 15, fontWeight: 600,
-            cursor: (isGenerating || isProcessing) ? "not-allowed" : "pointer",
-            opacity: (isGenerating || isProcessing) ? 0.7 : 1,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            height: 52,
+            width: "100%",
+            background: "var(--primary)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 14,
+            fontFamily: "inherit",
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: isGenerating || isProcessing ? "not-allowed" : "pointer",
+            opacity: isGenerating || isProcessing ? 0.7 : 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
             transition: "opacity 0.15s",
           }}
         >
-          {(isGenerating || isProcessing) ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> {isProcessing ? "Processing file…" : "Generating…"}</>
+          {isGenerating || isProcessing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />{" "}
+              {isProcessing ? "Processing file…" : "Generating…"}
+            </>
           ) : (
-            <><Sparkles className="w-4 h-4" /> Generate Cover Letter</>
+            <>
+              <Sparkles className="w-4 h-4" /> Generate Cover Letter
+            </>
           )}
         </button>
       </div>

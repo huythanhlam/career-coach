@@ -6,8 +6,8 @@
 @import "@fontsource-variable/geist";
 
 @theme inline {
-  --font-sans: 'Geist Variable', sans-serif;
-  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: "Geist Variable", sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -50,53 +50,53 @@
 /* ── Mentor mode (warm, welcoming — default per brief) ───────────── */
 :root {
   /* Surfaces */
-  --background: #FBF7F1;   /* cream */
-  --paper:      #F4EEE3;   /* warm paper */
-  --card:       #FFFFFF;
-  --muted:      #F0E9DC;
+  --background: #fbf7f1; /* cream */
+  --paper: #f4eee3; /* warm paper */
+  --card: #ffffff;
+  --muted: #f0e9dc;
 
   /* Text */
-  --foreground:       #1F1B16;  /* warm near-black */
-  --card-foreground:  #1F1B16;
-  --muted-foreground: #6E6557;  /* warm stone */
+  --foreground: #1f1b16; /* warm near-black */
+  --card-foreground: #1f1b16;
+  --muted-foreground: #6e6557; /* warm stone */
 
   /* Brand */
-  --primary:            #D97757;  /* terracotta */
-  --primary-foreground: #FFFFFF;
+  --primary: #d97757; /* terracotta */
+  --primary-foreground: #ffffff;
 
   /* Forest — "you've got this" */
-  --forest: #2F6B4F;
+  --forest: #2f6b4f;
 
   /* Highlight — small wins */
-  --highlight: #E8B948;
+  --highlight: #e8b948;
 
   /* Secondary (warm muted) */
-  --secondary:            #F0E9DC;
-  --secondary-foreground: #1F1B16;
+  --secondary: #f0e9dc;
+  --secondary-foreground: #1f1b16;
 
   /* Accent */
-  --accent:            #F0E9DC;
-  --accent-foreground: #1F1B16;
+  --accent: #f0e9dc;
+  --accent-foreground: #1f1b16;
 
   /* Status / semantic */
-  --destructive:            #F43F5E;
-  --destructive-foreground: #FFFFFF;
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
 
   /* Popover */
-  --popover:            #FFFFFF;
-  --popover-foreground: #1F1B16;
+  --popover: #ffffff;
+  --popover-foreground: #1f1b16;
 
   /* Lines */
-  --border: #E8DFCE;
-  --input:  #E8DFCE;
-  --ring:   #D97757;
+  --border: #e8dfce;
+  --input: #e8dfce;
+  --ring: #d97757;
   --radius: 0.75rem;
 
   /* Status (shared — never reinvent) */
-  --status-applied:      #3B82F6;
-  --status-interviewing: #F59E0B;
-  --status-offer:        #10B981;
-  --status-rejected:     #F43F5E;
+  --status-applied: #3b82f6;
+  --status-interviewing: #f59e0b;
+  --status-offer: #10b981;
+  --status-rejected: #f43f5e;
 }
 
 @layer base {
@@ -105,14 +105,14 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Geist Variable', sans-serif;
+    font-family: "Geist Variable", sans-serif;
   }
 }
 
 /* ── Utility classes ──────────────────────────────────────────────── */
 @layer utilities {
   .font-display {
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: "Fraunces", Georgia, serif;
   }
 
   .paper {
@@ -130,13 +130,38 @@
     color: var(--muted-foreground);
   }
 
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
   /* Status pills */
-  .status-applied      { background: rgba(59,130,246,0.10);  color: #3B82F6; border-color: rgba(59,130,246,0.25); }
-  .status-interviewing { background: rgba(245,158,11,0.10);  color: #F59E0B; border-color: rgba(245,158,11,0.25); }
-  .status-offer        { background: rgba(16,185,129,0.10);  color: #10B981; border-color: rgba(16,185,129,0.25); }
-  .status-rejected     { background: rgba(244,63,94,0.10);   color: #F43F5E; border-color: rgba(244,63,94,0.25); }
-  .status-pending      { background: rgba(113,113,122,0.10); color: #71717A; border-color: rgba(113,113,122,0.25); }
+  .status-applied {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.25);
+  }
+  .status-interviewing {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.25);
+  }
+  .status-offer {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+  .status-rejected {
+    background: rgba(244, 63, 94, 0.1);
+    color: #f43f5e;
+    border-color: rgba(244, 63, 94, 0.25);
+  }
+  .status-pending {
+    background: rgba(113, 113, 122, 0.1);
+    color: #71717a;
+    border-color: rgba(113, 113, 122, 0.25);
+  }
 }

@@ -27,7 +27,11 @@ export interface NegotiationScores {
   outcome: number;
 }
 
-export const NEGOTIATION_DIMENSIONS: { key: keyof NegotiationScores; label: string; hint: string }[] = [
+export const NEGOTIATION_DIMENSIONS: {
+  key: keyof NegotiationScores;
+  label: string;
+  hint: string;
+}[] = [
   { key: "anchoring", label: "Anchoring", hint: "set an ambitious, specific target" },
   { key: "justification", label: "Justification", hint: "backed asks with market/value evidence" },
   { key: "composure", label: "Composure", hint: "stayed calm, collaborative, unflustered" },

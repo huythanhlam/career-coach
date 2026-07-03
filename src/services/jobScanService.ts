@@ -23,7 +23,8 @@ async function callFunction<T>(name: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed (${res.status})`);
+  if (!res.ok)
+    throw new Error((data as { error?: string }).error ?? `Request failed (${res.status})`);
   return data as T;
 }
 
@@ -47,8 +48,14 @@ export async function scanJobs(
  * Location/level/workplace filtering is applied client-side by the caller (see
  * `src/lib/jobFilters.ts`) so it stays consistent across both discovery sources.
  */
-export async function searchAggregators(query: string, exclude: string[] = []): Promise<AggregatorJob[]> {
-  const { results } = await callFunction<{ results: AggregatorJob[] }>("job-search", { query, exclude });
+export async function searchAggregators(
+  query: string,
+  exclude: string[] = [],
+): Promise<AggregatorJob[]> {
+  const { results } = await callFunction<{ results: AggregatorJob[] }>("job-search", {
+    query,
+    exclude,
+  });
   return results;
 }
 
@@ -75,7 +82,12 @@ export async function importJobFromUrl(url: string): Promise<ImportedJobDraft> {
  * fetch-url's JSON-LD path prefixes structured lines ("Job Title:", "Company:",
  * "Location:") before the description. Pull those out when present.
  */
-function parseStructuredPrefix(text: string): { title?: string; company?: string; location?: string; description: string } {
+function parseStructuredPrefix(text: string): {
+  title?: string;
+  company?: string;
+  location?: string;
+  description: string;
+} {
   const lines = text.split("\n");
   let title: string | undefined;
   let company: string | undefined;
@@ -85,10 +97,25 @@ function parseStructuredPrefix(text: string): { title?: string; company?: string
     const t = line.match(/^Job Title:\s*(.+)$/i);
     const c = line.match(/^Company:\s*(.+)$/i);
     const l = line.match(/^Location:\s*(.+)$/i);
-    if (t) { title = t[1].trim(); consumed++; continue; }
-    if (c) { company = c[1].trim(); consumed++; continue; }
-    if (l) { location = l[1].trim(); consumed++; continue; }
-    if (/^(Employment Type|Salary):/i.test(line)) { consumed++; continue; }
+    if (t) {
+      title = t[1].trim();
+      consumed++;
+      continue;
+    }
+    if (c) {
+      company = c[1].trim();
+      consumed++;
+      continue;
+    }
+    if (l) {
+      location = l[1].trim();
+      consumed++;
+      continue;
+    }
+    if (/^(Employment Type|Salary):/i.test(line)) {
+      consumed++;
+      continue;
+    }
     break;
   }
   const description = (consumed > 0 ? lines.slice(consumed).join("\n") : text).trim();

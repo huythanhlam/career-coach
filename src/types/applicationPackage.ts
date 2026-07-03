@@ -1,12 +1,7 @@
 // Application Autopilot — shared types.
 
 export type PackageStatus =
-  | "queued"
-  | "generating"
-  | "generated"
-  | "approved"
-  | "submitted"
-  | "failed";
+  "queued" | "generating" | "generated" | "approved" | "submitted" | "failed";
 
 export const PACKAGE_STATUS_LABELS: Record<PackageStatus, string> = {
   queued: "Queued",

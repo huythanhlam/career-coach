@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { UserProfile } from "@/types/userProfile";
 import { parseProfileFromImport } from "@/services/geminiService";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -16,8 +16,7 @@ import { readPendingAccountType, clearPendingAccountType } from "@/lib/accountMo
 
 type Step = "consent" | "welcome" | "account_type" | "import" | "extracting" | "review" | "done";
 type ImportInput =
-  | { type: "linkedin"; text: string; url?: string }
-  | { type: "resume"; text: string };
+  { type: "linkedin"; text: string; url?: string } | { type: "resume"; text: string };
 
 export function OnboardingWizard() {
   const { updateProfile } = useUserProfile();
@@ -29,7 +28,9 @@ export function OnboardingWizard() {
   const [savedPreferredName, setSavedPreferredName] = useState("");
   // A pending account type chosen on the landing page (e.g. the employer signup
   // path) seeds the flow and lets us skip the in-app account-type question.
-  const [accountType, setAccountType] = useState<AccountType>(() => readPendingAccountType() ?? "seeker");
+  const [accountType, setAccountType] = useState<AccountType>(
+    () => readPendingAccountType() ?? "seeker",
+  );
   const cameInAsEmployer = accountType === "employer";
 
   function finishAsEmployer() {
@@ -75,7 +76,9 @@ export function OnboardingWizard() {
     try {
       const result = await parseProfileFromImport(input);
       if (!result || Object.keys(result).length === 0) {
-        throw new Error("No profile data could be extracted. Please check your input and try again.");
+        throw new Error(
+          "No profile data could be extracted. Please check your input and try again.",
+        );
       }
       setExtracted(result);
       setStep("review");
@@ -132,31 +135,35 @@ export function OnboardingWizard() {
         {/* Progress dots — hidden on consent gate */}
         {step !== "done" && step !== "consent" && (
           <div className="flex justify-center gap-1.5 pt-5 pb-1">
-            {steps.filter(s => s !== "done").map((s, i) => (
-              <div
-                key={s}
-                className="rounded-full transition-all duration-300"
-                style={{
-                  width: i === progressIndex ? 20 : 6,
-                  height: 6,
-                  background: i <= progressIndex ? "var(--primary)" : "var(--border)",
-                }}
-              />
-            ))}
+            {steps
+              .filter((s) => s !== "done")
+              .map((s, i) => (
+                <div
+                  key={s}
+                  className="rounded-full transition-all duration-300"
+                  style={{
+                    width: i === progressIndex ? 20 : 6,
+                    height: 6,
+                    background: i <= progressIndex ? "var(--primary)" : "var(--border)",
+                  }}
+                />
+              ))}
           </div>
         )}
 
         {/* Step content */}
-        <div className={`flex-1 overflow-y-auto ${step === "review" ? "" : "flex items-center justify-center"}`}>
-          {step === "consent" && (
-            <ConsentStep onAgree={handleConsent} />
-          )}
+        <div
+          className={`flex-1 overflow-y-auto ${step === "review" ? "" : "flex items-center justify-center"}`}
+        >
+          {step === "consent" && <ConsentStep onAgree={handleConsent} />}
           {step === "welcome" && (
-            <WelcomeStep onStart={handleWelcomeStart} onSkip={handleSkip} accountType={accountType} />
+            <WelcomeStep
+              onStart={handleWelcomeStart}
+              onSkip={handleSkip}
+              accountType={accountType}
+            />
           )}
-          {step === "account_type" && (
-            <AccountTypeStep onSelect={handleAccountType} />
-          )}
+          {step === "account_type" && <AccountTypeStep onSelect={handleAccountType} />}
           {step === "import" && (
             <ImportStep
               onExtract={runExtraction}

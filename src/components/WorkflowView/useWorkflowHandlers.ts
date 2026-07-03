@@ -2,8 +2,12 @@ import { useCallback, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useUserProfile } from "@/context/UserProfileContext";
 import {
-  createTechCoachChat, sendMessageStream, analyzeResume, ResumeAnalysisResult,
-  analyzeLinkedInProfile, LinkedInAnalysisResult,
+  createTechCoachChat,
+  sendMessageStream,
+  analyzeResume,
+  ResumeAnalysisResult,
+  analyzeLinkedInProfile,
+  LinkedInAnalysisResult,
 } from "@/services/geminiService";
 import { parseDocumentToText } from "@/services/documentParserService";
 import { captureLinkedInScreenshot, ScreenshotResult } from "@/services/linkedinScreenshotService";
@@ -16,7 +20,12 @@ import { workflowsConfig } from "@/config/workflows";
 import { useMarketHandlers } from "./useMarketHandlers";
 import { useCompanyResearchHandlers } from "./useCompanyResearchHandlers";
 
-interface FileData { data: string; mimeType: string; objectUrl: string; name: string; }
+interface FileData {
+  data: string;
+  mimeType: string;
+  objectUrl: string;
+  name: string;
+}
 
 export function useWorkflowHandlers(workflowId: WorkflowId) {
   const config = workflowsConfig[workflowId];
@@ -28,14 +37,23 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
   const [resumeGeneratorData, setResumeGeneratorData] = useState<Record<string, any> | null>(null);
   const [savedResumeText, setSavedResumeText] = useState<string | null>(null);
   const [coverLetterFormData, setCoverLetterFormData] = useState<CoverLetterFormData | null>(null);
-  const [savedCoverLetterPayload, setSavedCoverLetterPayload] = useState<SavedCoverLetterPayload | null>(null);
+  const [savedCoverLetterPayload, setSavedCoverLetterPayload] =
+    useState<SavedCoverLetterPayload | null>(null);
   const [builderAnalysisText, setBuilderAnalysisText] = useState<string | null>(null);
-  const [builderAnalysisResult, setBuilderAnalysisResult] = useState<ResumeAnalysisResult | null>(null);
+  const [builderAnalysisResult, setBuilderAnalysisResult] = useState<ResumeAnalysisResult | null>(
+    null,
+  );
   const [isBuilderAnalyzing, setIsBuilderAnalyzing] = useState(false);
-  const [builderAnalysisFile, setBuilderAnalysisFile] = useState<{ file: File; objectUrl: string } | null>(null);
+  const [builderAnalysisFile, setBuilderAnalysisFile] = useState<{
+    file: File;
+    objectUrl: string;
+  } | null>(null);
   const [loadingResumeId, setLoadingResumeId] = useState<string | null>(null);
   const [showTailor, setShowTailor] = useState(false);
-  const [tailorInitialResume, setTailorInitialResume] = useState<{ text: string; name: string } | null>(null);
+  const [tailorInitialResume, setTailorInitialResume] = useState<{
+    text: string;
+    name: string;
+  } | null>(null);
   const [mainDocumentText, setMainDocumentText] = useState("");
 
   /* ── LinkedIn state ───────────────────────────────────────────── */
@@ -52,17 +70,26 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
   const company = useCompanyResearchHandlers();
 
   /* ── LinkedIn handler ─────────────────────────────────────────── */
-  const handleLinkedinSubmit = async ({ file, url, targetRole, screenshotFile }: LinkedInUploadSubmit) => {
+  const handleLinkedinSubmit = async ({
+    file,
+    url,
+    targetRole,
+    screenshotFile,
+  }: LinkedInUploadSubmit) => {
     setLinkedinSubmitted(true);
     setLinkedinUrl(url);
     setLinkedinResult(null);
     setLinkedinScreenshot(null);
-    setLinkedinFile(prev => { if (prev?.objectUrl) URL.revokeObjectURL(prev.objectUrl); return { file, objectUrl: URL.createObjectURL(file) }; });
+    setLinkedinFile((prev) => {
+      if (prev?.objectUrl) URL.revokeObjectURL(prev.objectUrl);
+      return { file, objectUrl: URL.createObjectURL(file) };
+    });
     setIsLinkedinAnalyzing(true);
 
     if (screenshotFile) {
       const reader = new FileReader();
-      reader.onload = () => setLinkedinScreenshot({ image: reader.result as string, blocked: false });
+      reader.onload = () =>
+        setLinkedinScreenshot({ image: reader.result as string, blocked: false });
       reader.readAsDataURL(screenshotFile);
     } else if (url) {
       setIsLinkedinCapturing(true);
@@ -77,11 +104,20 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
       const result = await analyzeLinkedInProfile(text, targetRole);
       setLinkedinResult(result);
       if (result.overallScore != null) {
-        void updateProfile({ linkedinScore: result.overallScore, linkedinScoreAt: new Date().toISOString() });
+        void updateProfile({
+          linkedinScore: result.overallScore,
+          linkedinScoreAt: new Date().toISOString(),
+        });
       }
     } catch (err) {
       console.error("LinkedIn analysis failed:", err);
-      setLinkedinResult({ profileText: "", overallScore: null, summary: "Analysis failed. Please try again.", improvements: [], designRecommendations: [] });
+      setLinkedinResult({
+        profileText: "",
+        overallScore: null,
+        summary: "Analysis failed. Please try again.",
+        improvements: [],
+        designRecommendations: [],
+      });
     } finally {
       setIsLinkedinAnalyzing(false);
     }
@@ -89,23 +125,32 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
 
   /* ── Form handlers ────────────────────────────────────────────── */
   const handleInputChange = (id: string, value: string) =>
-    setFormData(prev => ({ ...prev, [id]: value }));
+    setFormData((prev) => ({ ...prev, [id]: value }));
 
   const handleFileChange = async (id: string, file: File | null) => {
     if (!file) {
       delete rawFileMap.current[id];
-      setFileData(prev => { const n = { ...prev }; if (n[id]?.objectUrl) URL.revokeObjectURL(n[id].objectUrl); delete n[id]; return n; });
-      setFormData(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setFileData((prev) => {
+        const n = { ...prev };
+        if (n[id]?.objectUrl) URL.revokeObjectURL(n[id].objectUrl);
+        delete n[id];
+        return n;
+      });
+      setFormData((prev) => {
+        const n = { ...prev };
+        delete n[id];
+        return n;
+      });
       return;
     }
     rawFileMap.current[id] = file;
     const objectUrl = URL.createObjectURL(file);
     const reader = new FileReader();
-    reader.onload = e => {
+    reader.onload = (e) => {
       const base64 = (e.target?.result as string).split(",")[1];
       const fd = { data: base64, mimeType: file.type, objectUrl, name: file.name };
-      setFileData(prev => ({ ...prev, [id]: fd }));
-      setFormData(prev => ({ ...prev, [id]: fd }));
+      setFileData((prev) => ({ ...prev, [id]: fd }));
+      setFormData((prev) => ({ ...prev, [id]: fd }));
     };
     reader.readAsDataURL(file);
   };
@@ -134,11 +179,20 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
     const chat = createTechCoachChat(config.systemInstruction, config.enableSearch);
     try {
       let first = true;
-      await sendMessageStream(chat, prompt as string, chunk => {
-        setMainDocumentText(prev => { if (first) { first = false; return chunk; } return prev + chunk; });
+      await sendMessageStream(chat, prompt as string, (chunk) => {
+        setMainDocumentText((prev) => {
+          if (first) {
+            first = false;
+            return chunk;
+          }
+          return prev + chunk;
+        });
       });
-    } catch { setMainDocumentText("**Error:** Failed to generate response."); }
-    finally { setIsGenerating(false); }
+    } catch {
+      setMainDocumentText("**Error:** Failed to generate response.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   /* ── Reset handlers ──────────────────────────────────────────── */
@@ -169,13 +223,23 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
     setBuilderAnalysisResult(null);
     setIsBuilderAnalyzing(true);
     analyzeResume(resumeText, "", "")
-      .then(result => {
+      .then((result) => {
         setBuilderAnalysisResult(result);
         if (result.overallScore != null) {
-          void updateProfile({ resumeScore: result.overallScore, resumeScoreAt: new Date().toISOString() });
+          void updateProfile({
+            resumeScore: result.overallScore,
+            resumeScoreAt: new Date().toISOString(),
+          });
         }
       })
-      .catch(() => setBuilderAnalysisResult({ resumeText, overallScore: null, summary: "Analysis failed.", improvements: [] }))
+      .catch(() =>
+        setBuilderAnalysisResult({
+          resumeText,
+          overallScore: null,
+          summary: "Analysis failed.",
+          improvements: [],
+        }),
+      )
       .finally(() => setIsBuilderAnalyzing(false));
   };
 
@@ -194,9 +258,13 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
 
   const handleDeleteSavedResume = async (id: string) => {
     const savedResumes = profile.savedResumes ?? [];
-    const resume = savedResumes.find(r => r.id === id);
+    const resume = savedResumes.find((r) => r.id === id);
     if (resume) {
-      try { await deleteResume(resume.storagePath); } catch (err) { console.error("Storage delete failed:", err); }
+      try {
+        await deleteResume(resume.storagePath);
+      } catch (err) {
+        console.error("Storage delete failed:", err);
+      }
     }
     await updateProfile({ savedResumes: savedResumes.filter((r) => r.id !== id) });
   };
@@ -210,7 +278,10 @@ export function useWorkflowHandlers(workflowId: WorkflowId) {
 
   const handleOpenLetter = async (storagePath: string) => {
     const { data, error } = await supabase.storage.from("user-documents").download(storagePath);
-    if (error || !data) { console.error("Failed to load cover letter:", error); return; }
+    if (error || !data) {
+      console.error("Failed to load cover letter:", error);
+      return;
+    }
     try {
       const payload = JSON.parse(await data.text()) as SavedCoverLetterPayload;
       setSavedCoverLetterPayload(payload);

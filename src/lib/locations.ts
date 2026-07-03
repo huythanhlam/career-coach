@@ -94,7 +94,11 @@ function splitTrailingState(part: string): { city: string; code: string } | unde
   return undefined;
 }
 
-function format(city: string | undefined, stateCode: string | undefined, country: string | undefined): string {
+function format(
+  city: string | undefined,
+  stateCode: string | undefined,
+  country: string | undefined,
+): string {
   if (city && stateCode) return `${city}, ${stateCode}`;
   if (city && country && country !== "United States") return `${city}, ${countryLabel(country)}`;
   if (city) return city;
@@ -112,10 +116,17 @@ export function resolveLocation(raw: string | null | undefined): ResolvedLocatio
   const low = s.toLowerCase();
   if (/\bremote\b|\bwfh\b|work from home|telecommute/.test(low)) {
     const us = /\b(us|usa|united states)\b/.test(low);
-    return { remote: true, country: us ? "United States" : undefined, canonical: us ? "Remote (US)" : "Remote" };
+    return {
+      remote: true,
+      country: us ? "United States" : undefined,
+      canonical: us ? "Remote (US)" : "Remote",
+    };
   }
 
-  const parts = s.split(",").map((p) => p.trim()).filter(Boolean);
+  const parts = s
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
 
   let city: string | undefined;
   let stateCode: string | undefined;
@@ -126,12 +137,19 @@ export function resolveLocation(raw: string | null | undefined): ResolvedLocatio
     // Country: prefer the last part that names one.
     for (let i = rest.length - 1; i >= 0; i--) {
       const c = countryOfToken(rest[i]);
-      if (c) { country = c; break; }
+      if (c) {
+        country = c;
+        break;
+      }
     }
     // US state from any remaining part.
     for (const part of rest) {
       const code = stateCodeOfToken(part);
-      if (code) { stateCode = code; if (!country) country = "United States"; break; }
+      if (code) {
+        stateCode = code;
+        if (!country) country = "United States";
+        break;
+      }
     }
     // First part is the city — unless it is itself a state ("Texas, USA").
     const head = parts[0];
@@ -154,9 +172,14 @@ export function resolveLocation(raw: string | null | undefined): ResolvedLocatio
     } else {
       const code = stateCodeOfToken(p);
       const ctry = countryOfToken(p);
-      if (code) { stateCode = code; country = "United States"; }
-      else if (ctry) { country = ctry; }
-      else { city = p; }
+      if (code) {
+        stateCode = code;
+        country = "United States";
+      } else if (ctry) {
+        country = ctry;
+      } else {
+        city = p;
+      }
     }
   }
 
@@ -190,5 +213,7 @@ export function normalizeLocation(raw: string | null | undefined): string {
 export const KNOWN_LOCATIONS: string[] = [
   "Remote",
   "Remote (US)",
-  ...CITIES.map((c) => (c.stateCode ? `${c.city}, ${c.stateCode}` : `${c.city}, ${countryLabel(c.country)}`)),
+  ...CITIES.map((c) =>
+    c.stateCode ? `${c.city}, ${c.stateCode}` : `${c.city}, ${countryLabel(c.country)}`,
+  ),
 ];

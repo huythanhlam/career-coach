@@ -22,15 +22,27 @@ function stripFences(raw: string): string {
  */
 export function parseJsonObject(raw: string): any {
   // 1. Direct parse (ideal — model returned clean JSON)
-  try { return JSON.parse((raw ?? "").trim()); } catch { /* try next */ }
+  try {
+    return JSON.parse((raw ?? "").trim());
+  } catch {
+    /* try next */
+  }
 
   // 2. Strip markdown code fences then parse
-  try { return JSON.parse(stripFences(raw)); } catch { /* try next */ }
+  try {
+    return JSON.parse(stripFences(raw));
+  } catch {
+    /* try next */
+  }
 
   // 3. Extract the first complete {...} block (handles text before/after the JSON)
   const match = (raw ?? "").match(/\{[\s\S]*\}/);
   if (match) {
-    try { return JSON.parse(match[0]); } catch { /* fall through */ }
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      /* fall through */
+    }
   }
 
   throw new Error("Could not parse JSON object from response");
@@ -42,10 +54,18 @@ export function parseJsonObject(raw: string): any {
  */
 export function parseJsonArray<T = any>(raw: string): T[] {
   const clean = stripFences(raw);
-  try { return JSON.parse(clean); } catch { /* try next */ }
+  try {
+    return JSON.parse(clean);
+  } catch {
+    /* try next */
+  }
   const match = clean.match(/\[[\s\S]*\]/);
   if (match) {
-    try { return JSON.parse(match[0]); } catch { /* fall through */ }
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      /* fall through */
+    }
   }
   throw new Error("Could not parse JSON array from response");
 }
@@ -65,25 +85,39 @@ export function parseLooseJsonObject(raw: string): any {
 
   // Fast paths: as-is, and with a dangling trailing comma removed.
   for (const cand of [t, t.replace(/,\s*$/, "")]) {
-    try { return JSON.parse(cand); } catch { /* fall through to repair */ }
+    try {
+      return JSON.parse(cand);
+    } catch {
+      /* fall through to repair */
+    }
   }
 
   // Repair: rebuild a balanced object, ignoring braces inside strings.
-  let inStr = false, esc = false;
+  let inStr = false,
+    esc = false;
   const stack: string[] = [];
   let out = "";
   for (const ch of t) {
     out += ch;
-    if (esc) { esc = false; continue; }
-    if (ch === "\\") { esc = true; continue; }
-    if (ch === '"') { inStr = !inStr; continue; }
+    if (esc) {
+      esc = false;
+      continue;
+    }
+    if (ch === "\\") {
+      esc = true;
+      continue;
+    }
+    if (ch === '"') {
+      inStr = !inStr;
+      continue;
+    }
     if (inStr) continue;
     if (ch === "{" || ch === "[") stack.push(ch);
     else if (ch === "}" || ch === "]") stack.pop();
   }
-  if (inStr) out += '"';                 // close an unterminated string value
-  out = out.replace(/,\s*$/, "");        // drop a dangling comma at the cut point
+  if (inStr) out += '"'; // close an unterminated string value
+  out = out.replace(/,\s*$/, ""); // drop a dangling comma at the cut point
   while (stack.length) out += stack.pop() === "{" ? "}" : "]";
   out = out.replace(/,\s*([}\]])/g, "$1"); // strip trailing commas before closers
-  return JSON.parse(out);                 // may still throw → caller handles
+  return JSON.parse(out); // may still throw → caller handles
 }
