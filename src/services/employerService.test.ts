@@ -35,7 +35,6 @@ describe("buildJobDescriptionPrompt", () => {
     expect(prompt).toContain("Staff SRE");
     expect(prompt).toContain("Acme");
     expect(prompt).toContain("owns reliability");
-    expect(prompt).toContain("JSON");
   });
 
   it("omits optional lines that aren't provided", () => {
@@ -45,8 +44,10 @@ describe("buildJobDescriptionPrompt", () => {
     expect(prompt).not.toContain("Seniority:");
   });
 
-  it("the system prompt forbids fences and invention", () => {
-    expect(JOB_DESCRIPTION_SYSTEM).toMatch(/no markdown fences|no fences|ONLY a JSON/i);
+  it("the system prompt names the output fields and forbids invention", () => {
+    // Structure is enforced by the native responseSchema now, so the prompt
+    // describes the fields rather than demanding raw JSON.
+    expect(JOB_DESCRIPTION_SYSTEM).toMatch(/description.*requirements.*responsibilities/is);
     expect(JOB_DESCRIPTION_SYSTEM.toLowerCase()).toContain("never invent");
   });
 });
@@ -72,11 +73,10 @@ describe("buildRewriteFieldPrompt", () => {
 });
 
 describe("promo prompt builders", () => {
-  it("buildPromoPrompt includes role/company and requests JSON", () => {
+  it("buildPromoPrompt includes role/company; the system names the promo fields", () => {
     const prompt = buildPromoPrompt({ title: "PM", companyName: "Acme" });
     expect(prompt).toContain("PM");
     expect(prompt).toContain("Acme");
-    expect(prompt).toContain("JSON");
     expect(PROMO_ASSETS_SYSTEM).toMatch(/socialPost/);
   });
 

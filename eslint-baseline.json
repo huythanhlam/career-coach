@@ -1,4 +1,4 @@
 {
   "//": "Max allowed ESLint warnings (scripts/eslint-ratchet.mjs). Ratchet only — goes DOWN, never up. Goal: 0.",
-  "maxWarnings": 222
+  "maxWarnings": 221
 }
