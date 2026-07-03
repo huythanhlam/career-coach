@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { defineWorkflow } from "@/ai/defineWorkflow";
 import { uc, injectionTrailer } from "@/ai/prompt";
+import { improvementSchema } from "@/ai/workflows/shared";
 
 /**
  * Resume analysis (ATS score + prioritized improvements). First workflow
@@ -9,15 +10,7 @@ import { uc, injectionTrailer } from "@/ai/prompt";
  * "return ONLY JSON" prompt + `parseJsonObject` recovery path.
  */
 
-export const improvementSchema = z.object({
-  id: z.string(),
-  priority: z.enum(["high", "medium", "low"]),
-  category: z.enum(["impact", "clarity", "grammar", "keywords", "formatting"]),
-  checklistLabel: z.string(),
-  description: z.string(),
-  originalText: z.string(),
-  suggestedText: z.string(),
-});
+export { improvementSchema };
 
 export const resumeAnalysisSchema = z.object({
   resumeText: z.string(),
