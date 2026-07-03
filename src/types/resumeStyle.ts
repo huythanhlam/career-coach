@@ -81,7 +81,7 @@ export const DEFAULT_STYLE_CONFIG: ResumeStyleConfig = {
 
 /** Maps density to CSS line-height and font-size values */
 export const DENSITY_MAP: Record<FontDensity, { lineHeight: string; fontSize: string }> = {
-  compact:  { lineHeight: "1.4", fontSize: "10pt" },
-  normal:   { lineHeight: "1.6", fontSize: "11pt" },
+  compact: { lineHeight: "1.4", fontSize: "10pt" },
+  normal: { lineHeight: "1.6", fontSize: "11pt" },
   spacious: { lineHeight: "1.9", fontSize: "12pt" },
 };

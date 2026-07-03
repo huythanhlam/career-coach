@@ -66,7 +66,10 @@ export function useApplicationPackages() {
         .single();
       if (error || !data) return null;
       const mapped = rowToPackage(data as Record<string, unknown>);
-      setPackages((prev) => [mapped, ...prev.filter((p) => p.jobPostingId !== mapped.jobPostingId)]);
+      setPackages((prev) => [
+        mapped,
+        ...prev.filter((p) => p.jobPostingId !== mapped.jobPostingId),
+      ]);
       return mapped;
     },
     [user],
@@ -76,8 +79,10 @@ export function useApplicationPackages() {
     setPackages((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
     const dbPatch: Record<string, unknown> = {};
     if (patch.packageStatus !== undefined) dbPatch.package_status = patch.packageStatus;
-    if (patch.tailoredResumeText !== undefined) dbPatch.tailored_resume_text = patch.tailoredResumeText;
-    if (patch.tailoredResumeStoragePath !== undefined) dbPatch.tailored_resume_storage_path = patch.tailoredResumeStoragePath;
+    if (patch.tailoredResumeText !== undefined)
+      dbPatch.tailored_resume_text = patch.tailoredResumeText;
+    if (patch.tailoredResumeStoragePath !== undefined)
+      dbPatch.tailored_resume_storage_path = patch.tailoredResumeStoragePath;
     if (patch.coverLetterText !== undefined) dbPatch.cover_letter_text = patch.coverLetterText;
     if (Object.keys(dbPatch).length === 0) return;
     await supabase.from("application_packages").update(dbPatch).eq("id", id);

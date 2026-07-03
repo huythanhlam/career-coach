@@ -19,14 +19,8 @@ const iStyle: React.CSSProperties = {
 
 /** Section shown inside ProfileSettings for MFA management */
 export function MFAEnrollSection() {
-  const {
-    enrollState,
-    enrolledFactors,
-    listFactors,
-    startEnroll,
-    verifyEnroll,
-    unenroll,
-  } = useAuthMFA();
+  const { enrollState, enrolledFactors, listFactors, startEnroll, verifyEnroll, unenroll } =
+    useAuthMFA();
 
   const [code, setCode] = useState("");
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -208,7 +202,10 @@ export function MFAEnrollSection() {
               </button>
               <button
                 type="button"
-                onClick={() => { setCode(""); setVerifyError(null); }}
+                onClick={() => {
+                  setCode("");
+                  setVerifyError(null);
+                }}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium"
                 style={{ border: "1px solid var(--border)", color: "var(--muted-foreground)" }}
               >

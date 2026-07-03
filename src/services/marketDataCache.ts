@@ -90,7 +90,10 @@ export async function getCachedMarketData(key: string): Promise<CachedMarket | n
       .eq("cache_key", key)
       .maybeSingle();
     if (error || !data?.updated_at || !isFresh(data.updated_at as string)) return null;
-    const entry: CachedMarket = { data: data.data as MarketCompData, cachedAt: data.updated_at as string };
+    const entry: CachedMarket = {
+      data: data.data as MarketCompData,
+      cachedAt: data.updated_at as string,
+    };
     writeLocal(key, entry);
     return entry;
   } catch {
@@ -111,7 +114,9 @@ export async function getStaleRow(key: string): Promise<MarketCompData | null> {
       const parsed = JSON.parse(raw) as CachedMarket;
       if (parsed?.data) return parsed.data;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   try {
     const { data } = await supabase
       .from("market_data_cache")
@@ -128,7 +133,7 @@ export async function getStaleRow(key: string): Promise<MarketCompData | null> {
 export async function putCachedMarketData(
   key: string,
   parts: MarketCacheParts,
-  data: MarketCompData
+  data: MarketCompData,
 ): Promise<void> {
   const cachedAt = new Date().toISOString();
   writeLocal(key, { data, cachedAt });
@@ -141,7 +146,9 @@ export async function putCachedMarketData(
       p_cache_key: key,
       p_role: parts.role,
       p_location: normalizeLocation(parts.location),
-      p_secondary_location: parts.secondaryLocation ? normalizeLocation(parts.secondaryLocation) || null : null,
+      p_secondary_location: parts.secondaryLocation
+        ? normalizeLocation(parts.secondaryLocation) || null
+        : null,
       p_yoe_tier: yoeToTier(parts.yoe),
       p_data: data,
     });

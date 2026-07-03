@@ -82,20 +82,17 @@ export function useOutreach() {
     [user],
   );
 
-  const updateContact = useCallback(
-    async (id: string, patch: Partial<OutreachContact>) => {
-      setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-      const dbPatch: Record<string, unknown> = {};
-      if (patch.status !== undefined) dbPatch.status = patch.status;
-      if (patch.messageDraft !== undefined) dbPatch.message_draft = patch.messageDraft;
-      if (patch.notes !== undefined) dbPatch.notes = patch.notes;
-      if (patch.contactName !== undefined) dbPatch.contact_name = patch.contactName;
-      if (patch.lastContactedAt !== undefined) dbPatch.last_contacted_at = patch.lastContactedAt;
-      if (Object.keys(dbPatch).length === 0) return;
-      await supabase.from("outreach_contacts").update(dbPatch).eq("id", id);
-    },
-    [],
-  );
+  const updateContact = useCallback(async (id: string, patch: Partial<OutreachContact>) => {
+    setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    const dbPatch: Record<string, unknown> = {};
+    if (patch.status !== undefined) dbPatch.status = patch.status;
+    if (patch.messageDraft !== undefined) dbPatch.message_draft = patch.messageDraft;
+    if (patch.notes !== undefined) dbPatch.notes = patch.notes;
+    if (patch.contactName !== undefined) dbPatch.contact_name = patch.contactName;
+    if (patch.lastContactedAt !== undefined) dbPatch.last_contacted_at = patch.lastContactedAt;
+    if (Object.keys(dbPatch).length === 0) return;
+    await supabase.from("outreach_contacts").update(dbPatch).eq("id", id);
+  }, []);
 
   const deleteContact = useCallback(async (id: string) => {
     setContacts((prev) => prev.filter((c) => c.id !== id));

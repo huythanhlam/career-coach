@@ -8,13 +8,31 @@
 
 /* ───────────────────────────── Reference data ───────────────────────────── */
 
-interface Country { name: string; aliases: string[] } // aliases: phrases (substring) or ≤3-char codes (token)
+interface Country {
+  name: string;
+  aliases: string[];
+} // aliases: phrases (substring) or ≤3-char codes (token)
 
 // Canonical geo reference data — shared single source of truth. `src/lib/locations.ts`
 // imports these to build location normalization; keep this the only definition.
 export const COUNTRIES: Country[] = [
-  { name: "United States", aliases: ["united states of america", "united states", "usa", "u s a", "us"] },
-  { name: "United Kingdom", aliases: ["united kingdom", "great britain", "northern ireland", "england", "scotland", "wales", "britain", "uk"] },
+  {
+    name: "United States",
+    aliases: ["united states of america", "united states", "usa", "u s a", "us"],
+  },
+  {
+    name: "United Kingdom",
+    aliases: [
+      "united kingdom",
+      "great britain",
+      "northern ireland",
+      "england",
+      "scotland",
+      "wales",
+      "britain",
+      "uk",
+    ],
+  },
   { name: "Canada", aliases: ["canada"] },
   { name: "Mexico", aliases: ["mexico"] },
   { name: "Brazil", aliases: ["brazil", "brasil"] },
@@ -68,28 +86,69 @@ export const COUNTRY_SHORT: Record<string, string> = {
   "United Arab Emirates": "UAE",
 };
 
-interface UsState { name: string; code: string }
+interface UsState {
+  name: string;
+  code: string;
+}
 export const US_STATES: UsState[] = [
-  { name: "Alabama", code: "AL" }, { name: "Alaska", code: "AK" }, { name: "Arizona", code: "AZ" },
-  { name: "Arkansas", code: "AR" }, { name: "California", code: "CA" }, { name: "Colorado", code: "CO" },
-  { name: "Connecticut", code: "CT" }, { name: "Delaware", code: "DE" }, { name: "Florida", code: "FL" },
-  { name: "Georgia", code: "GA" }, { name: "Hawaii", code: "HI" }, { name: "Idaho", code: "ID" },
-  { name: "Illinois", code: "IL" }, { name: "Indiana", code: "IN" }, { name: "Iowa", code: "IA" },
-  { name: "Kansas", code: "KS" }, { name: "Kentucky", code: "KY" }, { name: "Louisiana", code: "LA" },
-  { name: "Maine", code: "ME" }, { name: "Maryland", code: "MD" }, { name: "Massachusetts", code: "MA" },
-  { name: "Michigan", code: "MI" }, { name: "Minnesota", code: "MN" }, { name: "Mississippi", code: "MS" },
-  { name: "Missouri", code: "MO" }, { name: "Montana", code: "MT" }, { name: "Nebraska", code: "NE" },
-  { name: "Nevada", code: "NV" }, { name: "New Hampshire", code: "NH" }, { name: "New Jersey", code: "NJ" },
-  { name: "New Mexico", code: "NM" }, { name: "New York", code: "NY" }, { name: "North Carolina", code: "NC" },
-  { name: "North Dakota", code: "ND" }, { name: "Ohio", code: "OH" }, { name: "Oklahoma", code: "OK" },
-  { name: "Oregon", code: "OR" }, { name: "Pennsylvania", code: "PA" }, { name: "Rhode Island", code: "RI" },
-  { name: "South Carolina", code: "SC" }, { name: "South Dakota", code: "SD" }, { name: "Tennessee", code: "TN" },
-  { name: "Texas", code: "TX" }, { name: "Utah", code: "UT" }, { name: "Vermont", code: "VT" },
-  { name: "Virginia", code: "VA" }, { name: "Washington", code: "WA" }, { name: "West Virginia", code: "WV" },
-  { name: "Wisconsin", code: "WI" }, { name: "Wyoming", code: "WY" }, { name: "District of Columbia", code: "DC" },
+  { name: "Alabama", code: "AL" },
+  { name: "Alaska", code: "AK" },
+  { name: "Arizona", code: "AZ" },
+  { name: "Arkansas", code: "AR" },
+  { name: "California", code: "CA" },
+  { name: "Colorado", code: "CO" },
+  { name: "Connecticut", code: "CT" },
+  { name: "Delaware", code: "DE" },
+  { name: "Florida", code: "FL" },
+  { name: "Georgia", code: "GA" },
+  { name: "Hawaii", code: "HI" },
+  { name: "Idaho", code: "ID" },
+  { name: "Illinois", code: "IL" },
+  { name: "Indiana", code: "IN" },
+  { name: "Iowa", code: "IA" },
+  { name: "Kansas", code: "KS" },
+  { name: "Kentucky", code: "KY" },
+  { name: "Louisiana", code: "LA" },
+  { name: "Maine", code: "ME" },
+  { name: "Maryland", code: "MD" },
+  { name: "Massachusetts", code: "MA" },
+  { name: "Michigan", code: "MI" },
+  { name: "Minnesota", code: "MN" },
+  { name: "Mississippi", code: "MS" },
+  { name: "Missouri", code: "MO" },
+  { name: "Montana", code: "MT" },
+  { name: "Nebraska", code: "NE" },
+  { name: "Nevada", code: "NV" },
+  { name: "New Hampshire", code: "NH" },
+  { name: "New Jersey", code: "NJ" },
+  { name: "New Mexico", code: "NM" },
+  { name: "New York", code: "NY" },
+  { name: "North Carolina", code: "NC" },
+  { name: "North Dakota", code: "ND" },
+  { name: "Ohio", code: "OH" },
+  { name: "Oklahoma", code: "OK" },
+  { name: "Oregon", code: "OR" },
+  { name: "Pennsylvania", code: "PA" },
+  { name: "Rhode Island", code: "RI" },
+  { name: "South Carolina", code: "SC" },
+  { name: "South Dakota", code: "SD" },
+  { name: "Tennessee", code: "TN" },
+  { name: "Texas", code: "TX" },
+  { name: "Utah", code: "UT" },
+  { name: "Vermont", code: "VT" },
+  { name: "Virginia", code: "VA" },
+  { name: "Washington", code: "WA" },
+  { name: "West Virginia", code: "WV" },
+  { name: "Wisconsin", code: "WI" },
+  { name: "Wyoming", code: "WY" },
+  { name: "District of Columbia", code: "DC" },
 ];
 
-interface City { city: string; stateCode?: string; country: string }
+interface City {
+  city: string;
+  stateCode?: string;
+  country: string;
+}
 export const CITIES: City[] = [
   // United States
   { city: "New York", stateCode: "NY", country: "United States" },
@@ -167,7 +226,11 @@ export const CITIES: City[] = [
 /* ───────────────────────────── Normalization ────────────────────────────── */
 
 function norm(s?: string | null): string {
-  return (s ?? "").toLowerCase().replace(/[.,/()\-_|]/g, " ").replace(/\s+/g, " ").trim();
+  return (s ?? "")
+    .toLowerCase()
+    .replace(/[.,/()\-_|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 /** Whole-word token test (for short ambiguous codes like "us", "ny"). */
 function hasToken(n: string, tok: string): boolean {
@@ -187,7 +250,8 @@ export function jobCountryOf(loc?: string | null): string | null {
     for (const a of c.aliases) if (matchesAlias(n, a)) return c.name;
   }
   for (const s of US_STATES) {
-    if (n.includes(s.name.toLowerCase()) || hasToken(n, s.code.toLowerCase())) return "United States";
+    if (n.includes(s.name.toLowerCase()) || hasToken(n, s.code.toLowerCase()))
+      return "United States";
   }
   for (const c of CITIES) {
     if (n.includes(c.city.toLowerCase())) return c.country;
@@ -225,7 +289,9 @@ function parseLocationQuery(query: string): Target | null {
  * location string + remote flag. Country-gated: a job positively identified as a
  * different country than the query is always rejected.
  */
-export function makeLocationMatcher(query: string): (loc?: string | null, remote?: boolean | null) => boolean {
+export function makeLocationMatcher(
+  query: string,
+): (loc?: string | null, remote?: boolean | null) => boolean {
   const target = parseLocationQuery(query);
   if (!target) return () => true;
   return (loc) => {
@@ -240,7 +306,8 @@ export function makeLocationMatcher(query: string): (loc?: string | null, remote
         if (!n) return true;
         if (n.includes(target.state.toLowerCase())) return true;
         if (hasToken(n, target.code.toLowerCase())) return true;
-        if (CITIES.some((c) => c.stateCode === target.code && n.includes(c.city.toLowerCase()))) return true;
+        if (CITIES.some((c) => c.stateCode === target.code && n.includes(c.city.toLowerCase())))
+          return true;
         return jc === null;
       }
       case "city": {
@@ -266,12 +333,20 @@ const ALL_SUGGESTIONS: string[] = [
   "Remote",
   ...COUNTRIES.map((c) => c.name),
   ...US_STATES.map((s) => `${s.name}, USA`),
-  ...CITIES.map((c) => (c.stateCode ? `${c.city}, ${c.stateCode}, USA` : `${c.city}, ${countryShort(c.country)}`)),
+  ...CITIES.map((c) =>
+    c.stateCode ? `${c.city}, ${c.stateCode}, USA` : `${c.city}, ${countryShort(c.country)}`,
+  ),
 ];
 
 const POPULAR_SUGGESTIONS = [
-  "Remote", "United States", "New York, NY, USA", "San Francisco, CA, USA",
-  "Seattle, WA, USA", "Austin, TX, USA", "London, UK", "Toronto, Canada",
+  "Remote",
+  "United States",
+  "New York, NY, USA",
+  "San Francisco, CA, USA",
+  "Seattle, WA, USA",
+  "Austin, TX, USA",
+  "London, UK",
+  "Toronto, Canada",
 ];
 
 /** Location autocomplete suggestions for a partial query (city / state / country). */
@@ -313,8 +388,17 @@ export function classifyLevel(title: string): JobLevel {
   if (/\b(senior|sr|snr)\b/.test(t)) return "senior";
   if (/\b(lead|principal|staff|architect|distinguished|fellow)\b/.test(t)) return "lead";
   if (/\b(junior|jr|entry|graduate|grad|associate|trainee|early career)\b/.test(t)) return "entry";
-  if (/\b(vp|svp|evp|vice president|head of|director|chief|cto|ceo|cfo|coo|cmo|president)\b/.test(t)) return "manager";
-  if (/\bmanager\b/.test(t) && !/\b(product|program|project|account|community|social media|brand|content|product marketing) manager\b/.test(t)) return "manager";
+  if (
+    /\b(vp|svp|evp|vice president|head of|director|chief|cto|ceo|cfo|coo|cmo|president)\b/.test(t)
+  )
+    return "manager";
+  if (
+    /\bmanager\b/.test(t) &&
+    !/\b(product|program|project|account|community|social media|brand|content|product marketing) manager\b/.test(
+      t,
+    )
+  )
+    return "manager";
   return "mid";
 }
 
@@ -329,18 +413,36 @@ export const WORKPLACE_TYPES: { value: Workplace; label: string }[] = [
 ];
 
 /** Classify a job's workplace type from its location/description/remote flag. */
-export function classifyWorkplace(opts: { location?: string | null; description?: string | null; remote?: boolean | null }): Workplace {
+export function classifyWorkplace(opts: {
+  location?: string | null;
+  description?: string | null;
+  remote?: boolean | null;
+}): Workplace {
   const text = norm(`${opts.location ?? ""} ${opts.description ?? ""}`);
   if (/\bhybrid\b/.test(text)) return "hybrid";
-  if (opts.remote === true || /\bremote\b|\bwork from home\b|\bwfh\b|\bfully remote\b|\bremote first\b/.test(text)) return "remote";
+  if (
+    opts.remote === true ||
+    /\bremote\b|\bwork from home\b|\bwfh\b|\bfully remote\b|\bremote first\b/.test(text)
+  )
+    return "remote";
   return "onsite";
 }
 
 /* ───────────────────────────── Job family / type ────────────────────────── */
 
 export type JobFamily =
-  | "engineering" | "data" | "design" | "product" | "marketing" | "sales"
-  | "finance" | "operations" | "people" | "legal" | "support" | "other";
+  | "engineering"
+  | "data"
+  | "design"
+  | "product"
+  | "marketing"
+  | "sales"
+  | "finance"
+  | "operations"
+  | "people"
+  | "legal"
+  | "support"
+  | "other";
 
 export const JOB_FAMILIES: { value: JobFamily; label: string }[] = [
   { value: "engineering", label: "Engineering" },
@@ -364,25 +466,64 @@ export const JOB_FAMILIES: { value: JobFamily; label: string }[] = [
  */
 export function classifyJobFamily(title: string): JobFamily {
   const t = " " + norm(title) + " ";
-  if (/\b(data scientist|data engineer|data analyst|machine learning|deep learning|ml|ai|analytics|statistician|business intelligence|bi)\b/.test(t)) return "data";
-  if (/\b(engineer|engineering|developer|programmer|swe|sde|devops|sre|sdet|qa|frontend|front end|backend|back end|full stack|fullstack)\b/.test(t)) return "engineering";
+  if (
+    /\b(data scientist|data engineer|data analyst|machine learning|deep learning|ml|ai|analytics|statistician|business intelligence|bi)\b/.test(
+      t,
+    )
+  )
+    return "data";
+  if (
+    /\b(engineer|engineering|developer|programmer|swe|sde|devops|sre|sdet|qa|frontend|front end|backend|back end|full stack|fullstack)\b/.test(
+      t,
+    )
+  )
+    return "engineering";
   if (/\b(designer|design|ux|ui|creative|illustrator|animator)\b/.test(t)) return "design";
-  if (/\b(product manager|product owner|product lead|product management|head of product)\b/.test(t)) return "product";
-  if (/\b(sales|account executive|account manager|account director|business development|partnerships|sdr|bdr)\b/.test(t)) return "sales";
-  if (/\b(marketing|seo|sem|content|brand|growth|social media|communications|copywriter|pr)\b/.test(t)) return "marketing";
-  if (/\b(finance|financial|accountant|accounting|controller|auditor|treasury|bookkeeper)\b/.test(t)) return "finance";
-  if (/\b(recruiter|recruiting|talent|human resources|hr|people operations|people ops)\b/.test(t)) return "people";
+  if (/\b(product manager|product owner|product lead|product management|head of product)\b/.test(t))
+    return "product";
+  if (
+    /\b(sales|account executive|account manager|account director|business development|partnerships|sdr|bdr)\b/.test(
+      t,
+    )
+  )
+    return "sales";
+  if (
+    /\b(marketing|seo|sem|content|brand|growth|social media|communications|copywriter|pr)\b/.test(t)
+  )
+    return "marketing";
+  if (
+    /\b(finance|financial|accountant|accounting|controller|auditor|treasury|bookkeeper)\b/.test(t)
+  )
+    return "finance";
+  if (/\b(recruiter|recruiting|talent|human resources|hr|people operations|people ops)\b/.test(t))
+    return "people";
   if (/\b(legal|lawyer|attorney|counsel|paralegal|compliance)\b/.test(t)) return "legal";
-  if (/\b(customer support|customer success|customer service|support|help desk|technical support)\b/.test(t)) return "support";
-  if (/\b(operations|ops|logistics|supply chain|procurement|warehouse)\b/.test(t)) return "operations";
+  if (
+    /\b(customer support|customer success|customer service|support|help desk|technical support)\b/.test(
+      t,
+    )
+  )
+    return "support";
+  if (/\b(operations|ops|logistics|supply chain|procurement|warehouse)\b/.test(t))
+    return "operations";
   return "other";
 }
 
 /* ───────────────────────────── Industry ─────────────────────────────────── */
 
 export type Industry =
-  | "technology" | "finance" | "healthcare" | "retail" | "education" | "manufacturing"
-  | "media" | "energy" | "realestate" | "government" | "nonprofit" | "other";
+  | "technology"
+  | "finance"
+  | "healthcare"
+  | "retail"
+  | "education"
+  | "manufacturing"
+  | "media"
+  | "energy"
+  | "realestate"
+  | "government"
+  | "nonprofit"
+  | "other";
 
 export const INDUSTRIES: { value: Industry; label: string }[] = [
   { value: "technology", label: "Technology & Software" },
@@ -405,19 +546,62 @@ export const INDUSTRIES: { value: Industry; label: string }[] = [
  * so the generic "technology" bucket is checked last (its keywords like "software"
  * appear across many sectors) and undeterminable jobs fall back to "other".
  */
-export function classifyIndustry(opts: { company?: string | null; title?: string | null; description?: string | null }): Industry {
+export function classifyIndustry(opts: {
+  company?: string | null;
+  title?: string | null;
+  description?: string | null;
+}): Industry {
   const t = norm(`${opts.company ?? ""} ${opts.title ?? ""} ${opts.description ?? ""}`);
   const has = (re: RegExp) => re.test(t);
-  if (has(/\b(hospital|clinic|clinical|pharmaceutical|pharma|biotech|biotechnology|life sciences|medical|medtech|healthcare|health care|patient|therapeutics|nursing)\b/)) return "healthcare";
-  if (has(/\b(bank|banking|insurance|investment|hedge fund|asset management|fintech|trading|brokerage|financial services|wealth management|venture capital|private equity)\b/)) return "finance";
-  if (has(/\b(university|college|education|edtech|academic|curriculum|e learning|elearning|lecturer|professor)\b/)) return "education";
-  if (has(/\b(retail|e commerce|ecommerce|consumer goods|apparel|fashion|merchandising|grocery|restaurant|hospitality|cpg)\b/)) return "retail";
-  if (has(/\b(manufacturing|automotive|aerospace|industrial|factory|machinery|semiconductor|electronics|robotics)\b/)) return "manufacturing";
-  if (has(/\b(media|entertainment|gaming|video game|publishing|advertising|film|music|streaming|broadcast|journalism)\b/)) return "media";
-  if (has(/\b(energy|oil|gas|renewable|solar|wind power|utilities|power grid|nuclear)\b/)) return "energy";
-  if (has(/\b(real estate|property management|construction|housing|proptech)\b/)) return "realestate";
-  if (has(/\b(government|public sector|federal|municipal|defense|military|civic)\b/)) return "government";
-  if (has(/\b(nonprofit|non profit|ngo|charity|foundation|humanitarian|philanthropy)\b/)) return "nonprofit";
-  if (has(/\b(software|saas|cloud|platform|technology|tech|cybersecurity|developer|api|data|ai|machine learning|internet|computing|digital)\b/)) return "technology";
+  if (
+    has(
+      /\b(hospital|clinic|clinical|pharmaceutical|pharma|biotech|biotechnology|life sciences|medical|medtech|healthcare|health care|patient|therapeutics|nursing)\b/,
+    )
+  )
+    return "healthcare";
+  if (
+    has(
+      /\b(bank|banking|insurance|investment|hedge fund|asset management|fintech|trading|brokerage|financial services|wealth management|venture capital|private equity)\b/,
+    )
+  )
+    return "finance";
+  if (
+    has(
+      /\b(university|college|education|edtech|academic|curriculum|e learning|elearning|lecturer|professor)\b/,
+    )
+  )
+    return "education";
+  if (
+    has(
+      /\b(retail|e commerce|ecommerce|consumer goods|apparel|fashion|merchandising|grocery|restaurant|hospitality|cpg)\b/,
+    )
+  )
+    return "retail";
+  if (
+    has(
+      /\b(manufacturing|automotive|aerospace|industrial|factory|machinery|semiconductor|electronics|robotics)\b/,
+    )
+  )
+    return "manufacturing";
+  if (
+    has(
+      /\b(media|entertainment|gaming|video game|publishing|advertising|film|music|streaming|broadcast|journalism)\b/,
+    )
+  )
+    return "media";
+  if (has(/\b(energy|oil|gas|renewable|solar|wind power|utilities|power grid|nuclear)\b/))
+    return "energy";
+  if (has(/\b(real estate|property management|construction|housing|proptech)\b/))
+    return "realestate";
+  if (has(/\b(government|public sector|federal|municipal|defense|military|civic)\b/))
+    return "government";
+  if (has(/\b(nonprofit|non profit|ngo|charity|foundation|humanitarian|philanthropy)\b/))
+    return "nonprofit";
+  if (
+    has(
+      /\b(software|saas|cloud|platform|technology|tech|cybersecurity|developer|api|data|ai|machine learning|internet|computing|digital)\b/,
+    )
+  )
+    return "technology";
   return "other";
 }

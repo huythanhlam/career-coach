@@ -56,12 +56,17 @@ export function buildJobDescriptionPrompt(brief: JobBrief): string {
   if (brief.seniority) lines.push(`Seniority: ${brief.seniority}`);
   if (brief.location) lines.push(`Location: ${brief.location}`);
   if (brief.employmentType) lines.push(`Employment type: ${brief.employmentType}`);
-  if (brief.keyPoints?.trim()) lines.push(`\nKey points from the hiring manager:\n${brief.keyPoints.trim()}`);
+  if (brief.keyPoints?.trim())
+    lines.push(`\nKey points from the hiring manager:\n${brief.keyPoints.trim()}`);
   return `Write a job posting from this brief.\n\n${lines.join("\n")}\n\nReturn ONLY the JSON object.`;
 }
 
 export async function generateJobDescription(brief: JobBrief): Promise<GeneratedJobDescription> {
-  const raw = await generateWorkflowData(JOB_DESCRIPTION_SYSTEM, buildJobDescriptionPrompt(brief), MODELS.QUALITY);
+  const raw = await generateWorkflowData(
+    JOB_DESCRIPTION_SYSTEM,
+    buildJobDescriptionPrompt(brief),
+    MODELS.QUALITY,
+  );
   try {
     const parsed = parseLooseJsonObject(raw);
     return {
@@ -79,10 +84,13 @@ export async function generateJobDescription(brief: JobBrief): Promise<Generated
 /* ─── Company profile copy ──────────────────────────────────────────────────── */
 
 const COPY_FIELD_GUIDANCE: Record<CompanyCopyField, string> = {
-  about: "a concise 'About the company' section (2-3 short paragraphs) covering what the company does and why it matters",
+  about:
+    "a concise 'About the company' section (2-3 short paragraphs) covering what the company does and why it matters",
   mission: "a single, memorable mission statement (1-2 sentences)",
-  culture: "a 'Life & culture' section (1 short paragraph + 3-5 bullet values) describing how the team works",
-  benefits: "a 'Benefits & perks' section as a tight bullet list grouped sensibly (comp, health, time off, growth, flexibility)",
+  culture:
+    "a 'Life & culture' section (1 short paragraph + 3-5 bullet values) describing how the team works",
+  benefits:
+    "a 'Benefits & perks' section as a tight bullet list grouped sensibly (comp, health, time off, growth, flexibility)",
 };
 
 export interface CompanyCopyInput {
@@ -101,13 +109,21 @@ export function buildCompanyCopyPrompt(field: CompanyCopyField, company: Company
   if (company.industry) lines.push(`Industry: ${company.industry}`);
   const verb = company.existing?.trim() ? "Improve and tighten" : "Write";
   let prompt = `${verb} ${COPY_FIELD_GUIDANCE[field]} for the company below.\n\n${lines.join("\n")}`;
-  if (company.existing?.trim()) prompt += `\n\nExisting draft to build on:\n${company.existing.trim()}`;
+  if (company.existing?.trim())
+    prompt += `\n\nExisting draft to build on:\n${company.existing.trim()}`;
   prompt += `\n\nReturn only the copy.`;
   return prompt;
 }
 
-export async function generateCompanyCopy(field: CompanyCopyField, company: CompanyCopyInput): Promise<string> {
-  const raw = await generateWorkflowData(COMPANY_COPY_SYSTEM, buildCompanyCopyPrompt(field, company), MODELS.FAST);
+export async function generateCompanyCopy(
+  field: CompanyCopyField,
+  company: CompanyCopyInput,
+): Promise<string> {
+  const raw = await generateWorkflowData(
+    COMPANY_COPY_SYSTEM,
+    buildCompanyCopyPrompt(field, company),
+    MODELS.FAST,
+  );
   return cleanText(raw);
 }
 
@@ -115,7 +131,11 @@ export async function generateCompanyCopy(field: CompanyCopyField, company: Comp
 
 export const REWRITE_FIELD_SYSTEM = `You are an expert employer-branding editor. The user selected a passage from a company profile or job listing and wants it improved per their instruction. Return ONLY the rewritten text — no preamble, no quotes, no explanation. Preserve the original's Markdown structure (bullets, headings, bold) so it drops in cleanly, and keep it close to the original length (within ~±15%). Improve wording, clarity, and impact, but never invent metrics, customers, or facts not present in the context — use a bracketed placeholder if a specific detail would help.`;
 
-export function buildRewriteFieldPrompt(selectedText: string, instruction: string, context: string): string {
+export function buildRewriteFieldPrompt(
+  selectedText: string,
+  instruction: string,
+  context: string,
+): string {
   return `Context (the full field/document):\n${context}\n\n---\nSelected text to rewrite:\n${selectedText}\n\nInstruction: ${instruction}`;
 }
 
@@ -145,7 +165,8 @@ function listingLines(listing: PromoListingInput): string {
   const lines = [`Role: ${listing.title}`];
   if (listing.companyName) lines.push(`Company: ${listing.companyName}`);
   if (listing.location) lines.push(`Location: ${listing.location}`);
-  if (listing.description?.trim()) lines.push(`\nRole summary:\n${listing.description.trim().slice(0, 1200)}`);
+  if (listing.description?.trim())
+    lines.push(`\nRole summary:\n${listing.description.trim().slice(0, 1200)}`);
   return lines.join("\n");
 }
 
@@ -164,7 +185,11 @@ export function buildPromoPrompt(listing: PromoListingInput): string {
 }
 
 export async function generatePromoAssets(listing: PromoListingInput): Promise<PromoAssets> {
-  const raw = await generateWorkflowData(PROMO_ASSETS_SYSTEM, buildPromoPrompt(listing), MODELS.FAST);
+  const raw = await generateWorkflowData(
+    PROMO_ASSETS_SYSTEM,
+    buildPromoPrompt(listing),
+    MODELS.FAST,
+  );
   try {
     const parsed = parseLooseJsonObject(raw);
     return {
@@ -194,9 +219,15 @@ export function buildPromoPackPrompt(listing: PromoListingInput): string {
 }
 
 export async function generateBoostedPromoPack(listing: PromoListingInput): Promise<PromoPack> {
-  const raw = await generateWorkflowData(PROMO_PACK_SYSTEM, buildPromoPackPrompt(listing), MODELS.QUALITY);
+  const raw = await generateWorkflowData(
+    PROMO_PACK_SYSTEM,
+    buildPromoPackPrompt(listing),
+    MODELS.QUALITY,
+  );
   const stringArray = (v: unknown): string[] =>
-    Array.isArray(v) ? v.filter((s): s is string => typeof s === "string" && s.trim().length > 0) : [];
+    Array.isArray(v)
+      ? v.filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      : [];
   try {
     const parsed = parseLooseJsonObject(raw);
     return {

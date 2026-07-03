@@ -13,14 +13,24 @@ function leaveBlog() {
 
 export function PublicBlogShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: "var(--background)", color: "var(--foreground)" }}
+    >
       <nav
         className="sticky top-0 z-40 border-b"
-        style={{ background: "rgba(251,247,241,0.92)", backdropFilter: "blur(12px)", borderColor: "var(--border)" }}
+        style={{
+          background: "rgba(251,247,241,0.92)",
+          backdropFilter: "blur(12px)",
+          borderColor: "var(--border)",
+        }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <button onClick={leaveBlog} className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--primary)" }}>
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: "var(--primary)" }}
+            >
               <Compass className="w-4 h-4 text-white" />
             </div>
             <span className="font-display font-semibold text-lg">TechCoach AI</span>

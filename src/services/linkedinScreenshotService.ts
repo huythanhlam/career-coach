@@ -41,15 +41,20 @@ export async function captureLinkedInScreenshot(url: string): Promise<Screenshot
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ url }),
     });
     if (!response.ok) return null;
     const data = (await response.json()) as Partial<ScreenshotResult>;
     if (!data.image) return null;
-    return { image: data.image, blocked: !!data.blocked, regions: data.regions ?? [], note: data.note };
+    return {
+      image: data.image,
+      blocked: !!data.blocked,
+      regions: data.regions ?? [],
+      note: data.note,
+    };
   } catch (error) {
     console.error("captureLinkedInScreenshot failed:", error);
     return null;

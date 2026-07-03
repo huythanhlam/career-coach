@@ -5,7 +5,14 @@ import { generateId } from "@/types/userProfile";
 import { ComboInput } from "@/components/ui/ComboInput";
 import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
 import { EndDateField } from "@/components/ui/EndDateField";
-import { JOB_TITLES, SP500_COMPANIES, UNIVERSITIES, DEGREE_TYPES, COMMON_MAJORS, COMMON_MINORS } from "@/lib/profileOptions";
+import {
+  JOB_TITLES,
+  SP500_COMPANIES,
+  UNIVERSITIES,
+  DEGREE_TYPES,
+  COMMON_MAJORS,
+  COMMON_MINORS,
+} from "@/lib/profileOptions";
 
 interface Props {
   extracted: Partial<UserProfile>;
@@ -61,12 +68,30 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
   const [workHistory, setWorkHistory] = useState<WorkExperience[]>(
     extracted.workHistory?.length
       ? extracted.workHistory
-      : [{ id: generateId(), company: "", role: "", startDate: "", endDate: "", responsibilities: "" }]
+      : [
+          {
+            id: generateId(),
+            company: "",
+            role: "",
+            startDate: "",
+            endDate: "",
+            responsibilities: "",
+          },
+        ],
   );
   const [education, setEducation] = useState<Education[]>(
     extracted.education?.length
       ? extracted.education
-      : [{ id: generateId(), university: "", degree: "", graduationYear: "", major: "", minor: "" }]
+      : [
+          {
+            id: generateId(),
+            university: "",
+            degree: "",
+            graduationYear: "",
+            major: "",
+            minor: "",
+          },
+        ],
   );
   const [skills, setSkills] = useState((extracted.skills ?? []).join(", "));
 
@@ -74,7 +99,10 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
     setWorkHistory((prev) => prev.map((w) => (w.id === id ? { ...w, [field]: value } : w)));
   }
   function addWork() {
-    setWorkHistory((prev) => [...prev, { id: generateId(), company: "", role: "", startDate: "", endDate: "", responsibilities: "" }]);
+    setWorkHistory((prev) => [
+      ...prev,
+      { id: generateId(), company: "", role: "", startDate: "", endDate: "", responsibilities: "" },
+    ]);
   }
   function removeWork(id: string) {
     setWorkHistory((prev) => prev.filter((w) => w.id !== id));
@@ -84,7 +112,10 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
     setEducation((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
   }
   function addEdu() {
-    setEducation((prev) => [...prev, { id: generateId(), university: "", degree: "", graduationYear: "", major: "", minor: "" }]);
+    setEducation((prev) => [
+      ...prev,
+      { id: generateId(), university: "", degree: "", graduationYear: "", major: "", minor: "" },
+    ]);
   }
   function removeEdu(id: string) {
     setEducation((prev) => prev.filter((e) => e.id !== id));
@@ -103,7 +134,10 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
       summary: summary.trim() || undefined,
       workHistory: workHistory.filter((w) => w.company || w.role),
       education: education.filter((e) => e.university || e.degree),
-      skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
+      skills: skills
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     });
   }
 
@@ -112,7 +146,10 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
   return (
     <div className="flex flex-col w-full max-w-2xl mx-auto">
       {/* Sticky header */}
-      <div className="flex items-center gap-3 px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+      <div
+        className="flex items-center gap-3 px-6 py-4"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
@@ -140,13 +177,55 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
           <SectionTitle>Personal Info</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { label: "Full Name", value: fullName, setter: setFullName, placeholder: "Jane Smith", colSpan: 1 },
-              { label: "Preferred Name", value: preferredName, setter: setPreferredName, placeholder: "Jane", colSpan: 1 },
-              { label: "Email", value: email, setter: setEmail, placeholder: "jane@example.com", colSpan: 1 },
-              { label: "Phone", value: phone, setter: setPhone, placeholder: "+1 (555) 000-0000", colSpan: 1 },
-              { label: "LinkedIn URL", value: linkedin, setter: setLinkedin, placeholder: "https://linkedin.com/in/…", colSpan: 2 },
-              { label: "GitHub URL", value: github, setter: setGithub, placeholder: "https://github.com/…", colSpan: 1 },
-              { label: "Portfolio URL", value: portfolio, setter: setPortfolio, placeholder: "https://yoursite.com", colSpan: 1 },
+              {
+                label: "Full Name",
+                value: fullName,
+                setter: setFullName,
+                placeholder: "Jane Smith",
+                colSpan: 1,
+              },
+              {
+                label: "Preferred Name",
+                value: preferredName,
+                setter: setPreferredName,
+                placeholder: "Jane",
+                colSpan: 1,
+              },
+              {
+                label: "Email",
+                value: email,
+                setter: setEmail,
+                placeholder: "jane@example.com",
+                colSpan: 1,
+              },
+              {
+                label: "Phone",
+                value: phone,
+                setter: setPhone,
+                placeholder: "+1 (555) 000-0000",
+                colSpan: 1,
+              },
+              {
+                label: "LinkedIn URL",
+                value: linkedin,
+                setter: setLinkedin,
+                placeholder: "https://linkedin.com/in/…",
+                colSpan: 2,
+              },
+              {
+                label: "GitHub URL",
+                value: github,
+                setter: setGithub,
+                placeholder: "https://github.com/…",
+                colSpan: 1,
+              },
+              {
+                label: "Portfolio URL",
+                value: portfolio,
+                setter: setPortfolio,
+                placeholder: "https://yoursite.com",
+                colSpan: 1,
+              },
             ].map(({ label, value, setter, placeholder, colSpan }) => (
               <div key={label} className={colSpan === 2 ? "col-span-2" : ""}>
                 <label style={labelStyle}>{label}</label>
@@ -201,27 +280,53 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                 style={{ background: "var(--muted)", border: "1px solid var(--border)" }}
               >
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
                     Position {idx + 1}
                   </span>
                   {workHistory.length > 1 && (
-                    <button onClick={() => removeWork(w.id)} className="p-1 rounded transition-opacity hover:opacity-70">
-                      <Trash2 className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
+                    <button
+                      onClick={() => removeWork(w.id)}
+                      className="p-1 rounded transition-opacity hover:opacity-70"
+                    >
+                      <Trash2
+                        className="w-3.5 h-3.5"
+                        style={{ color: "var(--muted-foreground)" }}
+                      />
                     </button>
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label style={labelStyle}>Job Title</label>
-                    <ComboInput value={w.role} onChange={(v) => updateWork(w.id, "role", v)} options={JOB_TITLES} placeholder="Software Engineer" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput
+                      value={w.role}
+                      onChange={(v) => updateWork(w.id, "role", v)}
+                      options={JOB_TITLES}
+                      placeholder="Software Engineer"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Company</label>
-                    <ComboInput value={w.company} onChange={(v) => updateWork(w.id, "company", v)} options={SP500_COMPANIES} placeholder="Acme Corp" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput
+                      value={w.company}
+                      onChange={(v) => updateWork(w.id, "company", v)}
+                      options={SP500_COMPANIES}
+                      placeholder="Acme Corp"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Start Date</label>
-                    <MonthYearPicker value={w.startDate} onChange={(v) => updateWork(w.id, "startDate", v)} placeholder="Start date" style={{ ...inputStyle, height: 38 }} />
+                    <MonthYearPicker
+                      value={w.startDate}
+                      onChange={(v) => updateWork(w.id, "startDate", v)}
+                      placeholder="Start date"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>End Date</label>
@@ -229,7 +334,10 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
                       id={`review-work-${w.id}`}
                       endDate={w.endDate}
                       current={Boolean(w.current)}
-                      onChange={({ endDate, current }) => { updateWork(w.id, "current", current); updateWork(w.id, "endDate", endDate); }}
+                      onChange={({ endDate, current }) => {
+                        updateWork(w.id, "current", current);
+                        updateWork(w.id, "endDate", endDate);
+                      }}
                       style={{ ...inputStyle, height: 38 }}
                     />
                   </div>
@@ -268,37 +376,79 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
           <SectionTitle>Education</SectionTitle>
           <div className="flex flex-col gap-3">
             {education.map((e, idx) => (
-              <div key={e.id} className="rounded-xl p-4" style={{ background: "var(--muted)", border: "1px solid var(--border)" }}>
+              <div
+                key={e.id}
+                className="rounded-xl p-4"
+                style={{ background: "var(--muted)", border: "1px solid var(--border)" }}
+              >
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
                     Education {idx + 1}
                   </span>
                   {education.length > 1 && (
-                    <button onClick={() => removeEdu(e.id)} className="p-1 rounded transition-opacity hover:opacity-70">
-                      <Trash2 className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
+                    <button
+                      onClick={() => removeEdu(e.id)}
+                      className="p-1 rounded transition-opacity hover:opacity-70"
+                    >
+                      <Trash2
+                        className="w-3.5 h-3.5"
+                        style={{ color: "var(--muted-foreground)" }}
+                      />
                     </button>
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="col-span-2">
                     <label style={labelStyle}>Institution</label>
-                    <ComboInput value={e.university} onChange={(v) => updateEdu(e.id, "university", v)} options={UNIVERSITIES} placeholder="MIT" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput
+                      value={e.university}
+                      onChange={(v) => updateEdu(e.id, "university", v)}
+                      options={UNIVERSITIES}
+                      placeholder="MIT"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Degree / Field</label>
-                    <ComboInput value={e.degree} onChange={(v) => updateEdu(e.id, "degree", v)} options={DEGREE_TYPES} placeholder="B.S. Computer Science" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput
+                      value={e.degree}
+                      onChange={(v) => updateEdu(e.id, "degree", v)}
+                      options={DEGREE_TYPES}
+                      placeholder="B.S. Computer Science"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Graduation Year</label>
-                    <MonthYearPicker value={e.graduationYear} onChange={(v) => updateEdu(e.id, "graduationYear", v)} placeholder="Graduation" style={{ ...inputStyle, height: 38 }} />
+                    <MonthYearPicker
+                      value={e.graduationYear}
+                      onChange={(v) => updateEdu(e.id, "graduationYear", v)}
+                      placeholder="Graduation"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Major</label>
-                    <ComboInput value={e.major ?? ""} onChange={(v) => updateEdu(e.id, "major", v)} options={COMMON_MAJORS} placeholder="e.g., Computer Science" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput
+                      value={e.major ?? ""}
+                      onChange={(v) => updateEdu(e.id, "major", v)}
+                      options={COMMON_MAJORS}
+                      placeholder="e.g., Computer Science"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Minor</label>
-                    <ComboInput value={e.minor ?? ""} onChange={(v) => updateEdu(e.id, "minor", v)} options={COMMON_MINORS} placeholder="e.g., Statistics" style={{ ...inputStyle, height: 38 }} />
+                    <ComboInput
+                      value={e.minor ?? ""}
+                      onChange={(v) => updateEdu(e.id, "minor", v)}
+                      options={COMMON_MINORS}
+                      placeholder="e.g., Statistics"
+                      style={{ ...inputStyle, height: 38 }}
+                    />
                   </div>
                 </div>
               </div>
@@ -335,7 +485,10 @@ export function ReviewStep({ extracted, onConfirm, onBack, onSkip }: Props) {
       </div>
 
       {/* Sticky footer */}
-      <div className="px-6 py-4 flex flex-col gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+      <div
+        className="px-6 py-4 flex flex-col gap-2"
+        style={{ borderTop: "1px solid var(--border)" }}
+      >
         <button
           onClick={handleSave}
           className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90"

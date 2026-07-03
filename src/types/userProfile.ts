@@ -73,8 +73,8 @@ export interface CareerSurvey {
   workLifeBalance?: ScaleAnswer;
   recognition?: ScaleAnswer;
   // single-select (includes "Unsure")
-  mobility?: string;        // "Staying & growing" | "Open to the right move" | "Actively looking" | "Unsure"
-  managerSupport?: string;  // "Very supportive" | "Somewhat" | "Not really" | "No manager" | "Unsure"
+  mobility?: string; // "Staying & growing" | "Open to the right move" | "Actively looking" | "Unsure"
+  managerSupport?: string; // "Very supportive" | "Somewhat" | "Not really" | "No manager" | "Unsure"
   // free text (or "Unsure")
   energizers?: string;
   frustrations?: string;
@@ -107,7 +107,13 @@ export interface UserProfile {
   linkedinText?: string;
   resumeStoragePath?: string;
   linkedinStoragePath?: string;
-  savedResumes?: { id: string; name: string; storagePath: string; text?: string; createdAt: string }[];
+  savedResumes?: {
+    id: string;
+    name: string;
+    storagePath: string;
+    text?: string;
+    createdAt: string;
+  }[];
   savedCoverLetters?: SavedCoverLetter[];
   savedCareerPlans?: SavedCareerPlan[];
   careerSurvey?: CareerSurvey;

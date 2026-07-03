@@ -29,10 +29,19 @@ export function buildCompanyResearchSources(company: string): {
   const c = (company ?? "").trim();
   const q = encodeURIComponent(c);
   return {
-    careers: { label: `${c || "Company"} careers`, url: `https://www.google.com/search?q=${encodeURIComponent(`${c} careers`)}` },
-    reviews: { label: "Glassdoor reviews", url: `https://www.glassdoor.com/Search/results.htm?keyword=${q}` },
+    careers: {
+      label: `${c || "Company"} careers`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(`${c} careers`)}`,
+    },
+    reviews: {
+      label: "Glassdoor reviews",
+      url: `https://www.glassdoor.com/Search/results.htm?keyword=${q}`,
+    },
     news: { label: "Google News", url: `https://news.google.com/search?q=${q}` },
     financials: { label: "Yahoo Finance", url: `https://finance.yahoo.com/lookup?s=${q}` },
-    filings: { label: "SEC EDGAR filings", url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${q}&type=10-Q&dateb=&owner=include&count=40` },
+    filings: {
+      label: "SEC EDGAR filings",
+      url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${q}&type=10-Q&dateb=&owner=include&count=40`,
+    },
   };
 }

@@ -33,6 +33,21 @@ jobs:
       - name: Typecheck
         run: npm run lint
 
+      # Incremental strict-mode gate: fails only if the strict-error count
+      # rises above strict-baseline.json. Keeps `npm run lint` non-strict and
+      # green while the strict debt is burned down. See scripts/strict-ratchet.mjs.
+      - name: Strict typecheck ratchet
+        run: npm run typecheck:strict
+
+      - name: Test
+        run: npm test
+
+      - name: ESLint ratchet
+        run: npm run lint:eslint
+
+      - name: Prettier format check
+        run: npm run format:check
+
       - name: Build
         run: npm run build
 

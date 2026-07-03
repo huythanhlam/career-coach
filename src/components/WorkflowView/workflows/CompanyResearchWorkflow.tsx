@@ -48,7 +48,10 @@ export function CompanyResearchWorkflow({
   onResetResult,
 }: CompanyResearchWorkflowProps) {
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
+    <div
+      className="flex-1 flex flex-col h-full overflow-hidden"
+      style={{ background: "var(--background)" }}
+    >
       <PageHeader title={config.title} description={config.description} />
       <div className="flex-1 overflow-auto no-scrollbar p-8">
         <div style={{ maxWidth: 760, margin: "0 auto" }}>
@@ -57,12 +60,26 @@ export function CompanyResearchWorkflow({
           )}
 
           {isResearching && !companyResult && !companyProfile && (
-            <MentorCard style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16 }}>
+            <MentorCard
+              style={{
+                padding: 48,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                gap: 16,
+              }}
+            >
               <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--primary)" }} />
-              <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}>
+              <div
+                className="font-display"
+                style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)" }}
+              >
                 Researching {companyName || "the company"}
               </div>
-              <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>Checking our verified company database, then careers pages, news, and financials…</div>
+              <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>
+                Checking our verified company database, then careers pages, news, and financials…
+              </div>
             </MentorCard>
           )}
 

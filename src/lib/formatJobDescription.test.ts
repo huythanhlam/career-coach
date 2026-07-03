@@ -3,7 +3,8 @@ import { toMarkdown, htmlToMarkdown } from "./formatJobDescription";
 
 describe("htmlToMarkdown", () => {
   it("converts headings, lists, and emphasis", () => {
-    const html = "<h2>Responsibilities</h2><ul><li>Build <strong>features</strong></li><li>Ship code</li></ul>";
+    const html =
+      "<h2>Responsibilities</h2><ul><li>Build <strong>features</strong></li><li>Ship code</li></ul>";
     const md = htmlToMarkdown(html);
     expect(md).toContain("## Responsibilities");
     expect(md).toContain("- Build **features**");

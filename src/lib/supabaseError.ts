@@ -24,7 +24,11 @@ export function describeDbError(error: unknown): string {
   }
 
   // Row-level security blocked the write.
-  if (code === "42501" || text.includes("row-level security") || text.includes("violates row-level security")) {
+  if (
+    code === "42501" ||
+    text.includes("row-level security") ||
+    text.includes("violates row-level security")
+  ) {
     return "You don't have permission to save this (row-level security). Make sure you're signed in and the migrations are applied.";
   }
 

@@ -1,0 +1,5 @@
+# Bulk formatting commits — ignore for git blame so code changes stay visible.
+# See: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Prettier formatting pass (2026-07-02)
+cd40874bfe7216dd31c80fc47311c9877740e462

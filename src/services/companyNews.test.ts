@@ -45,7 +45,12 @@ describe("normalizeNewsSection", () => {
 
   it("drops items with no headline", () => {
     const section = normalizeNewsSection(
-      { items: [{ headline: "", date: "2026-06-01", whyItMatters: "y" }, { headline: "Keep", date: "2026-06-02", whyItMatters: "z" }] },
+      {
+        items: [
+          { headline: "", date: "2026-06-01", whyItMatters: "y" },
+          { headline: "Keep", date: "2026-06-02", whyItMatters: "z" },
+        ],
+      },
       FALLBACK,
     );
     expect(section.items?.map((i) => i.headline)).toEqual(["Keep"]);

@@ -22,10 +22,14 @@ export async function migrateFromLocalStorage(userId: string): Promise<void> {
         let resumeStoragePath: string | null = null;
         let linkedinStoragePath: string | null = null;
         if (profile.resumeText) {
-          try { resumeStoragePath = await uploadImportedResume(userId, profile.resumeText); } catch {}
+          try {
+            resumeStoragePath = await uploadImportedResume(userId, profile.resumeText);
+          } catch {}
         }
         if (profile.linkedinText) {
-          try { linkedinStoragePath = await uploadLinkedInText(userId, profile.linkedinText); } catch {}
+          try {
+            linkedinStoragePath = await uploadLinkedInText(userId, profile.linkedinText);
+          } catch {}
         }
         await supabase.from("profiles").upsert({
           id: userId,

@@ -5,7 +5,11 @@
 // and draft a cover letter — producing a review-and-approve package. NOTHING is
 // submitted here; approval/submission is a separate, explicit user action.
 
-import { generateWorkflowData, tailorResume, type TailorSuggestion } from "@/services/geminiService";
+import {
+  generateWorkflowData,
+  tailorResume,
+  type TailorSuggestion,
+} from "@/services/geminiService";
 import { MODELS } from "@/config/models";
 import { scoreJobFit } from "@/services/jobRecommendation";
 import { basePersona } from "@/config/workflows";
@@ -25,7 +29,10 @@ export interface GeneratedPackage {
  * TailorResumeWorkspace relies on; suggestions whose originalText isn't found
  * are skipped (no hallucinated edits).
  */
-export function applyTailorSuggestions(resumeText: string, suggestions: TailorSuggestion[]): string {
+export function applyTailorSuggestions(
+  resumeText: string,
+  suggestions: TailorSuggestion[],
+): string {
   let out = resumeText;
   for (const s of suggestions) {
     if (!s.originalText || !s.suggestedText) continue;
@@ -57,7 +64,11 @@ ${resumeText}
 ${baseline ? `CANDIDATE PROFILE:\n${baseline}\n` : ""}
 Write the cover letter per the rules.`;
   const raw = await generateWorkflowData(COVER_LETTER_SYSTEM, prompt, MODELS.QUALITY);
-  return raw.trim().replace(/^```[a-z]*\s*/i, "").replace(/\s*```$/i, "").trim();
+  return raw
+    .trim()
+    .replace(/^```[a-z]*\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
 }
 
 /**

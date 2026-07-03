@@ -79,7 +79,11 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
     >
       <div
         className="w-full max-w-sm rounded-3xl p-6 sm:p-8 relative"
-        style={{ background: "var(--background)", border: "1px solid var(--border)", boxShadow: "0 24px 80px rgba(0,0,0,0.15)" }}
+        style={{
+          background: "var(--background)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.15)",
+        }}
       >
         <button
           onClick={onClose}
@@ -90,7 +94,10 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
 
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--primary)" }}>
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: "var(--primary)" }}
+            >
               <Compass className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-sm">TechCoach AI</span>
@@ -98,11 +105,16 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
 
           {/* Account intent — a clear, distinct path for candidates vs employers */}
           {mode !== "forgot_password" && (
-            <div role="group" aria-label="Account type" className="flex gap-1 p-1 rounded-xl mb-4" style={{ background: "var(--muted)", border: "1px solid var(--border)" }}>
-              {([
+            <div
+              role="group"
+              aria-label="Account type"
+              className="flex gap-1 p-1 rounded-xl mb-4"
+              style={{ background: "var(--muted)", border: "1px solid var(--border)" }}
+            >
+              {[
                 { type: "seeker" as AccountType, icon: Briefcase, label: "I'm a candidate" },
                 { type: "employer" as AccountType, icon: Building2, label: "I'm an employer" },
-              ]).map(({ type, icon: Icon, label }) => {
+              ].map(({ type, icon: Icon, label }) => {
                 const active = accountIntent === type;
                 return (
                   <button
@@ -130,14 +142,18 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
               ? "Welcome back"
               : mode === "forgot_password"
                 ? "Reset password"
-                : isEmployer ? "Hire with TechCoach AI" : "Start for free"}
+                : isEmployer
+                  ? "Hire with TechCoach AI"
+                  : "Start for free"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "sign_in"
               ? "Sign in to your account"
               : mode === "forgot_password"
                 ? "Enter your email to reset"
-                : isEmployer ? "Create your employer account — post jobs and reach candidates" : "Create your free account"}
+                : isEmployer
+                  ? "Create your employer account — post jobs and reach candidates"
+                  : "Create your free account"}
           </p>
         </div>
 
@@ -149,9 +165,16 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
             onChange={(e) => setEmail(e.target.value)}
             required
             style={{
-              background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 14,
-              height: 44, fontSize: 14, padding: "0 14px", color: "var(--foreground)", width: "100%",
-              outline: "none", fontFamily: "inherit",
+              background: "var(--muted)",
+              border: "1px solid var(--border)",
+              borderRadius: 14,
+              height: 44,
+              fontSize: 14,
+              padding: "0 14px",
+              color: "var(--foreground)",
+              width: "100%",
+              outline: "none",
+              fontFamily: "inherit",
             }}
           />
           {mode !== "forgot_password" && (
@@ -162,9 +185,16 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
               onChange={(e) => setPassword(e.target.value)}
               required
               style={{
-                background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 14,
-                height: 44, fontSize: 14, padding: "0 14px", color: "var(--foreground)", width: "100%",
-                outline: "none", fontFamily: "inherit",
+                background: "var(--muted)",
+                border: "1px solid var(--border)",
+                borderRadius: 14,
+                height: 44,
+                fontSize: 14,
+                padding: "0 14px",
+                color: "var(--foreground)",
+                width: "100%",
+                outline: "none",
+                fontFamily: "inherit",
               }}
             />
           )}
@@ -186,24 +216,45 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
             type="submit"
             disabled={loading}
             style={{
-              background: "var(--primary)", color: "#fff", border: "none", borderRadius: 14,
-              height: 44, fontSize: 14, fontWeight: 600, width: "100%", cursor: "pointer",
-              fontFamily: "inherit", opacity: loading ? 0.7 : 1,
+              background: "var(--primary)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 14,
+              height: 44,
+              fontSize: 14,
+              fontWeight: 600,
+              width: "100%",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Please wait…" : mode === "sign_in" ? "Sign In" : mode === "sign_up" ? "Create Account" : "Send Reset Email"}
+            {loading
+              ? "Please wait…"
+              : mode === "sign_in"
+                ? "Sign In"
+                : mode === "sign_up"
+                  ? "Create Account"
+                  : "Send Reset Email"}
           </button>
         </form>
 
         <div className="mt-4 text-center space-y-2">
           {mode === "sign_in" && (
             <>
-              <button onClick={() => setMode("forgot_password")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <button
+                onClick={() => setMode("forgot_password")}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Forgot password?
               </button>
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <button onClick={() => setMode("sign_up")} className="font-semibold" style={{ color: "var(--primary)" }}>
+                <button
+                  onClick={() => setMode("sign_up")}
+                  className="font-semibold"
+                  style={{ color: "var(--primary)" }}
+                >
                   Sign up free
                 </button>
               </p>
@@ -212,13 +263,20 @@ function AuthModal({ onClose, pendingTab, intent = "seeker" }: AuthModalProps) {
           {mode === "sign_up" && (
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <button onClick={() => setMode("sign_in")} className="font-semibold" style={{ color: "var(--primary)" }}>
+              <button
+                onClick={() => setMode("sign_in")}
+                className="font-semibold"
+                style={{ color: "var(--primary)" }}
+              >
                 Sign in
               </button>
             </p>
           )}
           {mode === "forgot_password" && (
-            <button onClick={() => setMode("sign_in")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              onClick={() => setMode("sign_in")}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
               ← Back to sign in
             </button>
           )}
@@ -242,7 +300,8 @@ const features: Feature[] = [
     id: "resume_generation",
     icon: PenTool,
     title: "AI Resume Builder",
-    description: "Generate a polished resume from scratch using your career history — built to pass automated screening filters and impress recruiters. Choose from 6 professional templates.",
+    description:
+      "Generate a polished resume from scratch using your career history — built to pass automated screening filters and impress recruiters. Choose from 6 professional templates.",
     color: "#D97757",
     tab: "resume_generation",
   },
@@ -250,7 +309,8 @@ const features: Feature[] = [
     id: "resume",
     icon: FileText,
     title: "Resume Analyzer",
-    description: "Upload your resume and a job description. Get a gap analysis, rewritten bullet points that clearly show your impact and results, and a match score.",
+    description:
+      "Upload your resume and a job description. Get a gap analysis, rewritten bullet points that clearly show your impact and results, and a match score.",
     color: "#2F6B4F",
     tab: "resume",
   },
@@ -258,7 +318,8 @@ const features: Feature[] = [
     id: "company_research",
     icon: Building,
     title: "Research Company",
-    description: "Live research on what a company values when hiring, its benefits, role-relevant news, and recent financials — every claim linked to a verifiable source.",
+    description:
+      "Live research on what a company values when hiring, its benefits, role-relevant news, and recent financials — every claim linked to a verifiable source.",
     color: "#E8B948",
     tab: "company_research",
   },
@@ -266,7 +327,8 @@ const features: Feature[] = [
     id: "market",
     icon: LineChart,
     title: "Market Compensation",
-    description: "Get real salary bands, equity benchmarks, and cost-of-living comparisons for any role across US markets.",
+    description:
+      "Get real salary bands, equity benchmarks, and cost-of-living comparisons for any role across US markets.",
     color: "#3B82F6",
     tab: "market",
   },
@@ -274,7 +336,8 @@ const features: Feature[] = [
     id: "salary",
     icon: DollarSign,
     title: "Salary Negotiation",
-    description: "Paste your offer letter and target comp. Get a full negotiation strategy, email templates, and counter-offer scripts.",
+    description:
+      "Paste your offer letter and target comp. Get a full negotiation strategy, email templates, and counter-offer scripts.",
     color: "#2F6B4F",
     tab: "salary",
   },
@@ -282,7 +345,8 @@ const features: Feature[] = [
     id: "interview",
     icon: Target,
     title: "Interview & Job Search",
-    description: "Get a personalized week-by-week job search plan, guided practice for behavioral interview questions, and recommended certifications.",
+    description:
+      "Get a personalized week-by-week job search plan, guided practice for behavioral interview questions, and recommended certifications.",
     color: "#8B5CF6",
     tab: "interview",
   },
@@ -290,7 +354,8 @@ const features: Feature[] = [
     id: "mock_behavioral",
     icon: Users,
     title: "Mock Interview",
-    description: "Sit a realistic, spoken behavioral interview with an AI that asks role-specific questions, then get STAR-rated feedback on every answer.",
+    description:
+      "Sit a realistic, spoken behavioral interview with an AI that asks role-specific questions, then get STAR-rated feedback on every answer.",
     color: "#D97757",
     tab: "mock_behavioral",
   },
@@ -298,7 +363,8 @@ const features: Feature[] = [
     id: "goal_planning",
     icon: Target,
     title: "Career Goal Planning",
-    description: "Turn your up-to-date profile into a personalized development plan — then coach through learning a skill, changing roles, or earning a promotion.",
+    description:
+      "Turn your up-to-date profile into a personalized development plan — then coach through learning a skill, changing roles, or earning a promotion.",
     color: "#3B82F6",
     tab: "goal_planning",
   },
@@ -306,7 +372,8 @@ const features: Feature[] = [
     id: "linkedin",
     icon: ShieldCheck,
     title: "LinkedIn Optimizer",
-    description: "Rewrite your headline, About section, and experience with keyword-rich language that attracts recruiters.",
+    description:
+      "Rewrite your headline, About section, and experience with keyword-rich language that attracts recruiters.",
     color: "#0A66C2",
     tab: "linkedin",
   },
@@ -316,19 +383,22 @@ const testimonials = [
   {
     name: "Sarah K.",
     role: "Marketing Coordinator → Marketing Manager",
-    quote: "TechCoach AI helped me negotiate $40k more in total compensation. The salary strategy was incredibly specific and gave me the confidence to push back.",
+    quote:
+      "TechCoach AI helped me negotiate $40k more in total compensation. The salary strategy was incredibly specific and gave me the confidence to push back.",
     stars: 5,
   },
   {
     name: "Marcus L.",
     role: "Operations Lead → Director of Operations",
-    quote: "The resume analyzer caught issues I'd missed for years. The rewritten bullet points made my impact 10x clearer.",
+    quote:
+      "The resume analyzer caught issues I'd missed for years. The rewritten bullet points made my impact 10x clearer.",
     stars: 5,
   },
   {
     name: "Priya M.",
     role: "Project Manager",
-    quote: "Company research saved me from a bad hire. Found red flags in Glassdoor reviews I would have missed. Now at a company I actually love.",
+    quote:
+      "Company research saved me from a bad hire. Found red flags in Glassdoor reviews I would have missed. Now at a company I actually love.",
     stars: 5,
   },
 ];
@@ -337,19 +407,22 @@ const steps = [
   {
     number: "01",
     title: "Create your free account",
-    description: "Sign up in 30 seconds — no credit card required. Your profile is private and secure.",
+    description:
+      "Sign up in 30 seconds — no credit card required. Your profile is private and secure.",
     icon: Zap,
   },
   {
     number: "02",
     title: "Choose your tool",
-    description: "Pick from 10 AI-powered career tools. Each one is built for a specific stage of the job search.",
+    description:
+      "Pick from 10 AI-powered career tools. Each one is built for a specific stage of the job search.",
     icon: Target,
   },
   {
     number: "03",
     title: "Get actionable results",
-    description: "Receive detailed, specific guidance you can act on immediately — not generic advice.",
+    description:
+      "Receive detailed, specific guidance you can act on immediately — not generic advice.",
     icon: TrendingUp,
   },
 ];
@@ -379,11 +452,18 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+    <div
+      className="min-h-screen"
+      style={{ background: "var(--background)", color: "var(--foreground)" }}
+    >
       {/* ── Navigation ── */}
       <nav
         className="sticky top-0 z-40 border-b"
-        style={{ background: "rgba(251,247,241,0.92)", backdropFilter: "blur(12px)", borderColor: "var(--border)" }}
+        style={{
+          background: "rgba(251,247,241,0.92)",
+          backdropFilter: "blur(12px)",
+          borderColor: "var(--border)",
+        }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -445,7 +525,10 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         </div>
 
         {mobileMenuOpen && (
-          <div className="md:hidden border-t px-4 py-4 space-y-3" style={{ background: "var(--background)", borderColor: "var(--border)" }}>
+          <div
+            className="md:hidden border-t px-4 py-4 space-y-3"
+            style={{ background: "var(--background)", borderColor: "var(--border)" }}
+          >
             {["Features", "How It Works", "Testimonials", "About", "Contact"].map((label) => (
               <a
                 key={label}
@@ -473,7 +556,11 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             <button
               onClick={() => openAuth(undefined, "employer")}
               className="w-full text-sm font-semibold py-2.5 rounded-xl"
-              style={{ background: "var(--muted)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+              style={{
+                background: "var(--muted)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              }}
             >
               Post a job
             </button>
@@ -485,7 +572,11 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-20 pb-24 text-center">
         <div
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6"
-          style={{ background: "rgba(217,119,87,0.1)", color: "var(--primary)", border: "1px solid rgba(217,119,87,0.2)" }}
+          style={{
+            background: "rgba(217,119,87,0.1)",
+            color: "var(--primary)",
+            border: "1px solid rgba(217,119,87,0.2)",
+          }}
         >
           <Zap className="w-3 h-3" /> Powered by Gemini AI · Free to start
         </div>
@@ -494,14 +585,14 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           className="font-display text-4xl sm:text-6xl lg:text-7xl font-semibold leading-tight mb-6"
           style={{ color: "var(--foreground)" }}
         >
-          Land your dream{" "}
-          <span style={{ color: "var(--primary)" }}>job</span>
-          <br />with an AI career coach
+          Land your dream <span style={{ color: "var(--primary)" }}>job</span>
+          <br />
+          with an AI career coach
         </h1>
 
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-          10 AI-powered tools that cover every stage of the job search — from resume building to salary negotiation.
-          Specific, data-backed guidance. Not generic career advice.
+          10 AI-powered tools that cover every stage of the job search — from resume building to
+          salary negotiation. Specific, data-backed guidance. Not generic career advice.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -529,7 +620,9 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             { value: "100%", label: "Free to start" },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
-              <div className="font-display text-3xl font-bold" style={{ color: "var(--primary)" }}>{value}</div>
+              <div className="font-display text-3xl font-bold" style={{ color: "var(--primary)" }}>
+                {value}
+              </div>
               <div className="text-xs text-muted-foreground mt-1">{label}</div>
             </div>
           ))}
@@ -537,11 +630,21 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       </section>
 
       {/* ── How It Works ── */}
-      <section id="how-it-works" className="py-20" style={{ background: "var(--paper)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+      <section
+        id="how-it-works"
+        className="py-20"
+        style={{
+          background: "var(--paper)",
+          borderTop: "1px solid var(--border)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <p className="eyebrow mb-3">How It Works</p>
-            <h2 className="font-display text-4xl font-semibold">Get results in minutes, not weeks</h2>
+            <h2 className="font-display text-4xl font-semibold">
+              Get results in minutes, not weeks
+            </h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -553,7 +656,10 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 >
                   <step.icon className="w-6 h-6" style={{ color: "var(--primary)" }} />
                 </div>
-                <div className="font-display text-5xl font-bold mb-3" style={{ color: "rgba(217,119,87,0.15)" }}>
+                <div
+                  className="font-display text-5xl font-bold mb-3"
+                  style={{ color: "rgba(217,119,87,0.15)" }}
+                >
                   {step.number}
                 </div>
                 <h3 className="font-semibold text-lg mb-2">{step.title}</h3>
@@ -578,9 +684,12 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       <section id="features" className="py-24 max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-14">
           <p className="eyebrow mb-3">Features</p>
-          <h2 className="font-display text-4xl font-semibold">Every tool you need to land the job</h2>
+          <h2 className="font-display text-4xl font-semibold">
+            Every tool you need to land the job
+          </h2>
           <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
-            10 specialized AI coaches, each built for a critical job-search task. Click any card to try it.
+            10 specialized AI coaches, each built for a critical job-search task. Click any card to
+            try it.
           </p>
         </div>
 
@@ -621,11 +730,18 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             <div>
               <div
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-5"
-                style={{ background: "rgba(217,119,87,0.1)", color: "var(--primary)", border: "1px solid rgba(217,119,87,0.2)" }}
+                style={{
+                  background: "rgba(217,119,87,0.1)",
+                  color: "var(--primary)",
+                  border: "1px solid rgba(217,119,87,0.2)",
+                }}
               >
                 <Building2 className="w-3 h-3" /> For Employers
               </div>
-              <h2 className="font-display text-4xl font-semibold mb-4" style={{ color: "var(--foreground)" }}>
+              <h2
+                className="font-display text-4xl font-semibold mb-4"
+                style={{ color: "var(--foreground)" }}
+              >
                 Hiring? Post jobs and reach candidates
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
@@ -669,16 +785,38 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: "Company profiles", value: "AI-built", icon: Building2, color: "var(--primary)" },
-                { label: "Job listings", value: "From a brief", icon: FileText, color: "var(--forest)" },
+                {
+                  label: "Company profiles",
+                  value: "AI-built",
+                  icon: Building2,
+                  color: "var(--primary)",
+                },
+                {
+                  label: "Job listings",
+                  value: "From a brief",
+                  icon: FileText,
+                  color: "var(--forest)",
+                },
                 { label: "Promotion", value: "1-click", icon: Megaphone, color: "#3B82F6" },
                 { label: "Boosted reach", value: "Featured", icon: Rocket, color: "#E8B948" },
               ].map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className="rounded-2xl p-5 border" style={{ background: "var(--background)", borderColor: "var(--border)" }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${color}18` }}>
+                <div
+                  key={label}
+                  className="rounded-2xl p-5 border"
+                  style={{ background: "var(--background)", borderColor: "var(--border)" }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                    style={{ background: `${color}18` }}
+                  >
                     <Icon className="w-4 h-4" style={{ color }} />
                   </div>
-                  <div className="font-display text-lg font-bold" style={{ color: "var(--foreground)" }}>{value}</div>
+                  <div
+                    className="font-display text-lg font-bold"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    {value}
+                  </div>
                   <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
                 </div>
               ))}
@@ -688,7 +826,15 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       </section>
 
       {/* ── Testimonials ── */}
-      <section id="testimonials" className="py-20" style={{ background: "var(--paper)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+      <section
+        id="testimonials"
+        className="py-20"
+        style={{
+          background: "var(--paper)",
+          borderTop: "1px solid var(--border)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <p className="eyebrow mb-3">Testimonials</p>
@@ -704,7 +850,11 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               >
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-current" style={{ color: "var(--highlight)" }} />
+                    <Star
+                      key={i}
+                      className="w-4 h-4 fill-current"
+                      style={{ color: "var(--highlight)" }}
+                    />
                   ))}
                 </div>
                 <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--foreground)" }}>
@@ -729,12 +879,14 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               Built for ambitious professionals, by people who've been there
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              TechCoach AI was built because we saw how broken the job search is. Candidates spend hundreds of hours
-              on resumes, preparation, and negotiation — often alone, without expert guidance.
+              TechCoach AI was built because we saw how broken the job search is. Candidates spend
+              hundreds of hours on resumes, preparation, and negotiation — often alone, without
+              expert guidance.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-8">
               We built 10 AI-powered tools that give every professional access to the same caliber
-              of career coaching that used to cost thousands of dollars or require a referral from the right person.
+              of career coaching that used to cost thousands of dollars or require a referral from
+              the right person.
             </p>
             <ul className="space-y-3">
               {[
@@ -768,7 +920,9 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 className="rounded-2xl p-6 border"
                 style={{ background: "var(--card)", borderColor: "var(--border)" }}
               >
-                <div className="font-display text-3xl font-bold mb-1" style={{ color }}>{value}</div>
+                <div className="font-display text-3xl font-bold mb-1" style={{ color }}>
+                  {value}
+                </div>
                 <div className="text-xs text-muted-foreground">{label}</div>
               </div>
             ))}
@@ -777,7 +931,15 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="py-20" style={{ background: "var(--paper)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+      <section
+        id="pricing"
+        className="py-20"
+        style={{
+          background: "var(--paper)",
+          borderTop: "1px solid var(--border)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <p className="eyebrow mb-3">Pricing</p>
           <h2 className="font-display text-4xl font-semibold mb-4">Free while in beta</h2>
@@ -789,7 +951,12 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             className="rounded-3xl p-8 border max-w-sm mx-auto"
             style={{ background: "var(--card)", borderColor: "var(--border)" }}
           >
-            <div className="font-display text-5xl font-bold mb-1" style={{ color: "var(--primary)" }}>$0</div>
+            <div
+              className="font-display text-5xl font-bold mb-1"
+              style={{ color: "var(--primary)" }}
+            >
+              $0
+            </div>
             <div className="text-muted-foreground text-sm mb-6">Forever free during beta</div>
             <ul className="space-y-3 mb-8 text-left">
               {[
@@ -846,49 +1013,78 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                   <Check className="w-6 h-6" style={{ color: "var(--forest)" }} />
                 </div>
                 <h3 className="font-semibold mb-2">Message sent!</h3>
-                <p className="text-sm text-muted-foreground">We'll get back to you within 24 hours.</p>
+                <p className="text-sm text-muted-foreground">
+                  We'll get back to you within 24 hours.
+                </p>
               </div>
             ) : (
               <form onSubmit={handleContactSubmit} className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Name</label>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                    Name
+                  </label>
                   <input
                     type="text"
                     value={contactForm.name}
                     onChange={(e) => setContactForm((f) => ({ ...f, name: e.target.value }))}
                     required
                     style={{
-                      background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12,
-                      height: 40, fontSize: 14, padding: "0 12px", color: "var(--foreground)", width: "100%",
-                      outline: "none", fontFamily: "inherit",
+                      background: "var(--muted)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      height: 40,
+                      fontSize: 14,
+                      padding: "0 12px",
+                      color: "var(--foreground)",
+                      width: "100%",
+                      outline: "none",
+                      fontFamily: "inherit",
                     }}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Email</label>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={contactForm.email}
                     onChange={(e) => setContactForm((f) => ({ ...f, email: e.target.value }))}
                     required
                     style={{
-                      background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12,
-                      height: 40, fontSize: 14, padding: "0 12px", color: "var(--foreground)", width: "100%",
-                      outline: "none", fontFamily: "inherit",
+                      background: "var(--muted)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      height: 40,
+                      fontSize: 14,
+                      padding: "0 12px",
+                      color: "var(--foreground)",
+                      width: "100%",
+                      outline: "none",
+                      fontFamily: "inherit",
                     }}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Message</label>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                    Message
+                  </label>
                   <textarea
                     value={contactForm.message}
                     onChange={(e) => setContactForm((f) => ({ ...f, message: e.target.value }))}
                     required
                     rows={4}
                     style={{
-                      background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 12,
-                      fontSize: 14, padding: "10px 12px", color: "var(--foreground)", width: "100%",
-                      outline: "none", fontFamily: "inherit", resize: "none",
+                      background: "var(--muted)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      fontSize: 14,
+                      padding: "10px 12px",
+                      color: "var(--foreground)",
+                      width: "100%",
+                      outline: "none",
+                      fontFamily: "inherit",
+                      resize: "none",
                     }}
                   />
                 </div>
@@ -910,18 +1106,34 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--primary)" }}>
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: "var(--primary)" }}
+              >
                 <Compass className="w-3.5 h-3.5 text-white" />
               </div>
               <span className="font-display font-semibold">TechCoach AI</span>
             </div>
 
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-              <a href="#/blog" className="hover:text-foreground transition-colors">Blog</a>
-              <a href="#about" className="hover:text-foreground transition-colors">About</a>
-              <a href="#contact" className="hover:text-foreground transition-colors">Contact</a>
-              <button onClick={() => openAuth()} className="hover:text-foreground transition-colors">Sign In</button>
+              <a href="#features" className="hover:text-foreground transition-colors">
+                Features
+              </a>
+              <a href="#/blog" className="hover:text-foreground transition-colors">
+                Blog
+              </a>
+              <a href="#about" className="hover:text-foreground transition-colors">
+                About
+              </a>
+              <a href="#contact" className="hover:text-foreground transition-colors">
+                Contact
+              </a>
+              <button
+                onClick={() => openAuth()}
+                className="hover:text-foreground transition-colors"
+              >
+                Sign In
+              </button>
             </div>
 
             <p className="text-xs text-muted-foreground">
@@ -932,11 +1144,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       </footer>
 
       {authOpen && (
-        <AuthModal
-          onClose={() => setAuthOpen(false)}
-          pendingTab={pendingTab}
-          intent={authIntent}
-        />
+        <AuthModal onClose={() => setAuthOpen(false)} pendingTab={pendingTab} intent={authIntent} />
       )}
     </div>
   );

@@ -1,0 +1,7 @@
+{
+  "//": "Strict typecheck used by the incremental strict-mode ratchet (scripts/strict-ratchet.mjs). This is NOT the build/lint config — `npm run lint` (tsconfig.json) stays non-strict and green while we burn the strict error count in strict-baseline.json down to zero. Once it reaches zero, fold `strict: true` into tsconfig.json and delete this file. See docs/rebuild/DEVELOPMENT_PLAN.md Phase 0.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true
+  }
+}

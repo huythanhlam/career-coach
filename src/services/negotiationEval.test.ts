@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const generateWorkflowData = vi.fn();
-vi.mock("@/services/geminiService", () => ({ generateWorkflowData: (...a: unknown[]) => generateWorkflowData(...a) }));
+vi.mock("@/services/geminiService", () => ({
+  generateWorkflowData: (...a: unknown[]) => generateWorkflowData(...a),
+}));
 
-import { evaluateNegotiationTranscript, buildRecruiterSystemInstruction } from "@/services/negotiationEval";
+import {
+  evaluateNegotiationTranscript,
+  buildRecruiterSystemInstruction,
+} from "@/services/negotiationEval";
 
 describe("buildRecruiterSystemInstruction", () => {
   it("keeps the counterpart in character and injects the scenario", () => {
@@ -24,18 +29,20 @@ describe("evaluateNegotiationTranscript", () => {
   beforeEach(() => generateWorkflowData.mockReset());
 
   it("clamps scores and normalizes move ratings", async () => {
-    generateWorkflowData.mockResolvedValue(JSON.stringify({
-      scores: { anchoring: 120, justification: -5, composure: 70, outcome: 60 },
-      overall: 999,
-      summary: "Solid.",
-      strengths: ["Anchored high", 42],
-      improvements: ["Justify more"],
-      moveFeedback: [
-        { move: "Countered at $210k", feedback: "Good anchor", rating: "Strong" },
-        { move: "Caved fast", feedback: "Too quick", rating: "terrible" },
-        { junk: true },
-      ],
-    }));
+    generateWorkflowData.mockResolvedValue(
+      JSON.stringify({
+        scores: { anchoring: 120, justification: -5, composure: 70, outcome: 60 },
+        overall: 999,
+        summary: "Solid.",
+        strengths: ["Anchored high", 42],
+        improvements: ["Justify more"],
+        moveFeedback: [
+          { move: "Countered at $210k", feedback: "Good anchor", rating: "Strong" },
+          { move: "Caved fast", feedback: "Too quick", rating: "terrible" },
+          { junk: true },
+        ],
+      }),
+    );
 
     const r = await evaluateNegotiationTranscript({ role: "SWE" }, [
       { role: "model", text: "What are you looking for?" },
@@ -51,9 +58,11 @@ describe("evaluateNegotiationTranscript", () => {
   });
 
   it("falls back to averaging when overall is missing", async () => {
-    generateWorkflowData.mockResolvedValue(JSON.stringify({
-      scores: { anchoring: 80, justification: 60, composure: 80, outcome: 40 },
-    }));
+    generateWorkflowData.mockResolvedValue(
+      JSON.stringify({
+        scores: { anchoring: 80, justification: 60, composure: 80, outcome: 40 },
+      }),
+    );
     const r = await evaluateNegotiationTranscript({ role: "SWE" }, []);
     expect(r.overall).toBe(65); // (80+60+80+40)/4
   });
