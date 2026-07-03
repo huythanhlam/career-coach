@@ -24,9 +24,7 @@ export function buildProfileBaseline(profile: UserProfile): string {
   if (profile.workHistory?.length) {
     lines.push("\nWork History:");
     profile.workHistory.forEach((w) => {
-      const dates = [w.startDate, endDateLabel(w)]
-        .filter(Boolean)
-        .join(" – ");
+      const dates = [w.startDate, endDateLabel(w)].filter(Boolean).join(" – ");
       lines.push(`- ${w.role}${w.company ? ` at ${w.company}` : ""}${dates ? ` (${dates})` : ""}`);
       if (w.responsibilities?.trim()) {
         lines.push(`  Achievements/Responsibilities: ${w.responsibilities.trim()}`);
@@ -39,7 +37,7 @@ export function buildProfileBaseline(profile: UserProfile): string {
     profile.education.forEach((e) => {
       const degree = [e.degree, e.major].filter(Boolean).join(", ");
       lines.push(
-        `- ${degree || "Studies"}${e.university ? ` at ${e.university}` : ""}${e.graduationYear ? ` (${e.graduationYear})` : ""}`
+        `- ${degree || "Studies"}${e.university ? ` at ${e.university}` : ""}${e.graduationYear ? ` (${e.graduationYear})` : ""}`,
       );
     });
   }
@@ -48,14 +46,18 @@ export function buildProfileBaseline(profile: UserProfile): string {
 }
 
 const SCALE_LABEL: Record<number, string> = {
-  1: "very low", 2: "low", 3: "moderate", 4: "high", 5: "very high",
+  1: "very low",
+  2: "low",
+  3: "moderate",
+  4: "high",
+  5: "very high",
 };
 
 /** Has the user filled in any part of the current-state survey? */
 export function isSurveyStarted(survey?: CareerSurvey): boolean {
   if (!survey) return false;
   return Object.entries(survey).some(
-    ([k, v]) => k !== "updatedAt" && v != null && String(v).trim() !== ""
+    ([k, v]) => k !== "updatedAt" && v != null && String(v).trim() !== "",
   );
 }
 
@@ -133,8 +135,7 @@ export function getProfileIdentity(profile: UserProfile): BaselineIdentity {
   return {
     currentRole: currentRoleOf(profile),
     company: currentJob(profile)?.company?.trim() ?? "",
-    yearsExperience:
-      profile.yearsOfExperience != null ? String(profile.yearsOfExperience) : "",
+    yearsExperience: profile.yearsOfExperience != null ? String(profile.yearsOfExperience) : "",
   };
 }
 
@@ -145,10 +146,7 @@ export function hasProfileBaseline(profile: UserProfile): boolean {
 }
 
 /** Profile OR survey provides at least a current role — enough to plan against. */
-export function hasBaselineIdentity(
-  profile: UserProfile,
-  survey?: CareerSurvey
-): boolean {
+export function hasBaselineIdentity(profile: UserProfile, survey?: CareerSurvey): boolean {
   return hasProfileBaseline(profile) || Boolean(survey?.currentRole?.trim());
 }
 
@@ -173,7 +171,7 @@ const IDENTITY_LABELS: Record<IdentityKey, string> = {
  */
 export function diffIdentityForSync(
   profile: UserProfile,
-  survey?: CareerSurvey
+  survey?: CareerSurvey,
 ): IdentitySyncField[] {
   if (!survey) return [];
   const id = getProfileIdentity(profile);
@@ -201,7 +199,7 @@ export function diffIdentityForSync(
 function upsertCurrentCompany(
   profile: UserProfile,
   company: string,
-  role: string
+  role: string,
 ): WorkExperience[] {
   const wh = (profile.workHistory ?? []).map((w) => ({ ...w }));
   const idx = wh.findIndex((w) => w.current);
@@ -232,7 +230,7 @@ function upsertCurrentCompany(
 export function buildIdentityPatch(
   profile: UserProfile,
   survey: CareerSurvey,
-  keys: Iterable<IdentityKey>
+  keys: Iterable<IdentityKey>,
 ): Partial<UserProfile> {
   const set = new Set(keys);
   const patch: Partial<UserProfile> = {};
@@ -248,7 +246,7 @@ export function buildIdentityPatch(
     patch.workHistory = upsertCurrentCompany(
       profile,
       survey.company.trim(),
-      (patch.currentRole ?? survey.currentRole ?? "").trim()
+      (patch.currentRole ?? survey.currentRole ?? "").trim(),
     );
   }
   return patch;

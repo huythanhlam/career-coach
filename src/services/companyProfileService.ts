@@ -68,7 +68,9 @@ export async function listCompanyProfiles(): Promise<CompanyProfileSummary[]> {
       .select("slug, name, logoUrl:data->>logoUrl, industry:data->keyFacts->>industry")
       .order("name");
     if (error || !data) return [];
-    return (data as { slug: string; name: string; logoUrl: string | null; industry: string | null }[]).map((r) => ({
+    return (
+      data as { slug: string; name: string; logoUrl: string | null; industry: string | null }[]
+    ).map((r) => ({
       slug: r.slug,
       name: r.name,
       logoUrl: r.logoUrl ?? undefined,

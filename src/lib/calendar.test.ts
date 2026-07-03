@@ -21,7 +21,10 @@ describe("buildMonthGrid", () => {
     const year = 2026;
     const month = 5; // June (30 days)
     const grid = buildMonthGrid(year, month);
-    const inMonth = grid.flat().filter((c) => c.inMonth).map((c) => c.date.getDate());
+    const inMonth = grid
+      .flat()
+      .filter((c) => c.inMonth)
+      .map((c) => c.date.getDate());
     expect(inMonth).toEqual(Array.from({ length: 30 }, (_, i) => i + 1));
   });
 

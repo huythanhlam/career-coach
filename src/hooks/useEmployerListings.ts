@@ -109,7 +109,10 @@ export function useEmployerListings(companyId?: string) {
 
   const updateListing = useCallback(async (id: string, patch: Partial<EmployerJobListing>) => {
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-    const { error } = await supabase.from("employer_job_listings").update(listingToRow(patch)).eq("id", id);
+    const { error } = await supabase
+      .from("employer_job_listings")
+      .update(listingToRow(patch))
+      .eq("id", id);
     if (error) console.error("updateListing failed:", error);
   }, []);
 
@@ -154,9 +157,14 @@ export function useEmployerListings(companyId?: string) {
         status: "published",
       };
       setListings((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-      const { error: updateError } = await supabase.from("employer_job_listings").update(listingToRow(patch)).eq("id", id);
+      const { error: updateError } = await supabase
+        .from("employer_job_listings")
+        .update(listingToRow(patch))
+        .eq("id", id);
       if (updateError) console.error("boostListing (update) failed:", updateError);
-      return listings.find((l) => l.id === id) ? { ...listings.find((l) => l.id === id)!, ...patch } : null;
+      return listings.find((l) => l.id === id)
+        ? { ...listings.find((l) => l.id === id)!, ...patch }
+        : null;
     },
     [user, listings],
   );

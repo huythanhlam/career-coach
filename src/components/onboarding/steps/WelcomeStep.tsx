@@ -16,9 +16,11 @@ export function WelcomeStep({ onStart, onSkip, accountType = "seeker" }: Props) 
           className="w-20 h-20 rounded-full flex items-center justify-center"
           style={{ background: "rgba(217,119,87,0.12)" }}
         >
-          {isEmployer
-            ? <Building2 className="w-9 h-9" style={{ color: "var(--primary)" }} />
-            : <Compass className="w-9 h-9" style={{ color: "var(--primary)" }} />}
+          {isEmployer ? (
+            <Building2 className="w-9 h-9" style={{ color: "var(--primary)" }} />
+          ) : (
+            <Compass className="w-9 h-9" style={{ color: "var(--primary)" }} />
+          )}
         </div>
         <div
           className="absolute -top-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
@@ -36,14 +38,21 @@ export function WelcomeStep({ onStart, onSkip, accountType = "seeker" }: Props) 
       </h1>
 
       {isEmployer ? (
-        <p className="text-base mb-10" style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
+        <p
+          className="text-base mb-10"
+          style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}
+        >
           Set up your company profile and post job listings — with AI to draft descriptions,
           generate promo content, and boost your roles to reach candidates.
         </p>
       ) : (
         <>
-          <p className="text-base mb-2" style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-            Let's set up your career profile so every tool — Resume Builder, Resume Analyzer, LinkedIn Optimization — already knows your background.
+          <p
+            className="text-base mb-2"
+            style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}
+          >
+            Let's set up your career profile so every tool — Resume Builder, Resume Analyzer,
+            LinkedIn Optimization — already knows your background.
           </p>
           <p className="text-sm mb-10" style={{ color: "var(--muted-foreground)" }}>
             Import from LinkedIn or paste your resume. Takes about 30 seconds.

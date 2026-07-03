@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 export function useIsMobile(): boolean {
   const query = "(max-width: 767px)";
   const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.matchMedia(query).matches
+    () => typeof window !== "undefined" && window.matchMedia(query).matches,
   );
 
   useEffect(() => {

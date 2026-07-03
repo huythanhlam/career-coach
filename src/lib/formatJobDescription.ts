@@ -3,9 +3,26 @@
 // readable than a flat wall of text. Used by the in-app description renderer.
 
 const NAMED_ENTITIES: Record<string, string> = {
-  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: " ",
-  mdash: "—", ndash: "–", rsquo: "’", lsquo: "‘", ldquo: "“", rdquo: "”",
-  hellip: "…", bull: "•", middot: "·", deg: "°", trade: "™", reg: "®", copy: "©",
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  "#39": "'",
+  nbsp: " ",
+  mdash: "—",
+  ndash: "–",
+  rsquo: "’",
+  lsquo: "‘",
+  ldquo: "“",
+  rdquo: "”",
+  hellip: "…",
+  bull: "•",
+  middot: "·",
+  deg: "°",
+  trade: "™",
+  reg: "®",
+  copy: "©",
 };
 
 function decodeEntities(s: string): string {
@@ -18,7 +35,11 @@ function decodeEntities(s: string): string {
   });
 }
 
-const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+const stripTags = (s: string) =>
+  s
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
 function looksLikeHtml(s: string): boolean {
   return /<\/?(p|div|ul|ol|li|br|h[1-6]|strong|b|em|i|span|a|table|tr|td)\b/i.test(s);
@@ -48,15 +69,23 @@ export function htmlToMarkdown(html: string): string {
   s = s.replace(/<\/(ul|ol)>/gi, "\n\n").replace(/<(ul|ol)\b[^>]*>/gi, "\n");
 
   // Block boundaries.
-  s = s.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|section|article|header|tr|h[1-6])>/gi, "\n\n").replace(/<\/(td|th)>/gi, " ");
+  s = s
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|section|article|header|tr|h[1-6])>/gi, "\n\n")
+    .replace(/<\/(td|th)>/gi, " ");
 
   // Drop anything left, decode entities, tidy whitespace.
   s = decodeEntities(s.replace(/<[^>]+>/g, ""));
-  return s.replace(/[ \t]+/g, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  return s
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 // Section headers commonly found in job descriptions.
-const SECTION_RE = /^(about(?: (?:us|the (?:role|team|company|job)))?|the role|role overview|overview|responsibilities|what you(?:'|’)?ll do|what you will do|your role|day[- ]to[- ]day|requirements|requirements?\s*&?\s*qualifications|qualifications|what we(?:'|’)?re looking for|who you are|must[- ]haves?|nice[- ]to[- ]haves?|preferred qualifications|basic qualifications|skills(?: and experience)?|experience|benefits|perks(?: (?:and|&) benefits)?|what we offer|compensation|salary|pay(?: range)?|why (?:join us|work (?:here|with us))|our team|equal (?:employment )?opportunity|how to apply)\s*:?\s*$/i;
+const SECTION_RE =
+  /^(about(?: (?:us|the (?:role|team|company|job)))?|the role|role overview|overview|responsibilities|what you(?:'|’)?ll do|what you will do|your role|day[- ]to[- ]day|requirements|requirements?\s*&?\s*qualifications|qualifications|what we(?:'|’)?re looking for|who you are|must[- ]haves?|nice[- ]to[- ]haves?|preferred qualifications|basic qualifications|skills(?: and experience)?|experience|benefits|perks(?: (?:and|&) benefits)?|what we offer|compensation|salary|pay(?: range)?|why (?:join us|work (?:here|with us))|our team|equal (?:employment )?opportunity|how to apply)\s*:?\s*$/i;
 
 const BULLET_RE = /^\s*[•▪◦‣·*–—-]\s+/;
 
@@ -67,16 +96,28 @@ function textToMarkdown(text: string): string {
   for (const raw of lines) {
     const line = raw.replace(/\s+$/, "");
     const trimmed = line.trim();
-    if (!trimmed) { out.push(""); continue; }
-    if (BULLET_RE.test(line)) { out.push(line.replace(BULLET_RE, "- ")); continue; }
+    if (!trimmed) {
+      out.push("");
+      continue;
+    }
+    if (BULLET_RE.test(line)) {
+      out.push(line.replace(BULLET_RE, "- "));
+      continue;
+    }
     // A short line that is a known section name (optionally ending with ":") → heading.
-    if (trimmed.length <= 60 && (SECTION_RE.test(trimmed) || (/:$/.test(trimmed) && trimmed.split(/\s+/).length <= 6))) {
+    if (
+      trimmed.length <= 60 &&
+      (SECTION_RE.test(trimmed) || (/:$/.test(trimmed) && trimmed.split(/\s+/).length <= 6))
+    ) {
       out.push(`\n## ${trimmed.replace(/:$/, "")}\n`);
       continue;
     }
     out.push(line);
   }
-  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return out
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** Normalize any job-description string into clean Markdown. */

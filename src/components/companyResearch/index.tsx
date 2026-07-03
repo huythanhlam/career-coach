@@ -28,7 +28,8 @@ function toMarkdown(data: CompanyResearchResult, company: string): string {
     const lines = [`## ${title}`];
     if (s?.summary) lines.push(s.summary);
     (s?.bullets ?? []).forEach((b) => lines.push(`- ${b}`));
-    if (s?.sources?.length) lines.push(`Sources: ${s.sources.map((x) => `[${x.label}](${x.url})`).join(", ")}`);
+    if (s?.sources?.length)
+      lines.push(`Sources: ${s.sources.map((x) => `[${x.label}](${x.url})`).join(", ")}`);
     return lines.join("\n");
   };
   return [
@@ -39,10 +40,20 @@ function toMarkdown(data: CompanyResearchResult, company: string): string {
     sec("Interview tips", data.interviewTips),
     sec("Recent news", data.news),
     sec("Financials", data.financials),
-  ].filter(Boolean).join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
-export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt, onRefreshNews, onRefreshAll, onReset }: CompanyResearchVizProps) {
+export function CompanyResearchViz({
+  data,
+  companyName,
+  isRevalidating,
+  cachedAt,
+  onRefreshNews,
+  onRefreshAll,
+  onReset,
+}: CompanyResearchVizProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -65,7 +76,12 @@ export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt
     <BenefitsGrid key="benefits" section={data.benefits} />,
     <InterviewTipsCard key="interview" section={data.interviewTips} />,
     <NewsTimeline key="news" section={data.news} />,
-    <FinancialsCard key="financials" section={data.financials} companyName={companyName} ticker={data.ticker} />,
+    <FinancialsCard
+      key="financials"
+      section={data.financials}
+      companyName={companyName}
+      ticker={data.ticker}
+    />,
     <ReviewLinksCard key="reviews" company={companyName} />,
   ];
 
@@ -73,22 +89,76 @@ export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Overview banner */}
       <motion.div custom={0} variants={fadeUp} initial="hidden" animate="show">
-        <MentorCard style={{ overflow: "hidden", background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--card)), var(--card))" }}>
+        <MentorCard
+          style={{
+            overflow: "hidden",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--card)), var(--card))",
+          }}
+        >
           <div style={{ padding: "20px 22px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <span style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "color-mix(in srgb, var(--primary) 16%, transparent)" }}>
+            <span
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "color-mix(in srgb, var(--primary) 16%, transparent)",
+              }}
+            >
               <Sparkles className="w-5 h-5" style={{ color: "var(--primary)" }} />
             </span>
             <div style={{ flex: 1 }}>
-              <div className="font-display" style={{ fontSize: 20, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>
+              <div
+                className="font-display"
+                style={{
+                  fontSize: 20,
+                  fontWeight: 600,
+                  color: "var(--foreground)",
+                  marginBottom: 4,
+                }}
+              >
                 {companyName || "Company research"}
               </div>
               {data.overview && (
-                <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: 0, lineHeight: 1.6 }}>{data.overview}</p>
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: "var(--muted-foreground)",
+                    margin: 0,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {data.overview}
+                </p>
               )}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-                {cachedLabel && <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{cachedLabel}</span>}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginTop: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                {cachedLabel && (
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {cachedLabel}
+                  </span>
+                )}
                 {isRevalidating && (
-                  <span style={{ fontSize: 12, color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--primary)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}
+                  >
                     <Loader2 className="w-3 h-3 animate-spin" /> Updating…
                   </span>
                 )}
@@ -100,14 +170,30 @@ export function CompanyResearchViz({ data, companyName, isRevalidating, cachedAt
 
       {/* Action row — kept directly under the header so it's visible without scrolling. */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <button onClick={onRefreshNews} disabled={isRevalidating} style={btnStyle(!!isRevalidating)} title="Re-check the news only (cheapest)">
-          {isRevalidating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh news
+        <button
+          onClick={onRefreshNews}
+          disabled={isRevalidating}
+          style={btnStyle(!!isRevalidating)}
+          title="Re-check the news only (cheapest)"
+        >
+          {isRevalidating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}{" "}
+          Refresh news
         </button>
-        <button onClick={onRefreshAll} disabled={isRevalidating} style={btnStyle(!!isRevalidating)} title="Re-research everything">
+        <button
+          onClick={onRefreshAll}
+          disabled={isRevalidating}
+          style={btnStyle(!!isRevalidating)}
+          title="Re-research everything"
+        >
           <RefreshCw className="w-4 h-4" /> Refresh all
         </button>
         <button onClick={handleCopy} style={btnStyle(false)}>
-          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy summary"}
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}{" "}
+          {copied ? "Copied" : "Copy summary"}
         </button>
         <button onClick={onReset} style={btnStyle(false)}>
           <RotateCcw className="w-4 h-4" /> Start new analysis

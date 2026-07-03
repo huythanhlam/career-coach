@@ -30,7 +30,7 @@ export class ResumeImportError extends Error {
   constructor(
     message: string,
     /** Stage that failed — useful for targeted UI messaging. */
-    public readonly stage: "extract" | "parse" | "empty"
+    public readonly stage: "extract" | "parse" | "empty",
   ) {
     super(message);
     this.name = "ResumeImportError";
@@ -49,12 +49,12 @@ export async function buildResumeDocumentFromText(
   rawText: string,
   sectionOrder?: string[],
   /** Source of the text — tunes the extraction prompt. Defaults to "resume". */
-  sourceType: "resume" | "linkedin" = "resume"
+  sourceType: "resume" | "linkedin" = "resume",
 ): Promise<ResumeImportResult> {
   if (rawText.trim().length < MIN_TEXT_LENGTH) {
     throw new ResumeImportError(
       "Could not read enough text from this resume. Try pasting the text manually.",
-      "empty"
+      "empty",
     );
   }
 
@@ -63,7 +63,7 @@ export async function buildResumeDocumentFromText(
   if (!profile || Object.keys(profile).length === 0) {
     throw new ResumeImportError(
       "We couldn't read any resume details from that file. Please try another file or enter your details manually.",
-      "parse"
+      "parse",
     );
   }
 
@@ -83,7 +83,7 @@ export async function buildResumeDocumentFromText(
 export async function importResumeToDocument(
   file: File,
   sectionOrder?: string[],
-  sourceType: "resume" | "linkedin" = "resume"
+  sourceType: "resume" | "linkedin" = "resume",
 ): Promise<ResumeImportResult> {
   // Deterministic text extraction (also validates type/size).
   let rawText: string;

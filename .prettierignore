@@ -1,0 +1,6 @@
+dist/
+node_modules/
+supabase/types.ts
+data/
+public/
+*.md

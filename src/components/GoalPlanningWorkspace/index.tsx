@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ListChecks, CheckCircle2, Circle, MessageCircleHeart, Loader2, Sparkles } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import {
-  isProfileThin, buildProfileBaseline, buildSurveySummary,
-  getProfileIdentity, hasBaselineIdentity, hasProfileBaseline,
+  isProfileThin,
+  buildProfileBaseline,
+  getProfileIdentity,
+  hasBaselineIdentity,
+  hasProfileBaseline,
   type IdentitySyncField,
 } from "@/lib/careerBaseline";
 import type { GoalPlanIntakeData } from "@/components/GoalPlanIntakeForm";
@@ -89,18 +92,21 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
 
   const filteredPlans = useMemo(() => {
     const q = planSearch.trim().toLowerCase();
-    const list = savedPlans.filter((p) =>
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.goalType.toLowerCase().includes(q) ||
-      (p.goalSummary ?? "").toLowerCase().includes(q)
+    const list = savedPlans.filter(
+      (p) =>
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.goalType.toLowerCase().includes(q) ||
+        (p.goalSummary ?? "").toLowerCase().includes(q),
     );
     const byNewest = (a: SavedCareerPlan, b: SavedCareerPlan) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     return [...list].sort((a, b) =>
-      planSort === "newest" ? byNewest(a, b)
-        : planSort === "oldest" ? -byNewest(a, b)
-        : a.name.localeCompare(b.name)
+      planSort === "newest"
+        ? byNewest(a, b)
+        : planSort === "oldest"
+          ? -byNewest(a, b)
+          : a.name.localeCompare(b.name),
     );
   }, [savedPlans, planSearch, planSort]);
 
@@ -113,19 +119,25 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
     return [...groups.entries()];
   }, [filteredPlans]);
 
-  const toggleGroup = useCallback((key: string) =>
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    }), []);
+  const toggleGroup = useCallback(
+    (key: string) =>
+      setCollapsedGroups((prev) => {
+        const next = new Set(prev);
+        next.has(key) ? next.delete(key) : next.add(key);
+        return next;
+      }),
+    [],
+  );
 
   const handleGoToList = useCallback(() => setMode("list"), []);
   const handleGoToPlan = useCallback(() => setMode("plan"), []);
   const handleGoToResponses = useCallback(() => setMode("responses"), []);
   const handleOpenSurvey = useCallback(() => setBaselineSurveyOpen(true), []);
   const handleCloseSurvey = useCallback(() => setBaselineSurveyOpen(false), []);
-  const handleSaveDialogCancel = useCallback(() => { setShowSaveDialog(false); setSaveAsCopy(false); }, []);
+  const handleSaveDialogCancel = useCallback(() => {
+    setShowSaveDialog(false);
+    setSaveAsCopy(false);
+  }, []);
   const handleSwitcherToggle = useCallback(() => setSwitcherOpen((o) => !o), []);
   const handleSwitcherClose = useCallback(() => setSwitcherOpen(false), []);
   const handleGroupByType = useCallback(() => setGroupByType((g) => !g), []);
@@ -180,9 +192,21 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
     draftMarkdown,
   });
 
-  const handleIntakeSubmit = useCallback((intake: GoalPlanIntakeData) => { setEditingPlanId(null); actions.handleGenerate(intake); }, [actions.handleGenerate]);
-  const handleSaveDialog = useCallback(() => actions.openSaveDialog(false), [actions.openSaveDialog]);
-  const handleSaveAsCopy = useCallback(() => actions.openSaveDialog(true), [actions.openSaveDialog]);
+  const handleIntakeSubmit = useCallback(
+    (intake: GoalPlanIntakeData) => {
+      setEditingPlanId(null);
+      actions.handleGenerate(intake);
+    },
+    [actions.handleGenerate],
+  );
+  const handleSaveDialog = useCallback(
+    () => actions.openSaveDialog(false),
+    [actions.openSaveDialog],
+  );
+  const handleSaveAsCopy = useCallback(
+    () => actions.openSaveDialog(true),
+    [actions.openSaveDialog],
+  );
 
   /* ════════════════════════════ EDIT RESPONSES ═════════════════════ */
   if (mode === "responses") {
@@ -240,7 +264,11 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
             setSaveName={setSaveName}
             isSaving={isSaving}
             title={saveAsCopy ? "Save as copy" : editingPlanId ? "Save changes" : "Save plan"}
-            subtitle={saveAsCopy ? "This creates a new plan from your edits, leaving the original untouched." : undefined}
+            subtitle={
+              saveAsCopy
+                ? "This creates a new plan from your edits, leaving the original untouched."
+                : undefined
+            }
             onCancel={handleSaveDialogCancel}
             onSave={actions.handleSave}
           />
@@ -251,9 +279,28 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
 
   /* ═══════════════════════════════ LIST VIEW ═══════════════════════ */
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--background)" }}>
-      <header style={{ padding: "20px 32px", borderBottom: "1px solid var(--border)", background: "var(--background)", flexShrink: 0 }}>
-        <h2 className="font-display" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--foreground)", margin: "0 0 4px" }}>
+    <div
+      className="flex-1 flex flex-col h-full overflow-hidden"
+      style={{ background: "var(--background)" }}
+    >
+      <header
+        style={{
+          padding: "20px 32px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--background)",
+          flexShrink: 0,
+        }}
+      >
+        <h2
+          className="font-display"
+          style={{
+            fontSize: 22,
+            fontWeight: 600,
+            letterSpacing: "-0.015em",
+            color: "var(--foreground)",
+            margin: "0 0 4px",
+          }}
+        >
           {workflowsConfig.goal_planning.title}
         </h2>
         <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
@@ -262,23 +309,60 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
       </header>
 
       <div className="flex-1 overflow-auto no-scrollbar p-4 sm:p-8">
-        <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
-
+        <div
+          style={{
+            maxWidth: 760,
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 24,
+          }}
+        >
           {thin && hasBaseline && (
-            <div style={{ display: "flex", gap: 12, padding: "16px 18px", borderRadius: 16, background: "color-mix(in srgb, var(--marigold) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--marigold) 40%, transparent)" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                padding: "16px 18px",
+                borderRadius: 16,
+                background: "color-mix(in srgb, var(--marigold) 12%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--marigold) 40%, transparent)",
+              }}
+            >
               <AlertCircle className="w-5 h-5 shrink-0" style={{ color: "var(--marigold)" }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 2 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    marginBottom: 2,
+                  }}
+                >
                   Your profile is the baseline for your plan
                 </div>
                 <div style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-                  Add your current role, skills, and work history so the coach can tailor a plan to your real background. You can still generate a plan now.
+                  Add your current role, skills, and work history so the coach can tailor a plan to
+                  your real background. You can still generate a plan now.
                 </div>
               </div>
               {onNavigate && (
                 <button
                   onClick={() => onNavigate("profile_settings")}
-                  style={{ alignSelf: "center", whiteSpace: "nowrap", height: 34, padding: "0 14px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "var(--foreground)", cursor: "pointer" }}
+                  style={{
+                    alignSelf: "center",
+                    whiteSpace: "nowrap",
+                    height: 34,
+                    padding: "0 14px",
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    fontFamily: "inherit",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    cursor: "pointer",
+                  }}
                 >
                   Complete profile
                 </button>

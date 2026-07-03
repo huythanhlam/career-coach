@@ -52,7 +52,10 @@ function escapeRegExp(s: string): string {
 /** Replace any document block in chat text with a short placeholder for display. */
 export function maskDocumentForDisplay(text: string, placeholder = "*(Updated document)*"): string {
   if (text.includes(DOC_START)) {
-    const re = new RegExp(`${escapeRegExp(DOC_START)}[\\s\\S]*?(?:${escapeRegExp(DOC_END)}|$)`, "g");
+    const re = new RegExp(
+      `${escapeRegExp(DOC_START)}[\\s\\S]*?(?:${escapeRegExp(DOC_END)}|$)`,
+      "g",
+    );
     return text.replace(re, placeholder);
   }
   if (text.includes("```markdown") || text.includes("```md")) {

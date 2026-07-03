@@ -14,11 +14,26 @@ import type React from "react";
 /** Normalise smart quotes / dashes / nbsp to their ASCII equivalents (1 char → 1 char). */
 export function normalizeChar(ch: string): string {
   switch (ch.charCodeAt(0)) {
-    case 0x2018: case 0x2019: case 0x201a: case 0x201b: return "'";
-    case 0x201c: case 0x201d: case 0x201e: case 0x201f: return '"';
-    case 0x2013: case 0x2014: case 0x2212: return "-";
-    case 0x00a0: case 0x2009: case 0x202f: return " ";
-    default: return ch;
+    case 0x2018:
+    case 0x2019:
+    case 0x201a:
+    case 0x201b:
+      return "'";
+    case 0x201c:
+    case 0x201d:
+    case 0x201e:
+    case 0x201f:
+      return '"';
+    case 0x2013:
+    case 0x2014:
+    case 0x2212:
+      return "-";
+    case 0x00a0:
+    case 0x2009:
+    case 0x202f:
+      return " ";
+    default:
+      return ch;
   }
 }
 
@@ -44,28 +59,43 @@ function blockBoundaryFlags(nodes: Text[]): boolean[] {
   return flags;
 }
 
-export interface TextMatch { startNode: number; startOffset: number; endNode: number; endOffset: number; }
+export interface TextMatch {
+  startNode: number;
+  startOffset: number;
+  endNode: number;
+  endOffset: number;
+}
 
 /** Locate `needle` across `nodes`, tolerant of whitespace runs, line breaks, block
  *  boundaries and smart quotes/dashes. Returns node-relative offsets (end exclusive),
  *  or null. `boundaries` defaults to DOM-derived block boundaries (injectable for tests). */
-export function locateTextNodes(nodes: Text[], needle: string, boundaries?: boolean[]): TextMatch | null {
+export function locateTextNodes(
+  nodes: Text[],
+  needle: string,
+  boundaries?: boolean[],
+): TextMatch | null {
   const flags = boundaries ?? blockBoundaryFlags(nodes);
   let hay = "";
   const map: { node: number; offset: number }[] = [];
   let prevSpace = false;
   for (let ni = 0; ni < nodes.length; ni++) {
     if (ni > 0 && flags[ni] && !prevSpace && hay.length) {
-      hay += " "; map.push({ node: ni, offset: 0 }); prevSpace = true;
+      hay += " ";
+      map.push({ node: ni, offset: 0 });
+      prevSpace = true;
     }
     const t = nodes[ni].textContent ?? "";
     for (let oi = 0; oi < t.length; oi++) {
       const c = normalizeChar(t[oi]);
       if (/\s/.test(c)) {
         if (prevSpace) continue;
-        hay += " "; map.push({ node: ni, offset: oi }); prevSpace = true;
+        hay += " ";
+        map.push({ node: ni, offset: oi });
+        prevSpace = true;
       } else {
-        hay += c; map.push({ node: ni, offset: oi }); prevSpace = false;
+        hay += c;
+        map.push({ node: ni, offset: oi });
+        prevSpace = false;
       }
     }
   }
@@ -75,7 +105,12 @@ export function locateTextNodes(nodes: Text[], needle: string, boundaries?: bool
   if (idx === -1) return null;
   const start = map[idx];
   const end = map[idx + need.length - 1];
-  return { startNode: start.node, startOffset: start.offset, endNode: end.node, endOffset: end.offset + 1 };
+  return {
+    startNode: start.node,
+    startOffset: start.offset,
+    endNode: end.node,
+    endOffset: end.offset + 1,
+  };
 }
 
 export function replaceTextNodes(nodes: Text[], m: TextMatch, suggested: string): void {
@@ -84,7 +119,8 @@ export function replaceTextNodes(nodes: Text[], m: TextMatch, suggested: string)
     nodes[m.startNode].textContent = t.slice(0, m.startOffset) + suggested + t.slice(m.endOffset);
     return;
   }
-  nodes[m.startNode].textContent = (nodes[m.startNode].textContent ?? "").slice(0, m.startOffset) + suggested;
+  nodes[m.startNode].textContent =
+    (nodes[m.startNode].textContent ?? "").slice(0, m.startOffset) + suggested;
   for (let i = m.startNode + 1; i <= m.endNode; i++) {
     const t = nodes[i].textContent ?? "";
     nodes[i].textContent = i === m.endNode ? t.slice(m.endOffset) : "";
@@ -103,15 +139,21 @@ export function revealTextInEditor(
   const range = document.createRange();
   range.setStart(nodes[m.startNode], m.startOffset);
   range.setEnd(nodes[m.endNode], m.endOffset);
-  (range.startContainer.parentElement ?? root).scrollIntoView({ behavior: "smooth", block: "center" });
+  (range.startContainer.parentElement ?? root).scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
   const highlights = (CSS as unknown as { highlights?: Map<string, unknown> }).highlights;
-  const HighlightCtor = (globalThis as unknown as { Highlight?: new (r: Range) => unknown }).Highlight;
+  const HighlightCtor = (globalThis as unknown as { Highlight?: new (r: Range) => unknown })
+    .Highlight;
   if (highlights && HighlightCtor) {
     highlights.set("tailor-revise", new HighlightCtor(range));
     if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     revealTimerRef.current = window.setTimeout(() => highlights.delete("tailor-revise"), 2400);
   } else {
-    const sel = window.getSelection(); sel?.removeAllRanges(); sel?.addRange(range);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
   }
 }
 
@@ -128,7 +170,8 @@ export function setTextHighlight(
   const startNode = nodes[m.startNode];
   const block = startNode.parentElement?.closest(BLOCK_SELECTOR) as HTMLElement | null;
   (block ?? startNode.parentElement)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  const HighlightCtor = (window as unknown as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
+  const HighlightCtor = (window as unknown as { Highlight?: new (...r: Range[]) => unknown })
+    .Highlight;
   const registry = (CSS as unknown as { highlights?: Map<string, unknown> }).highlights;
   if (HighlightCtor && registry) {
     try {
@@ -136,9 +179,17 @@ export function setTextHighlight(
       range.setStart(nodes[m.startNode], m.startOffset);
       range.setEnd(nodes[m.endNode], m.endOffset);
       registry.set(highlightName, new HighlightCtor(range));
-      clearHighlightRef.current = () => { try { registry.delete(highlightName); } catch { /* noop */ } };
+      clearHighlightRef.current = () => {
+        try {
+          registry.delete(highlightName);
+        } catch {
+          /* noop */
+        }
+      };
       return;
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
   }
   const el = (block ?? startNode.parentElement) as HTMLElement | null;
   if (!el) return;
@@ -146,13 +197,20 @@ export function setTextHighlight(
   const prevRadius = el.style.borderRadius;
   el.style.backgroundColor = "rgba(217,119,87,0.18)";
   el.style.borderRadius = "4px";
-  clearHighlightRef.current = () => { el.style.backgroundColor = prevBg; el.style.borderRadius = prevRadius; };
+  clearHighlightRef.current = () => {
+    el.style.backgroundColor = prevBg;
+    el.style.borderRadius = prevRadius;
+  };
 }
 
 export function replaceInHtml(html: string, original: string, suggested: string): string {
   if (!original || !suggested || original === suggested) return html;
   if (html.includes(original)) return html.replace(original, suggested);
-  const encoded = original.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const encoded = original
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
   if (encoded !== original && html.includes(encoded)) return html.replace(encoded, suggested);
   try {
     const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
@@ -162,5 +220,7 @@ export function replaceInHtml(html: string, original: string, suggested: string)
     if (!m) return html;
     replaceTextNodes(nodes, m, suggested);
     return root.innerHTML;
-  } catch { return html; }
+  } catch {
+    return html;
+  }
 }

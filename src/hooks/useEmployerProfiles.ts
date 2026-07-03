@@ -95,7 +95,10 @@ export function useEmployerProfiles() {
 
   const updateProfile = useCallback(async (id: string, patch: Partial<EmployerCompanyProfile>) => {
     setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    const { error } = await supabase.from("employer_company_profiles").update(companyToRow(patch)).eq("id", id);
+    const { error } = await supabase
+      .from("employer_company_profiles")
+      .update(companyToRow(patch))
+      .eq("id", id);
     if (error) console.error("updateProfile failed:", error);
   }, []);
 

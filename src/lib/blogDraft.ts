@@ -129,7 +129,7 @@ function dedupeSources(sources: BlogSource[]): BlogSource[] {
 export function parseWriterDraft(
   text: string,
   brief: TopicBrief,
-  sources: BlogSource[]
+  sources: BlogSource[],
 ): (PostDraft & { readingMinutes: number }) | null {
   const raw = parseJsonResponse<RawDraft>(text);
   const content = (raw?.content ?? "").trim();
