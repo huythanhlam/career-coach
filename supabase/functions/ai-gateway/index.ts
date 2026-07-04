@@ -225,12 +225,17 @@ Deno.serve(async (req) => {
     const config: Record<string, any> = {
       systemInstruction: systemInstruction || undefined,
       maxOutputTokens: 8096,
+      // gemini-2.5-flash is a *thinking* model: thinking tokens count against
+      // maxOutputTokens and can consume the whole budget, so the model returns
+      // an EMPTY answer (finishReason MAX_TOKENS, zero visible text) — e.g. the
+      // interviewer never speaks and no error surfaces. None of these workflows
+      // need extended reasoning, so disable thinking for ALL calls. (Previously
+      // only grounded calls did this, which left streaming + structured calls
+      // exposed to silent empty responses.)
+      thinkingConfig: { thinkingBudget: 0 },
     };
     if (tools) {
       config.tools = tools;
-      // "thinking" tokens count against maxOutputTokens and can truncate a
-      // structured answer mid-string; disable for grounded structured calls.
-      config.thinkingConfig = { thinkingBudget: 0 };
     }
     // Native structured output — Gemini forbids responseSchema together with
     // tools, so it is only attached to non-grounded calls.
