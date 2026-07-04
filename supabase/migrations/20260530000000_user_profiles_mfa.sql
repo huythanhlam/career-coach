@@ -12,7 +12,7 @@ create table if not exists public.profiles (
   github        text,
   portfolio     text,
   target_role   text,
-  current_role  text,
+  "current_role"  text,
   summary       text,
   skills        text[]  default '{}',
   work_history  jsonb   default '[]',
