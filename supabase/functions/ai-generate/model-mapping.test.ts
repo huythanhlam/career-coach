@@ -4,13 +4,14 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODELS } from "../../../src/config/models";
 
-// Regression guard for the mock-interview "Gateway 500: AI generation failed"
-// bug. The edge function maps the Claude tiers to a Gemini model and passes
-// gemini-* model ids straight through. The 3.x flash family (e.g.
-// gemini-3.1-flash-lite) returns HTTP 429 "quota exceeded" on the project's
-// Gemini plan, so any call routed to it threw and surfaced as a gateway 500.
-// gemini-2.5-flash is verified working on the current key — keep everything
-// pointed at a model the key can actually reach.
+// Guards the shared MODELS config against pointing at a model the Gemini key
+// can't reach (which surfaces as a gateway 500 from a 429 "quota exceeded").
+// The quota picture flipped: gemini-2.5-flash began 429ing on the project's
+// plan, so the tiers were moved to gemini-3.1-flash-lite, which has quota. This
+// test pins MODELS to that intended id so an accidental edit is caught.
+//
+// The retired `ai-generate` function's own Claude→Gemini remap is unrelated and
+// still targets gemini-2.5-flash; the first test only documents that legacy path.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const edgeSource = readFileSync(join(here, "index.ts"), "utf8");
@@ -32,11 +33,11 @@ describe("ai-generate model mapping", () => {
     }
   });
 
-  it("never leaves a gemini-3.x model id in the shared MODELS config", () => {
-    // These ids flow straight through toGeminiModel's pass-through branch, so a
-    // 3.x id here reintroduces the same 429 → gateway 500 failure.
+  it("pins every shared MODELS tier to the quota-having gemini-3.1-flash-lite", () => {
+    // gemini-2.5-flash started 429ing on the project's plan; the tiers moved to
+    // gemini-3.1-flash-lite, which has quota. Pin it so a stray edit is caught.
     for (const [tier, id] of Object.entries(MODELS)) {
-      expect(id.startsWith("gemini-3"), `${tier} is ${id}`).toBe(false);
+      expect(id, `${tier} is ${id}`).toBe("gemini-3.1-flash-lite");
     }
   });
 });
