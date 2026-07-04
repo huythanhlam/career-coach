@@ -84,15 +84,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # v2 runs on Node 24 (v1 targets the now-deprecated Node 20 runtime).
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
           version: latest
 
+      # The project ref is public (it's in the app's Supabase URL), so it is
+      # hardcoded here — only SUPABASE_ACCESS_TOKEN needs to be a repo secret.
       - name: Deploy ai-gateway
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           supabase functions deploy ai-gateway \
-            --project-ref "${{ vars.SUPABASE_PROJECT_REF }}" \
+            --project-ref odqotbyqxdyskoiuijah \
             --no-verify-jwt
