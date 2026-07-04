@@ -57,3 +57,42 @@ jobs:
       # those separately with `npm audit`.
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+  # Deploy the ai-gateway Edge Function to prod after checks pass. Runs ONLY on
+  # pushes to main (never on PRs or forks), so the deploy token is never exposed
+  # to untrusted PR code. This job deliberately does NOT run `npm ci` or any
+  # build step: it executes only the trusted Supabase CLI against the function
+  # source, so no third-party dependency code runs in the job that holds
+  # SUPABASE_ACCESS_TOKEN — preserving the supply-chain posture of the checks job.
+  #
+  # `--no-verify-jwt` is REQUIRED: the function does its own auth (verifyUser)
+  # after the CORS/OPTIONS branch, so the platform JWT gate must be off or the
+  # unauthenticated preflight would be rejected (CORS failure in the browser).
+  #
+  # Runtime secrets (GEMINI_API_KEY, ALLOWED_ORIGIN, …) live on the Supabase
+  # project and persist across deploys — this step ships code only.
+  #
+  # Requires two repo settings:
+  #   - secret  SUPABASE_ACCESS_TOKEN  (Supabase account access token)
+  #   - var     SUPABASE_PROJECT_REF   (e.g. odqotbyqxdyskoiuijah)
+  deploy-ai-gateway:
+    needs: build-and-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: deploy-ai-gateway
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy ai-gateway
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy ai-gateway \
+            --project-ref "${{ vars.SUPABASE_PROJECT_REF }}" \
+            --no-verify-jwt
