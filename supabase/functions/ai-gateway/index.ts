@@ -39,6 +39,22 @@ const RATE_MAX_PER_WINDOW = 20;
 // Hard monthly per-user token cap (input+output), overridable via secret.
 const MONTHLY_TOKEN_CAP = Number(Deno.env.get("AI_MONTHLY_TOKEN_CAP") ?? "2000000");
 
+/** Recursively drop the JSON Schema `$schema` dialect marker Gemini rejects. */
+// deno-lint-ignore no-explicit-any
+function stripSchemaKeyword(node: any): any {
+  if (Array.isArray(node)) return node.map(stripSchemaKeyword);
+  if (node && typeof node === "object") {
+    // deno-lint-ignore no-explicit-any
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "$schema") continue;
+      out[k] = stripSchemaKeyword(v);
+    }
+    return out;
+  }
+  return node;
+}
+
 function json(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -238,10 +254,13 @@ Deno.serve(async (req) => {
       config.tools = tools;
     }
     // Native structured output — Gemini forbids responseSchema together with
-    // tools, so it is only attached to non-grounded calls.
+    // tools, so it is only attached to non-grounded calls. Gemini's proto-backed
+    // parser rejects the `$schema` dialect marker (Zod stamps one) with
+    // `Unknown name "$schema"`; strip it here too so the gateway never forwards a
+    // schema Gemini refuses, independent of what the client sent.
     if (responseSchema && !enableSearch) {
       config.responseMimeType = "application/json";
-      config.responseJsonSchema = responseSchema;
+      config.responseJsonSchema = stripSchemaKeyword(responseSchema);
     }
 
     // ── Streaming (SSE) branch ────────────────────────────────────────────────
