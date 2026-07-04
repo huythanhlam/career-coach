@@ -85,10 +85,16 @@ jobs:
         uses: actions/checkout@v5
 
       # v2 runs on Node 24 (v1 targets the now-deprecated Node 20 runtime).
+      # Pin an explicit version instead of `latest`: resolving "latest" makes an
+      # unauthenticated GitHub API call that gets rate-limited on shared runners
+      # ("Failed to resolve latest Supabase CLI release"). GITHUB_TOKEN also
+      # authenticates the release asset fetch (60 → 5000 req/hr).
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: latest
+          version: 2.109.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # The project ref is public (it's in the app's Supabase URL), so it is
       # hardcoded here — only SUPABASE_ACCESS_TOKEN needs to be a repo secret.
