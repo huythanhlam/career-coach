@@ -18,13 +18,13 @@ import { corsHeaders } from "../_shared/cors.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Real Gemini model ids per tier. MUST mirror `src/config/models.ts` MODELS
- *  (a CI assertion keeps them in lockstep — dev == prod). All tiers point at
- *  gemini-2.5-flash for now: the 3.x flash family 429s "quota exceeded" on this
- *  Gemini plan (PR #76). The eval suite gates any bump back to 3.x. */
+ *  (dev == prod). All tiers point at gemini-3.1-flash-lite: gemini-2.5-flash
+ *  started returning HTTP 429 "quota exceeded" on this Gemini plan, so the tiers
+ *  were moved to 3.1-flash-lite, which has quota (reverses the PR #76 pin). */
 const TIER_MODELS: Record<string, string> = {
-  FAST: "gemini-2.5-flash",
-  QUALITY: "gemini-2.5-flash",
-  RESEARCH: "gemini-2.5-flash",
+  FAST: "gemini-3.1-flash-lite",
+  QUALITY: "gemini-3.1-flash-lite",
+  RESEARCH: "gemini-3.1-flash-lite",
 };
 
 /** Gemini list prices (USD per 1M tokens, in/out) — see DEVELOPMENT_PLAN §9. */
@@ -241,13 +241,13 @@ Deno.serve(async (req) => {
     const config: Record<string, any> = {
       systemInstruction: systemInstruction || undefined,
       maxOutputTokens: 8096,
-      // gemini-2.5-flash is a *thinking* model: thinking tokens count against
-      // maxOutputTokens and can consume the whole budget, so the model returns
-      // an EMPTY answer (finishReason MAX_TOKENS, zero visible text) — e.g. the
-      // interviewer never speaks and no error surfaces. None of these workflows
-      // need extended reasoning, so disable thinking for ALL calls. (Previously
-      // only grounded calls did this, which left streaming + structured calls
-      // exposed to silent empty responses.)
+      // The Gemini flash models are *thinking* models: thinking tokens count
+      // against maxOutputTokens and can consume the whole budget, so the model
+      // returns an EMPTY answer (finishReason MAX_TOKENS, zero visible text) —
+      // e.g. the interviewer never speaks and no error surfaces. None of these
+      // workflows need extended reasoning, so disable thinking for ALL calls.
+      // (Previously only grounded calls did this, which left streaming +
+      // structured calls exposed to silent empty responses.)
       thinkingConfig: { thinkingBudget: 0 },
     };
     if (tools) {
