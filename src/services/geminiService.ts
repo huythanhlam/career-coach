@@ -4,7 +4,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 import { MODELS } from "@/config/models";
 import { runWorkflow } from "@/ai/client";
-import { resumeAnalysisWorkflow } from "@/ai/workflows/resumeAnalysis";
+import { resumeAnalysisWorkflow, type ResumeAnalysisOutput } from "@/ai/workflows/resumeAnalysis";
+import {
+  resumeAnalysisCacheKey,
+  getCachedResumeAnalysis,
+  putCachedResumeAnalysis,
+} from "@/services/resumeAnalysisCache";
 import { linkedinAnalysisWorkflow } from "@/ai/workflows/linkedinAnalysis";
 import { tailorResumeWorkflow } from "@/ai/workflows/tailorResume";
 import { milestoneExtractionWorkflow } from "@/ai/workflows/milestoneExtraction";
@@ -263,6 +268,22 @@ export async function generateBlogDraft(topic: {
 // module `src/ai/workflows/resumeAnalysis.ts` (AI Core v2). This function is a
 // thin adapter that maps the workflow result to the existing UI shape.
 
+/** Map a raw workflow analysis onto the UI shape, clamping the score. */
+function toResumeAnalysisResult(
+  data: ResumeAnalysisOutput,
+  resumeText: string,
+): ResumeAnalysisResult {
+  const overallScore = Number.isFinite(data.overallScore)
+    ? Math.min(100, Math.max(0, Math.round(data.overallScore)))
+    : null;
+  return {
+    resumeText: data.resumeText || resumeText,
+    overallScore,
+    summary: data.summary,
+    improvements: data.improvements,
+  };
+}
+
 export async function analyzeResume(
   resumeText: string,
   jdText: string,
@@ -271,19 +292,20 @@ export async function analyzeResume(
   // Migrated onto AI Core v2: native responseSchema + Zod validation via the
   // `ai-gateway` client. No "return ONLY JSON" prompt, no loose-JSON recovery.
   const jd = jdText || jdUrl;
+
+  // Result cache: a byte-identical (resumeText, jd) yields the same analysis, so
+  // serve the stored result instead of spending another Gemini call. Editing the
+  // resume or changing the target job produces a new key (natural invalidation).
+  const cacheKey = await resumeAnalysisCacheKey(resumeText, jd);
+  const cached = await getCachedResumeAnalysis(cacheKey);
+  if (cached) return toResumeAnalysisResult(cached.data, resumeText);
+
   const result = await runWorkflow(resumeAnalysisWorkflow, { resumeText, jd });
 
   if (result.status === "ok") {
-    const { data } = result;
-    const overallScore = Number.isFinite(data.overallScore)
-      ? Math.min(100, Math.max(0, Math.round(data.overallScore)))
-      : null;
-    return {
-      resumeText: data.resumeText || resumeText,
-      overallScore,
-      summary: data.summary,
-      improvements: data.improvements,
-    };
+    // Fire-and-forget: never block the response on the cache write.
+    void putCachedResumeAnalysis(cacheKey, result.data);
+    return toResumeAnalysisResult(result.data, resumeText);
   }
   return { resumeText, overallScore: null, summary: result.error, improvements: [] };
 }
@@ -708,6 +730,31 @@ export function createTechCoachChat(systemInstruction: string, _enableSearch?: b
  * Seed `history` with prior turns (e.g. a previously generated plan) to resume
  * a saved coaching session.
  */
+/** Char budget for the replayed coaching transcript (mirrors the 20k cap used by
+ * evaluateInterviewTranscript). Exported for tests. */
+export const COACHING_TRANSCRIPT_CHAR_BUDGET = 20_000;
+
+/**
+ * Serialize the most-recent turns within a char budget. The AI gateway is
+ * stateless, so the whole transcript is re-sent on every turn; without a bound a
+ * long coaching session's input tokens grow unbounded (O(n²) over the session).
+ * Whole turns are kept (never split mid-turn); the single most-recent turn is
+ * always included even if it alone exceeds the budget.
+ */
+export function windowCoachingTranscript(
+  turns: { role: "user" | "model"; text: string }[],
+  budget: number = COACHING_TRANSCRIPT_CHAR_BUDGET,
+): string {
+  const lines = turns.map((t) => `${t.role === "user" ? "User" : "Coach"}: ${t.text}`);
+  let transcript = "";
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const next = transcript ? `${lines[i]}\n\n${transcript}` : lines[i];
+    if (transcript && next.length > budget) break;
+    transcript = next;
+  }
+  return transcript;
+}
+
 export function createCoachingChat(
   systemInstruction: string,
   history: { role: "user" | "model"; text: string }[] = [],
@@ -715,9 +762,7 @@ export function createCoachingChat(
   const turns = [...history];
   return {
     sendMessageStream: async ({ message }: { message: string }) => {
-      const transcript = turns
-        .map((t) => `${t.role === "user" ? "User" : "Coach"}: ${t.text}`)
-        .join("\n\n");
+      const transcript = windowCoachingTranscript(turns);
       const prompt = transcript
         ? `Conversation so far:\n${transcript}\n\nUser: ${message}\n\nCoach:`
         : message;
