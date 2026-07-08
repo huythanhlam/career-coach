@@ -64,6 +64,32 @@ describe("recordEvent", () => {
     });
   });
 
+  it("clamps salience to 1–5 and caps at 5 rows before insert", async () => {
+    runWorkflow.mockResolvedValue({
+      status: "ok",
+      data: {
+        memories: [
+          { kind: "fact", content: "a", salience: 9 }, // -> 5
+          { kind: "fact", content: "b", salience: 0 }, // -> 1
+          { kind: "fact", content: "c", salience: 3.7 }, // -> 4
+          { kind: "fact", content: "d", salience: 5 },
+          { kind: "fact", content: "e", salience: 1 },
+          { kind: "fact", content: "f", salience: 4 }, // 6th — dropped
+        ],
+      },
+    });
+    const q = makeQuery({ error: null });
+    fromMock.mockReturnValue(q);
+
+    await recordEvent("mock_interview", "x");
+
+    const rows = q.insert.mock.calls[0][0];
+    expect(rows).toHaveLength(5);
+    expect(rows[0].salience).toBe(5);
+    expect(rows[1].salience).toBe(1);
+    expect(rows[2].salience).toBe(4);
+  });
+
   it("does nothing when the user is signed out", async () => {
     getUserMock.mockResolvedValue({ data: { user: null } });
     await recordEvent("goal_planner", "saved a plan");

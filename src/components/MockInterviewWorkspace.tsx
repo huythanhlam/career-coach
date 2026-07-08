@@ -637,7 +637,6 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
-  const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const chatRef = useRef<CoachingSession | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -2411,7 +2410,6 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                     prev?.overallScore != null && s.overallScore != null
                       ? s.overallScore - prev.overallScore
                       : null;
-                  const open = openHistoryId === s.id;
                   return (
                     <div
                       key={s.id}
@@ -2475,9 +2473,14 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                           </div>
                         </div>
                         <button
-                          onClick={() => setOpenHistoryId(open ? null : s.id)}
-                          aria-label={open ? "Hide session details" : "Review session details"}
-                          aria-expanded={open}
+                          onClick={() =>
+                            setMode({
+                              kind: "review",
+                              session: s,
+                              previousOverall: prev?.overallScore,
+                            })
+                          }
+                          aria-label="Review full session feedback"
                           style={{
                             height: 34,
                             padding: "0 14px",
@@ -2491,7 +2494,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                             cursor: "pointer",
                           }}
                         >
-                          {open ? "Hide" : "Review"}
+                          Review
                         </button>
                         <button
                           onClick={() => deleteSession(s.id)}
@@ -2513,43 +2516,6 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      {open && (
-                        <div
-                          style={{
-                            borderTop: "1px solid var(--border)",
-                            padding: 18,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 14,
-                          }}
-                        >
-                          {s.scores && <ScoreBars scores={s.scores} />}
-                          {s.summary && (
-                            <p
-                              style={{
-                                fontSize: 13,
-                                color: "var(--muted-foreground)",
-                                lineHeight: 1.6,
-                                margin: 0,
-                              }}
-                            >
-                              {s.summary}
-                            </p>
-                          )}
-                          {s.improvements?.length ? (
-                            <div
-                              style={{
-                                fontSize: 13,
-                                color: "var(--muted-foreground)",
-                                lineHeight: 1.6,
-                              }}
-                            >
-                              <strong style={{ color: "var(--foreground)" }}>Practice next:</strong>{" "}
-                              {s.improvements.join("; ")}
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
                     </div>
                   );
                 })}

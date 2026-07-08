@@ -1025,12 +1025,10 @@ export function ProfileSettings() {
               ))}
             </div>
           </section>
-        </div>
-      </div>
 
-      {/* ── Coach memory (F1) ───────────────────────────────── */}
-      <div className="p-6 border-t" style={{ borderColor: "var(--border)" }}>
-        <CoachMemoryPanel />
+          {/* Coach memory (F1) — what the coach has learned about you */}
+          <CoachMemoryPanel />
+        </div>
       </div>
     </div>
   );

@@ -32,6 +32,22 @@ function rowToSession(row: Record<string, unknown>): InterviewSession {
 
 export type NewInterviewSession = Omit<InterviewSession, "id" | "createdAt">;
 
+/** Minimum answered questions for an interview to be worth remembering. */
+export const MIN_MEMORABLE_ANSWERS = 2;
+
+/**
+ * Whether an interview is substantive enough to write to long-term coach memory:
+ * it produced a real score AND the user actually answered a couple of questions.
+ * Trivial or barely-started attempts are still saved to history, just not
+ * memorized (so they don't pollute what the coach "remembers about you").
+ */
+export function isMemorableInterview(
+  s: Pick<InterviewSession, "overallScore" | "transcript">,
+): boolean {
+  const answered = (s.transcript ?? []).filter((t) => t.role === "user").length;
+  return s.overallScore != null && answered >= MIN_MEMORABLE_ANSWERS;
+}
+
 /** Compact event summary for the Coach OS memory-writer (see coachMemory). */
 function summarizeInterview(s: InterviewSession): string {
   const parts = [
@@ -91,8 +107,12 @@ export function useInterviewSessions() {
       if (error || !data) return null;
       const mapped = rowToSession(data);
       setSessions((prev) => [mapped, ...prev]);
-      // Coach OS: remember this interview result (fire-and-forget).
-      void recordEvent("mock_interview", summarizeInterview(mapped));
+      // Coach OS: remember this interview only if it was substantive (see
+      // isMemorableInterview) — fire-and-forget. Trivial attempts stay in history
+      // but are not written to long-term coach memory.
+      if (isMemorableInterview(mapped)) {
+        void recordEvent("mock_interview", summarizeInterview(mapped));
+      }
       return mapped;
     },
     [user],
