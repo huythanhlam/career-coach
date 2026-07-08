@@ -41,6 +41,68 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          workflow_id?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_rate_limits: {
         Row: {
           hit_count: number
@@ -533,45 +595,6 @@ export type Database = {
         }
         Relationships: []
       }
-      job_applications: {
-        Row: {
-          applied_date: string
-          company: string
-          created_at: string
-          id: string
-          location: string
-          notes: string | null
-          role: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          applied_date: string
-          company: string
-          created_at?: string
-          id?: string
-          location?: string
-          notes?: string | null
-          role: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          applied_date?: string
-          company?: string
-          created_at?: string
-          id?: string
-          location?: string
-          notes?: string | null
-          role?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       job_postings: {
         Row: {
           applied_at: string | null
@@ -805,10 +828,10 @@ export type Database = {
           ai_consent_given_at: string | null
           career_survey: Json
           created_at: string
-          current_job_role: string | null
           current_role: string | null
-          education: Json
-          email: string
+          education: Json | null
+          email: string | null
+          full_name: string | null
           github: string | null
           id: string
           is_admin: boolean
@@ -817,23 +840,23 @@ export type Database = {
           linkedin_score_at: string | null
           linkedin_storage_path: string | null
           mfa_enrolled: boolean
-          name: string
           onboarding_complete: boolean
           phone: string | null
           portfolio: string | null
+          preferred_name: string | null
           resume_score: number | null
           resume_score_at: string | null
           resume_storage_path: string | null
           saved_career_plans: Json
           saved_cover_letters: Json
           saved_resumes: Json
-          skills: string[]
+          skills: string[] | null
           summary: string | null
           target_companies: Json
           target_role: string | null
           target_roles: Json
           updated_at: string
-          work_history: Json
+          work_history: Json | null
           years_of_experience: number | null
         }
         Insert: {
@@ -841,10 +864,10 @@ export type Database = {
           ai_consent_given_at?: string | null
           career_survey?: Json
           created_at?: string
-          current_job_role?: string | null
           current_role?: string | null
-          education?: Json
-          email?: string
+          education?: Json | null
+          email?: string | null
+          full_name?: string | null
           github?: string | null
           id: string
           is_admin?: boolean
@@ -853,23 +876,23 @@ export type Database = {
           linkedin_score_at?: string | null
           linkedin_storage_path?: string | null
           mfa_enrolled?: boolean
-          name?: string
           onboarding_complete?: boolean
           phone?: string | null
           portfolio?: string | null
+          preferred_name?: string | null
           resume_score?: number | null
           resume_score_at?: string | null
           resume_storage_path?: string | null
           saved_career_plans?: Json
           saved_cover_letters?: Json
           saved_resumes?: Json
-          skills?: string[]
+          skills?: string[] | null
           summary?: string | null
           target_companies?: Json
           target_role?: string | null
           target_roles?: Json
           updated_at?: string
-          work_history?: Json
+          work_history?: Json | null
           years_of_experience?: number | null
         }
         Update: {
@@ -877,10 +900,10 @@ export type Database = {
           ai_consent_given_at?: string | null
           career_survey?: Json
           created_at?: string
-          current_job_role?: string | null
           current_role?: string | null
-          education?: Json
-          email?: string
+          education?: Json | null
+          email?: string | null
+          full_name?: string | null
           github?: string | null
           id?: string
           is_admin?: boolean
@@ -889,24 +912,45 @@ export type Database = {
           linkedin_score_at?: string | null
           linkedin_storage_path?: string | null
           mfa_enrolled?: boolean
-          name?: string
           onboarding_complete?: boolean
           phone?: string | null
           portfolio?: string | null
+          preferred_name?: string | null
           resume_score?: number | null
           resume_score_at?: string | null
           resume_storage_path?: string | null
           saved_career_plans?: Json
           saved_cover_letters?: Json
           saved_resumes?: Json
-          skills?: string[]
+          skills?: string[] | null
           summary?: string | null
           target_companies?: Json
           target_role?: string | null
           target_roles?: Json
           updated_at?: string
-          work_history?: Json
+          work_history?: Json | null
           years_of_experience?: number | null
+        }
+        Relationships: []
+      }
+      resume_analysis_cache: {
+        Row: {
+          cache_key: string
+          data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cache_key: string
+          data: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cache_key?: string
+          data?: Json
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -952,6 +996,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_memories: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          kind: string
+          salience: number
+          source_feature: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          kind: string
+          salience?: number
+          source_feature?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          salience?: number
+          source_feature?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -967,9 +1041,9 @@ export type Database = {
       }
       current_user_is_admin: { Args: never; Returns: boolean }
       current_user_mfa_enrolled: { Args: never; Returns: boolean }
-      publish_due_scheduled_posts: { Args: never; Returns: number }
       request_company_profile: { Args: { p_company: string }; Returns: string }
       session_aal_ok: { Args: { row_mfa_enrolled: boolean }; Returns: boolean }
+      set_mfa_enrolled: { Args: { enrolled: boolean }; Returns: undefined }
       slugify_company: { Args: { p_name: string }; Returns: string }
       upsert_company_research_cache: {
         Args: {

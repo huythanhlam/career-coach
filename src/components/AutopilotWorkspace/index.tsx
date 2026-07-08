@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useJobPostings } from "@/hooks/useJobPostings";
 import { useApplicationPackages } from "@/hooks/useApplicationPackages";
 import { generatePackage } from "@/services/applicationAutopilot";
+import { recordEvent } from "@/services/coachMemory";
 import { uploadResume, downloadResume } from "@/services/resumeStorageService";
 import type { JobPosting } from "@/types/jobPosting";
 import { PackageReview } from "./PackageReview";
@@ -71,6 +72,13 @@ export function AutopilotWorkspace() {
         coverLetterText: result.coverLetterText,
         packageStatus: "generated",
       });
+      // Coach OS: remember that this application was tailored (fire-and-forget).
+      void recordEvent(
+        "autopilot",
+        `Generated a tailored application package for "${posting.title}"${
+          posting.company ? ` at ${posting.company}` : ""
+        } (fit score ${result.fitScore}/100).`,
+      );
     } catch (err) {
       console.error("Package generation failed:", err);
       await upsertPackage({

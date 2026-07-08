@@ -12,8 +12,8 @@ import { workflowsConfig, basePersona } from "@/config/workflows";
 import { ViewId } from "@/components/Sidebar";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useJobPostings } from "@/hooks/useJobPostings";
-import { buildProfileBaseline } from "@/lib/careerBaseline";
-import { buildPipelineSummary } from "@/lib/pipelineStats";
+import { assembleCoachContext } from "@/ai/coach/context";
+import { topMemories, type UserMemory } from "@/services/coachMemory";
 
 interface Message {
   role: "user" | "model";
@@ -55,6 +55,9 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [failedInput, setFailedInput] = useState<string | null>(null);
+  // Top-k durable coach memories, fetched once when the panel opens and injected
+  // into every turn's context (Coach OS / F1). Best-effort — never blocks chat.
+  const [memories, setMemories] = useState<UserMemory[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Durable conversation id; created lazily on the first send, then reused.
   const conversationIdRef = useRef<string | null>(
@@ -110,21 +113,24 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
     }
   }, [messages]);
 
-  // Ground every turn in what the app already knows — profile, pipeline, and
-  // scores — so the coach advises on the user's actual situation instead of
-  // asking for context they've already given.
-  const buildContextualInstruction = () => {
-    const context = [
-      buildProfileBaseline(profile),
-      buildPipelineSummary(postings),
-      profile.resumeScore != null ? `Latest resume score: ${profile.resumeScore}/100` : "",
-      profile.linkedinScore != null ? `Latest LinkedIn score: ${profile.linkedinScore}/100` : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-    if (!context) return systemInstruction;
-    return `${systemInstruction}\n\nWHAT YOU ALREADY KNOW ABOUT THIS USER (from their profile and activity in the app — use it naturally, don't re-ask for it):\n${context}`;
-  };
+  // Load the coach's durable memories once the panel opens. Fail-soft: an empty
+  // list just means the coach falls back to profile/pipeline context only.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    topMemories().then((m) => {
+      if (!cancelled) setMemories(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  // Ground every turn in what the app already knows — profile, pipeline, scores,
+  // and durable memories — so the coach advises on the user's actual situation
+  // instead of asking for context they've already given.
+  const buildContextualInstruction = () =>
+    assembleCoachContext({ systemInstruction, profile, postings, memories });
 
   // Stream a model reply to `text` (the trailing empty model bubble is already
   // in place). `history` is the transcript BEFORE this turn — the coach workflow

@@ -21,6 +21,7 @@ import { MonthYearPicker } from "@/components/ui/MonthYearPicker";
 import { EndDateField } from "@/components/ui/EndDateField";
 import { endDateLabel } from "@/lib/workExperience";
 import { SkillsPicker } from "@/components/ui/SkillsPicker";
+import { CoachMemoryPanel } from "@/components/CoachMemoryPanel";
 import {
   JOB_TITLES,
   SP500_COMPANIES,
@@ -1025,6 +1026,11 @@ export function ProfileSettings() {
             </div>
           </section>
         </div>
+      </div>
+
+      {/* ── Coach memory (F1) ───────────────────────────────── */}
+      <div className="p-6 border-t" style={{ borderColor: "var(--border)" }}>
+        <CoachMemoryPanel />
       </div>
     </div>
   );

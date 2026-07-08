@@ -5,6 +5,7 @@ import { workflowsConfig } from "@/config/workflows";
 import { extractPlanMilestones } from "@/services/geminiService";
 import { streamWorkflow } from "@/ai/client";
 import { coachingChatWorkflow } from "@/ai/workflows/coachingChat";
+import { recordEvent } from "@/services/coachMemory";
 import {
   buildProfileBaseline,
   buildSurveySummary,
@@ -460,6 +461,14 @@ export function useGoalPlanningActions({
         : [...savedPlans, entry];
 
       await updateProfile({ savedCareerPlans: nextPlans });
+      // Coach OS: remember this plan and its milestones (fire-and-forget).
+      void recordEvent(
+        "goal_planner",
+        `Saved career plan "${name}". Goal: ${goalType} — ${goalSummary}. Milestones (${nextMilestones.length}): ${nextMilestones
+          .map((m) => m.title)
+          .slice(0, 8)
+          .join("; ")}.`,
+      );
       setEditingPlanId(id);
       setShowSaveDialog(false);
       setSaveAsCopy(false);

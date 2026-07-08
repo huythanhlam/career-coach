@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { recordEvent } from "@/services/coachMemory";
 import type {
   InterviewSession,
   InterviewScores,
@@ -30,6 +31,23 @@ function rowToSession(row: Record<string, unknown>): InterviewSession {
 }
 
 export type NewInterviewSession = Omit<InterviewSession, "id" | "createdAt">;
+
+/** Compact event summary for the Coach OS memory-writer (see coachMemory). */
+function summarizeInterview(s: InterviewSession): string {
+  const parts = [
+    `Completed a ${s.workflow} interview${s.role ? ` for ${s.role}` : ""}${
+      s.focus ? ` (focus: ${s.focus})` : ""
+    }.`,
+    s.overallScore != null ? `Overall score: ${s.overallScore}/100.` : "",
+    s.scores
+      ? `Dimension scores — ${Object.entries(s.scores)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ")}.`
+      : "",
+    s.improvements?.length ? `Areas to improve: ${s.improvements.slice(0, 3).join("; ")}.` : "",
+  ];
+  return parts.filter(Boolean).join(" ");
+}
 
 export function useInterviewSessions() {
   const { user } = useAuth();
@@ -73,6 +91,8 @@ export function useInterviewSessions() {
       if (error || !data) return null;
       const mapped = rowToSession(data);
       setSessions((prev) => [mapped, ...prev]);
+      // Coach OS: remember this interview result (fire-and-forget).
+      void recordEvent("mock_interview", summarizeInterview(mapped));
       return mapped;
     },
     [user],
