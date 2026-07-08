@@ -57,13 +57,20 @@ export async function recordEvent(
     const memories = result.data.memories;
     if (!memories.length) return;
 
-    const rows = memories.map((m: ExtractedMemory) => ({
-      user_id: user.id,
-      kind: m.kind,
-      content: m.content,
-      source_feature: sourceFeature,
-      salience: m.salience,
-    }));
+    // The output schema is permissive (Gemini rejects numeric/length constraints),
+    // so clamp here: salience must satisfy the DB CHECK (between 1 and 5), and we
+    // keep at most 5 notes per event.
+    const rows = memories.slice(0, 5).map((m: ExtractedMemory) => {
+      const s = Number(m.salience);
+      return {
+        user_id: user.id,
+        kind: m.kind,
+        content: m.content,
+        source_feature: sourceFeature,
+        // Default only when non-numeric; 0 must clamp to 1, not fall through to 3.
+        salience: Math.max(1, Math.min(5, Math.round(Number.isFinite(s) ? s : 3))),
+      };
+    });
     const { error } = await supabase.from("user_memories").insert(rows);
     if (error) console.error("recordEvent insert failed:", error.message);
   } catch (err) {

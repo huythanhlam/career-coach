@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { memoryWriterWorkflow, memoryWriterSchema } from "@/ai/workflows/memoryWriter";
+import { zodToResponseSchema } from "@/ai/schema";
 
 describe("memoryWriterWorkflow", () => {
   it("is a non-grounded FAST workflow with an output schema", () => {
@@ -39,13 +40,6 @@ describe("memoryWriterSchema", () => {
     expect(memoryWriterSchema.safeParse({ memories: [] }).success).toBe(true);
   });
 
-  it("rejects an out-of-range salience", () => {
-    const parsed = memoryWriterSchema.safeParse({
-      memories: [{ kind: "fact", content: "x", salience: 9 }],
-    });
-    expect(parsed.success).toBe(false);
-  });
-
   it("rejects an unknown kind", () => {
     const parsed = memoryWriterSchema.safeParse({
       memories: [{ kind: "reminder", content: "x", salience: 3 }],
@@ -53,12 +47,23 @@ describe("memoryWriterSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("caps the array at 5 memories", () => {
-    const many = Array.from({ length: 6 }, (_, i) => ({
-      kind: "fact" as const,
-      content: `note ${i}`,
-      salience: 3,
-    }));
-    expect(memoryWriterSchema.safeParse({ memories: many }).success).toBe(false);
+  // The schema is intentionally permissive on salience/count — those limits are
+  // enforced in coachMemory, NOT the schema (see the response-schema guard below).
+  it("accepts an out-of-range salience (clamped later in coachMemory)", () => {
+    const parsed = memoryWriterSchema.safeParse({
+      memories: [{ kind: "fact", content: "x", salience: 9 }],
+    });
+    expect(parsed.success).toBe(true);
+  });
+});
+
+describe("memory_writer response schema", () => {
+  // Regression guard: Gemini's responseJsonSchema parser 500s on these keywords,
+  // which is why memory writes silently failed. The schema must emit none of them.
+  it("emits no JSON-Schema keywords Gemini rejects", () => {
+    const json = JSON.stringify(zodToResponseSchema(memoryWriterSchema));
+    for (const kw of ["maxLength", "minLength", "maxItems", "minItems", "minimum", "maximum"]) {
+      expect(json).not.toContain(kw);
+    }
   });
 });

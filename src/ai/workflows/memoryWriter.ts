@@ -21,16 +21,22 @@ import { uc, injectionTrailer } from "@/ai/prompt";
  * - `episode`    — a time-anchored event summary ("2026-07-06 mock interview: 62/100, weak on Result").
  */
 
+// NOTE: this schema is deliberately CONSTRAINT-FREE (no `.max()`/`.min()`/`.int()`).
+// Gemini's `responseJsonSchema` parser 500s on the JSON-Schema keywords those emit
+// (`maxLength`, `minimum`, `maximum`, `maxItems`) — the same class of unmodeled
+// keyword as the `$schema` marker stripped in `src/ai/schema.ts`. The limits are
+// requested in the prompt and enforced in `coachMemory.recordEvent` (salience
+// clamped to 1–5, list sliced to 5) before the DB write.
 export const memorySchema = z.object({
   kind: z.enum(["fact", "preference", "episode"]),
-  /** One sentence. Kept short so injection stays cheap. */
-  content: z.string().max(280),
-  /** 1 (minor) … 5 (defining). Drives top-k retrieval order. */
-  salience: z.number().int().min(1).max(5),
+  /** One short sentence (length requested in the prompt, not schema-enforced). */
+  content: z.string(),
+  /** 1 (minor) … 5 (defining). Clamped to [1,5] in coachMemory. Drives top-k order. */
+  salience: z.number(),
 });
 
 export const memoryWriterSchema = z.object({
-  memories: z.array(memorySchema).max(5),
+  memories: z.array(memorySchema),
 });
 
 export type ExtractedMemory = z.infer<typeof memorySchema>;
