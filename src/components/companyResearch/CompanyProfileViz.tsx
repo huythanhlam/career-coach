@@ -664,11 +664,21 @@ export function CompanyProfileViz({
         </button>
       </div>
 
-      {sections.map((node, i) => (
-        <motion.div key={node.key} custom={i + 1} variants={fadeUp} initial="hidden" animate="show">
-          {node}
-        </motion.div>
-      ))}
+      {/* Sections stream in a handful at a time as career-insight prose completes — announced
+          as they arrive (not per-token, so no throttling needed here). */}
+      <div aria-live="polite">
+        {sections.map((node, i) => (
+          <motion.div
+            key={node.key}
+            custom={i + 1}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+          >
+            {node}
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 }

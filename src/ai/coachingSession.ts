@@ -1,5 +1,11 @@
 import { streamWorkflow } from "@/ai/client";
 import { coachingChatWorkflow, type ChatTurn } from "@/ai/workflows/coachingChat";
+import type { Workflow } from "@/ai/defineWorkflow";
+
+type ChatWorkflow = Workflow<
+  { systemInstruction: string; history: ChatTurn[]; message: string },
+  unknown
+>;
 
 /**
  * A stateful conversational coaching session — the streaming replacement for the
@@ -24,7 +30,10 @@ export interface CoachingSession {
   readonly history: readonly ChatTurn[];
 }
 
-export function createCoachingSession(systemInstruction: string): CoachingSession {
+export function createCoachingSession(
+  systemInstruction: string,
+  workflow: ChatWorkflow = coachingChatWorkflow,
+): CoachingSession {
   const history: ChatTurn[] = [];
   return {
     get history() {
@@ -33,7 +42,7 @@ export function createCoachingSession(systemInstruction: string): CoachingSessio
     async send(message, onToken, signal) {
       let full = "";
       await streamWorkflow(
-        coachingChatWorkflow,
+        workflow,
         { systemInstruction, history: [...history], message },
         {
           signal,

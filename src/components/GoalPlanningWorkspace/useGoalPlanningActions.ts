@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { generateId, type SavedCareerPlan, type PlanMilestone } from "@/types/userProfile";
 import { workflowsConfig } from "@/config/workflows";
@@ -134,6 +134,12 @@ export function useGoalPlanningActions({
   pendingSurvey,
   draftMarkdown,
 }: GoalPlanningActionsParams) {
+  // Cancels an in-flight plan/chat generation (real AbortController, mirrors GlobalChatPanel).
+  const abortRef = useRef<AbortController | null>(null);
+  const stopGenerating = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const buildSystemInstruction = () => {
     const baseline = buildProfileBaseline(profile);
     const surveySummary = buildSurveySummary(profile.careerSurvey);
@@ -252,6 +258,8 @@ export function useGoalPlanningActions({
         { role: "model", text: "" },
       ]);
 
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
         let full = "";
         await streamWorkflow(
@@ -262,6 +270,7 @@ export function useGoalPlanningActions({
             message: request,
           },
           {
+            signal: controller.signal,
             onToken: (delta) => {
               full += delta;
               setPlanMarkdown(full);
@@ -275,6 +284,8 @@ export function useGoalPlanningActions({
         );
         session.turns.push({ role: "user", text: request }, { role: "model", text: full });
       } catch (err) {
+        // A user-initiated stop leaves the partial plan in place, no error.
+        if (controller.signal.aborted) return;
         console.error("Plan generation failed:", err);
         const msg =
           "**Error:** Could not generate your plan. Make sure the local AI gateway is running (`npm run dev:functions`).";
@@ -286,6 +297,7 @@ export function useGoalPlanningActions({
         });
       } finally {
         setIsGenerating(false);
+        abortRef.current = null;
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
@@ -303,12 +315,15 @@ export function useGoalPlanningActions({
       setIsGenerating(true);
       setMessages((prev) => [...prev, { role: "user", text }, { role: "model", text: "" }]);
 
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
         let full = "";
         await streamWorkflow(
           coachingChatWorkflow,
           { systemInstruction: session.systemInstruction, history: session.turns, message: text },
           {
+            signal: controller.signal,
             onToken: (delta) => {
               full += delta;
               setMessages((prev) => {
@@ -321,6 +336,8 @@ export function useGoalPlanningActions({
         );
         session.turns.push({ role: "user", text }, { role: "model", text: full });
       } catch (err) {
+        // A user-initiated stop leaves the partial reply in place, no error.
+        if (controller.signal.aborted) return;
         console.error("Coaching reply failed:", err);
         setMessages((prev) => {
           const m = [...prev];
@@ -332,6 +349,7 @@ export function useGoalPlanningActions({
         });
       } finally {
         setIsGenerating(false);
+        abortRef.current = null;
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
@@ -576,6 +594,7 @@ export function useGoalPlanningActions({
     dismissSync,
     handleGenerate,
     handleSend,
+    stopGenerating,
     handleOpen,
     handleDelete,
     openSaveDialog,

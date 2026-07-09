@@ -4,6 +4,7 @@ import { CompanyResearchViz } from "@/components/companyResearch";
 import { CompanyProfileViz } from "@/components/companyResearch/CompanyProfileViz";
 import { RequestProfileBanner } from "@/components/companyResearch/RequestProfileBanner";
 import { CompanyBrowser } from "@/components/companyResearch/CompanyBrowser";
+import { StopGeneratingButton } from "@/components/ui/stop-generating-button";
 import type { CompanyProfile } from "@/types/companyProfile";
 import type { RequestProfileResult } from "@/services/companyProfileService";
 import { PageHeader, MentorCard } from "./shared";
@@ -13,6 +14,7 @@ interface CompanyResearchWorkflowProps {
   companyName: string;
   companyResult: CompanyResearchResult | null;
   isResearching: boolean;
+  onStopResearching: () => void;
   isRevalidating: boolean;
   companyCachedAt: string | null;
   companyProfile: CompanyProfile | null;
@@ -33,6 +35,7 @@ export function CompanyResearchWorkflow({
   companyName,
   companyResult,
   isResearching,
+  onStopResearching,
   isRevalidating,
   companyCachedAt,
   companyProfile,
@@ -80,6 +83,7 @@ export function CompanyResearchWorkflow({
               <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>
                 Checking our verified company database, then careers pages, news, and financials…
               </div>
+              <StopGeneratingButton onStop={onStopResearching} />
             </MentorCard>
           )}
 

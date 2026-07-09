@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Loader2, Bookmark } from "lucide-react";
-import { createTechCoachChat, sendMessageStream } from "@/services/geminiService";
+import { createCoachingSession, type CoachingSession } from "@/ai/coachingSession";
+import { documentDraftingWorkflow } from "@/ai/workflows/documentDrafting";
 import { workflowsConfig } from "@/config/workflows";
 import { docWrapInstruction, extractDocument, DOC_START } from "@/lib/aiDocFormat";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -17,9 +18,6 @@ import {
 import type { CoverLetterFormData } from "./CoverLetterForm";
 
 const BUCKET = "user-documents";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Chat = any;
 
 export interface SavedCoverLetterPayload {
   html: string;
@@ -85,7 +83,9 @@ export function CoverLetterWorkspace({
     initialPayload ? htmlToMarkdown(initialPayload.html) : "",
   );
   const [isGenerating, setIsGenerating] = useState(!initialPayload);
-  const [chatInstance, setChatInstance] = useState<Chat | null>(null);
+  const [chatInstance, setChatInstance] = useState<CoachingSession | null>(null);
+  // Cancels an in-flight initial-generation stream (real AbortController, mirrors GlobalChatPanel).
+  const genAbortRef = useRef<AbortController | null>(null);
   const [chatMessages, setChatMessages] = useState<DocMessage[]>(() =>
     initialPayload ? [{ role: "model", text: htmlToMarkdown(initialPayload.html) }] : [],
   );
@@ -101,8 +101,8 @@ export function CoverLetterWorkspace({
     const config = workflowsConfig["cover_letter"];
     const systemPrompt = config.systemInstruction + docWrapInstruction("cover letter");
 
-    const chat = createTechCoachChat(systemPrompt, false);
-    setChatInstance(chat);
+    const session = createCoachingSession(systemPrompt, documentDraftingWorkflow);
+    setChatInstance(session);
 
     if (initialPayload) {
       setIsGenerating(false);
@@ -120,26 +120,34 @@ export function CoverLetterWorkspace({
         { role: "user", text: "Please write my cover letter based on my details." },
         { role: "model", text: "" },
       ]);
+      const controller = new AbortController();
+      genAbortRef.current = controller;
       try {
-        let full = "";
-        await sendMessageStream(chat, prompt as string, (chunk) => {
-          full += chunk;
-          setChatMessages((prev) => {
-            const m = [...prev];
-            m[m.length - 1] = { role: "model", text: full };
-            return m;
-          });
-          const body =
-            extractDocument(full) ??
-            (full.trim().length > 100 && !full.includes(DOC_START) && !full.includes("```")
-              ? full.trim()
-              : "");
-          if (body) setContent(body);
-        });
+        await session.send(
+          prompt as string,
+          (fullText) => {
+            setChatMessages((prev) => {
+              const m = [...prev];
+              m[m.length - 1] = { role: "model", text: fullText };
+              return m;
+            });
+            const body =
+              extractDocument(fullText) ??
+              (fullText.trim().length > 100 &&
+              !fullText.includes(DOC_START) &&
+              !fullText.includes("```")
+                ? fullText.trim()
+                : "");
+            if (body) setContent(body);
+          },
+          controller.signal,
+        );
       } catch (err) {
-        console.error("Cover letter generation failed:", err);
+        // A user-initiated stop leaves the partial letter in place, no error.
+        if (!controller.signal.aborted) console.error("Cover letter generation failed:", err);
       } finally {
         if (mounted) setIsGenerating(false);
+        genAbortRef.current = null;
       }
     })();
 
@@ -200,6 +208,7 @@ export function CoverLetterWorkspace({
         content={content}
         onChange={setContent}
         isLoading={isGenerating}
+        onStopGenerating={() => genAbortRef.current?.abort()}
         title="Cover Letter"
         aiChat={chatInstance}
         aiMessages={chatMessages}

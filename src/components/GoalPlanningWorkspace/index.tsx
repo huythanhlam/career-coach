@@ -232,6 +232,7 @@ export function GoalPlanningWorkspace({ onNavigate }: GoalPlanningWorkspaceProps
           onInputChange={setInput}
           onSend={actions.handleSend}
           isGenerating={isGenerating}
+          onStopGenerating={actions.stopGenerating}
           editingSheet={editingSheet}
           draftMarkdown={draftMarkdown}
           onDraftChange={setDraftMarkdown}

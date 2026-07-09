@@ -1,4 +1,5 @@
 import React from "react";
+import type { CoachingSession } from "@/ai/coachingSession";
 
 export interface DocMessage {
   role: "user" | "model";
@@ -23,10 +24,11 @@ export interface DocumentEditorProps {
   content: string;
   onChange: (markdown: string) => void;
   isLoading?: boolean;
+  /** Cancels the in-flight initial-generation stream (F2 abort UX). Renders a Stop button while `isLoading`. */
+  onStopGenerating?: () => void;
   title?: string;
   onTitleChange?: (t: string) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  aiChat?: any;
+  aiChat?: CoachingSession | null;
   aiMessages?: DocMessage[];
   aiEnabled?: boolean;
   aiPlaceholder?: string;

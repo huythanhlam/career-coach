@@ -1,6 +1,8 @@
 import React from "react";
 import { Loader2, Send, Sparkles, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { StopGeneratingButton } from "@/components/ui/stop-generating-button";
+import { useStreamAnnouncer } from "@/hooks/useStreamAnnouncer";
 import Markdown from "react-markdown";
 import { maskDocumentForDisplay, DOC_START, DOC_END } from "@/lib/aiDocFormat";
 import { DocMessage } from "./types";
@@ -8,6 +10,7 @@ import { DocMessage } from "./types";
 export interface AiSuggestionsPanelProps {
   aiMessages: DocMessage[];
   isAiGenerating: boolean;
+  onStopGenerating: () => void;
   chatInput: string;
   setChatInput: (v: string) => void;
   selectedContext: string;
@@ -26,6 +29,7 @@ export interface AiSuggestionsPanelProps {
 export const AiSuggestionsPanel = React.memo(function AiSuggestionsPanel({
   aiMessages,
   isAiGenerating,
+  onStopGenerating,
   chatInput,
   setChatInput,
   selectedContext,
@@ -40,6 +44,10 @@ export const AiSuggestionsPanel = React.memo(function AiSuggestionsPanel({
   scrollRef,
   handleAiSubmit,
 }: AiSuggestionsPanelProps) {
+  const lastAiMessage = aiMessages[aiMessages.length - 1];
+  const aiStreamingText = lastAiMessage?.role === "model" ? lastAiMessage.text : "";
+  const aiAnnouncement = useStreamAnnouncer(aiStreamingText, !isAiGenerating);
+
   return (
     <div
       className="w-full md:w-[340px] h-[55vh] md:h-auto flex flex-col shrink-0 print:hidden border-t md:border-t-0"
@@ -71,6 +79,11 @@ export const AiSuggestionsPanel = React.memo(function AiSuggestionsPanel({
         className="flex-1 overflow-y-auto p-4"
         style={{ display: "flex", flexDirection: "column", gap: 10 }}
       >
+        {/* Throttled announcement — the bubble below updates every token, but screen
+            readers only hear it on a natural pause or once the reply settles. */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {aiAnnouncement}
+        </div>
         {!aiMessages.filter((m) => m.text).length && !isAiGenerating && (
           <div
             style={{
@@ -143,6 +156,11 @@ export const AiSuggestionsPanel = React.memo(function AiSuggestionsPanel({
               </div>
             </div>
           )}
+        {isAiGenerating && (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <StopGeneratingButton onStop={onStopGenerating} />
+          </div>
+        )}
         <div ref={scrollRef} />
       </div>
       <div

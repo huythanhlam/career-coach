@@ -1,10 +1,12 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
+import { StopGeneratingButton } from "@/components/ui/stop-generating-button";
 
 interface DocumentBodyProps {
   scopeId: string;
   editorRef: React.RefObject<HTMLDivElement>;
   isLoading: boolean;
+  onStopGenerating?: () => void;
   content: string;
   rawHtmlMode: boolean;
   headerHtml?: string;
@@ -17,6 +19,7 @@ export function DocumentBody({
   scopeId,
   editorRef,
   isLoading,
+  onStopGenerating,
   content,
   rawHtmlMode,
   headerHtml,
@@ -35,8 +38,14 @@ export function DocumentBody({
             minHeight: 1056,
             background: paperBg,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px var(--border)",
+            position: "relative",
           }}
         >
+          {isLoading && onStopGenerating && (
+            <div style={{ position: "absolute", top: 12, right: 12, zIndex: 1 }}>
+              <StopGeneratingButton onStop={onStopGenerating} />
+            </div>
+          )}
           {headerHtml && (
             <div
               dangerouslySetInnerHTML={{ __html: headerHtml }}

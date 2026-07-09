@@ -39,6 +39,8 @@ import { useDictation } from "@/hooks/useDictation";
 import { workflowsConfig } from "@/config/workflows";
 import { evaluateInterviewTranscript, type InterviewEvaluation } from "@/services/geminiService";
 import { createCoachingSession, type CoachingSession } from "@/ai/coachingSession";
+import { StopGeneratingButton } from "@/components/ui/stop-generating-button";
+import { useStreamAnnouncer } from "@/hooks/useStreamAnnouncer";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { deriveChatStatus } from "@/lib/chatStatus";
 import { stripMarkdown } from "@/lib/speechText";
@@ -640,6 +642,12 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const [showTranscript, setShowTranscript] = useState(false);
   const chatRef = useRef<CoachingSession | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Cancels an in-flight interviewer reply (real AbortController, mirrors GlobalChatPanel).
+  const abortRef = useRef<AbortController | null>(null);
+  const lastInterviewMessage = messages[messages.length - 1];
+  const interviewStreamingText =
+    lastInterviewMessage?.role === "model" ? lastInterviewMessage.text : "";
+  const interviewAnnouncement = useStreamAnnouncer(interviewStreamingText, !isGenerating);
 
   // ── Voice: the interviewer speaks (TTS), the user can answer by mic (STT) ──
   const speech = useSpeech();
@@ -796,14 +804,22 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     if (!chatRef.current) return;
     setFailedInput(null);
     setIsGenerating(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const full = await chatRef.current.send(text, (running) => {
-        setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: running }]);
-      });
+      const full = await chatRef.current.send(
+        text,
+        (running) => {
+          setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: running }]);
+        },
+        controller.signal,
+      );
       // Speak the question, then (hands-free) reopen the mic when it finishes.
       if (voiceEnabled) speech.speak(full, { voice: selectedVoice, onEnd: continueConversation });
       else continueConversation();
     } catch (err) {
+      // A user-initiated stop leaves the partial reply in place, no error.
+      if (controller.signal.aborted) return;
       console.error("Interview reply failed:", err);
       setMessages((prev) => [
         ...prev.slice(0, -1),
@@ -815,6 +831,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
       setFailedInput(text);
     } finally {
       setIsGenerating(false);
+      abortRef.current = null;
     }
   };
 
@@ -1047,6 +1064,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   });
 
   const reset = () => {
+    abortRef.current?.abort();
     speech.cancel();
     clearSilenceTimer();
     hadSpeechRef.current = false;
@@ -1570,14 +1588,22 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                 className="flex-1 overflow-auto no-scrollbar"
                 style={{ padding: 16 }}
                 role="log"
-                aria-live="polite"
-                aria-relevant="additions text"
                 aria-label="Interview conversation"
               >
+                {/* Throttled announcement — the bubble below updates every token, but screen
+                    readers only hear it on a natural pause or once the reply settles. */}
+                <div className="sr-only" aria-live="polite" aria-atomic="true">
+                  {interviewAnnouncement}
+                </div>
                 <div className="space-y-4">
                   {messages.map((msg, idx) => (
                     <ChatBubble key={idx} msg={msg} />
                   ))}
+                  {isGenerating && (
+                    <div className="flex justify-center">
+                      <StopGeneratingButton onStop={() => abortRef.current?.abort()} />
+                    </div>
+                  )}
                   {failedInput && !isGenerating && (
                     <div className="flex justify-center">
                       <button

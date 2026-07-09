@@ -3,7 +3,8 @@ import type { QuestionFeedback, STARElement } from "@/types/interviewSession";
 import { supabase } from "@/lib/supabaseClient";
 import { buildCompanyResearchSources } from "@/config/companyResearchSources";
 import { MODELS } from "@/config/models";
-import { runWorkflow } from "@/ai/client";
+import { runWorkflow, streamWorkflow, stripFences } from "@/ai/client";
+import { extractCompleteStringFields } from "@/ai/partialJson";
 import { resumeAnalysisWorkflow, type ResumeAnalysisOutput } from "@/ai/workflows/resumeAnalysis";
 import {
   resumeAnalysisCacheKey,
@@ -568,36 +569,13 @@ export async function discoverCareerUrls(companyName: string): Promise<CareerPag
   };
 }
 
-export async function researchCompanyProfile(input: {
-  jobTitle: string;
-  companyName: string;
-  jobDescription: string;
-  /** Real text scraped from the company's own careers pages, plus their URLs. */
-  careerContext?: { text: string; sources: SourceLink[] };
-}): Promise<CompanyProfileData> {
-  const { jobTitle, companyName, jobDescription, careerContext } = input;
-  const fallback = buildCompanyResearchSources(companyName);
-  const careerSources = careerContext?.sources ?? [];
-  const result = await runWorkflow(companyProfileWorkflow, {
-    companyName,
-    jobTitle,
-    jobDescription,
-    careersText: careerContext?.text ?? "",
-    careerSourceUrls: careerSources.map((s) => s.url),
-  });
-  if (result.status !== "ok") {
-    console.error("Failed to research company profile:", result.error);
-    return {
-      overview: "",
-      hiringValues: EMPTY_SECTION(""),
-      benefits: EMPTY_SECTION(""),
-      interviewTips: EMPTY_SECTION(""),
-      financials: EMPTY_SECTION(""),
-      ticker: "",
-      sources: [fallback.careers, fallback.financials],
-    };
-  }
-  const parsed = result.data;
+/** Build the final `CompanyProfileData` from a validated parse — shared by the one-shot and streaming paths. */
+function buildCompanyProfileData(
+  parsed: Record<string, unknown>,
+  careerSources: SourceLink[],
+  resultSources: SourceLink[],
+  fallback: { careers: SourceLink; financials: SourceLink },
+): CompanyProfileData {
   return {
     overview: typeof parsed.overview === "string" ? parsed.overview : "",
     hiringValues: normalizeSection(
@@ -616,30 +594,143 @@ export async function researchCompanyProfile(input: {
     ticker: normalizeTicker(parsed.ticker),
     sources: collectSources(
       parsed,
-      [...careerSources, ...result.sources],
+      [...careerSources, ...resultSources],
       [fallback.careers, fallback.financials],
     ),
   };
 }
 
-/** Fast-moving tier: role-relevant news (fallback: recent company news). Cached briefly. */
-export async function researchCompanyNews(input: {
-  jobTitle: string;
-  companyName: string;
-  jobDescription: string;
-}): Promise<CompanyNewsData> {
+const EMPTY_PROFILE_DATA = (fallback: {
+  careers: SourceLink;
+  financials: SourceLink;
+}): CompanyProfileData => ({
+  overview: "",
+  hiringValues: EMPTY_SECTION(""),
+  benefits: EMPTY_SECTION(""),
+  interviewTips: EMPTY_SECTION(""),
+  financials: EMPTY_SECTION(""),
+  ticker: "",
+  sources: [fallback.careers, fallback.financials],
+});
+
+/** Prose fields streamed progressively — section bullets/sources only appear once the object settles. */
+const PROFILE_STREAM_KEYS = [
+  "overview",
+  "hiringValues.summary",
+  "benefits.summary",
+  "interviewTips.summary",
+  "financials.summary",
+];
+
+/** Build a partial `CompanyProfileData` update from whichever prose fields have closed so far. */
+function partialProfileFromBuffer(buffer: string): Partial<CompanyProfileData> {
+  const fields = extractCompleteStringFields(buffer, PROFILE_STREAM_KEYS);
+  const partial: Partial<CompanyProfileData> = {};
+  if (fields.overview !== undefined) partial.overview = fields.overview;
+  if (fields["hiringValues.summary"] !== undefined)
+    partial.hiringValues = { summary: fields["hiringValues.summary"], bullets: [], sources: [] };
+  if (fields["benefits.summary"] !== undefined)
+    partial.benefits = { summary: fields["benefits.summary"], bullets: [], sources: [] };
+  if (fields["interviewTips.summary"] !== undefined)
+    partial.interviewTips = {
+      summary: fields["interviewTips.summary"],
+      bullets: [],
+      sources: [],
+    };
+  if (fields["financials.summary"] !== undefined)
+    partial.financials = { summary: fields["financials.summary"], bullets: [], sources: [] };
+  return partial;
+}
+
+/**
+ * Grounded (Google-Search) company-profile research — same gateway call
+ * (grounded, JSON-shaped-in-prompt), same fence-strip + schema validation as
+ * every other structured workflow — but streamed: calls `onSection` with each
+ * prose field (overview, section summaries) the moment it finishes streaming
+ * in, so the UI can render progressively instead of waiting for the whole
+ * object. Bullets/sources still only appear once the full object settles.
+ */
+export async function researchCompanyProfileStreaming(
+  input: {
+    jobTitle: string;
+    companyName: string;
+    jobDescription: string;
+    careerContext?: { text: string; sources: SourceLink[] };
+  },
+  onSection?: (partial: Partial<CompanyProfileData>) => void,
+  signal?: AbortSignal,
+): Promise<CompanyProfileData> {
+  const { jobTitle, companyName, jobDescription, careerContext } = input;
+  const fallback = buildCompanyResearchSources(companyName);
+  const careerSources = careerContext?.sources ?? [];
+  let raw = "";
+  try {
+    const streamResult = await streamWorkflow(
+      companyProfileWorkflow,
+      {
+        companyName,
+        jobTitle,
+        jobDescription,
+        careersText: careerContext?.text ?? "",
+        careerSourceUrls: careerSources.map((s) => s.url),
+      },
+      {
+        signal,
+        onToken: (delta) => {
+          raw += delta;
+          onSection?.(partialProfileFromBuffer(raw));
+        },
+      },
+    );
+    const parsed = JSON.parse(stripFences(streamResult.text)) as Record<string, unknown>;
+    return buildCompanyProfileData(parsed, careerSources, streamResult.sources, fallback);
+  } catch (err) {
+    console.error("Failed to research company profile:", err);
+    return EMPTY_PROFILE_DATA(fallback);
+  }
+}
+
+/** Build the final `CompanyNewsData` from a validated parse — shared by the one-shot and streaming paths. */
+function buildCompanyNewsData(
+  parsed: Record<string, unknown>,
+  resultSources: SourceLink[],
+  fallback: SourceLink,
+): CompanyNewsData {
+  return {
+    news: normalizeNewsSection(parsed.news, [fallback]),
+    sources: collectSources(parsed, resultSources, [fallback]),
+  };
+}
+
+/** Fast-moving tier: role-relevant news (fallback: recent company news). Cached briefly. Streamed — see `researchCompanyProfileStreaming`. */
+export async function researchCompanyNewsStreaming(
+  input: { jobTitle: string; companyName: string; jobDescription: string },
+  onSection?: (partial: Partial<CompanyNewsData>) => void,
+  signal?: AbortSignal,
+): Promise<CompanyNewsData> {
   const { jobTitle, companyName, jobDescription } = input;
   const fallback = buildCompanyResearchSources(companyName);
-  const result = await runWorkflow(companyNewsWorkflow, { companyName, jobTitle, jobDescription });
-  if (result.status !== "ok") {
-    console.error("Failed to research company news:", result.error);
+  let raw = "";
+  try {
+    const streamResult = await streamWorkflow(
+      companyNewsWorkflow,
+      { companyName, jobTitle, jobDescription },
+      {
+        signal,
+        onToken: (delta) => {
+          raw += delta;
+          const fields = extractCompleteStringFields(raw, ["news.summary"]);
+          if (fields["news.summary"] !== undefined)
+            onSection?.({ news: { summary: fields["news.summary"], bullets: [], sources: [] } });
+        },
+      },
+    );
+    const parsed = JSON.parse(stripFences(streamResult.text)) as Record<string, unknown>;
+    return buildCompanyNewsData(parsed, streamResult.sources, fallback.news);
+  } catch (err) {
+    console.error("Failed to research company news:", err);
     return { news: EMPTY_SECTION(""), sources: [fallback.news] };
   }
-  const parsed = result.data;
-  return {
-    news: normalizeNewsSection(parsed.news, [fallback.news]),
-    sources: collectSources(parsed, result.sources, [fallback.news]),
-  };
 }
 
 /** Merge the two cached tiers into the shape the UI renders. */

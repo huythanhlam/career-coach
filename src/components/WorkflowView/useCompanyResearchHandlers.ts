@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
-  researchCompanyProfile,
-  researchCompanyNews,
+  researchCompanyProfileStreaming,
+  researchCompanyNewsStreaming,
   assembleCompanyResearch,
   CompanyResearchResult,
   type CompanyProfileData,
@@ -14,6 +14,27 @@ import {
   type RequestProfileResult,
 } from "@/services/companyProfileService";
 import type { CompanyProfile } from "@/types/companyProfile";
+
+/** Fill in whatever prose fields a progressive company-research update carries, keeping the rest from `prev`. */
+function mergeProfilePartial(
+  prev: CompanyProfileData | null,
+  partial: Partial<CompanyProfileData>,
+): CompanyProfileData {
+  const empty = {
+    summary: "",
+    bullets: [] as string[],
+    sources: [] as CompanyProfileData["sources"],
+  };
+  return {
+    overview: partial.overview ?? prev?.overview ?? "",
+    hiringValues: partial.hiringValues ?? prev?.hiringValues ?? empty,
+    benefits: partial.benefits ?? prev?.benefits ?? empty,
+    interviewTips: partial.interviewTips ?? prev?.interviewTips ?? empty,
+    financials: partial.financials ?? prev?.financials ?? empty,
+    ticker: prev?.ticker ?? "",
+    sources: prev?.sources ?? [],
+  };
+}
 
 export function useCompanyResearchHandlers() {
   const [companyJobDetails, setCompanyJobDetails] = useState({
@@ -34,20 +55,33 @@ export function useCompanyResearchHandlers() {
   const [requestState, setRequestState] = useState<RequestProfileResult | "requesting" | null>(
     null,
   );
+  // Cancels an in-flight research fetch (real AbortController, mirrors GlobalChatPanel).
+  const abortRef = useRef<AbortController | null>(null);
+  const stopResearching = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
-  const fetchProfileFresh = async (company: string) => {
+  const fetchProfileFresh = async (
+    company: string,
+    onSection?: (partial: Partial<CompanyProfileData>) => void,
+    signal?: AbortSignal,
+  ) => {
     // Navigate the company's own careers pages first so the profile is grounded
     // in primary-source text (culture, benefits, interview process). Best-effort.
     const careerContext = await fetchCareerPageContext(company).catch(() => ({
       text: "",
       sources: [],
     }));
-    const p = await researchCompanyProfile({
-      jobTitle: "",
-      companyName: company,
-      jobDescription: "",
-      careerContext,
-    });
+    const p = await researchCompanyProfileStreaming(
+      {
+        jobTitle: "",
+        companyName: company,
+        jobDescription: "",
+        careerContext,
+      },
+      onSection,
+      signal,
+    );
     await putCachedCompanyResearch(company, "profile", p);
     return p;
   };
@@ -56,31 +90,46 @@ export function useCompanyResearchHandlers() {
    * Load AI career insights (hiring values, benefits, interview tips — extracted
    * from crawling the company's careers site) to enrich a deterministic profile.
    * Reuses the cached "profile" research tier (stale-while-revalidate). Silent on
-   * failure — the deterministic profile still renders without it.
+   * failure — the deterministic profile still renders without it. Streams
+   * progressively: each section's summary fills in as soon as it finishes,
+   * instead of the whole panel appearing at once.
    */
   const loadCareerInsights = async (company: string) => {
     setCareerInsights(null);
+    const onSection = (partial: Partial<CompanyProfileData>) =>
+      setCareerInsights((prev) => mergeProfilePartial(prev, partial));
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const cached = await getCachedCompanyResearch(company, "profile");
       if (cached) {
         setCareerInsights(cached.data);
         if (!cached.fresh)
-          fetchProfileFresh(company)
+          fetchProfileFresh(company, onSection, controller.signal)
             .then(setCareerInsights)
             .catch(() => {});
         return;
       }
       setCareerInsightsLoading(true);
-      setCareerInsights(await fetchProfileFresh(company));
+      setCareerInsights(await fetchProfileFresh(company, onSection, controller.signal));
     } catch (err) {
-      console.error(err);
+      if (!controller.signal.aborted) console.error(err);
     } finally {
       setCareerInsightsLoading(false);
+      abortRef.current = null;
     }
   };
 
-  const fetchNewsFresh = async (company: string) => {
-    const n = await researchCompanyNews({ jobTitle: "", companyName: company, jobDescription: "" });
+  const fetchNewsFresh = async (company: string, signal?: AbortSignal) => {
+    const n = await researchCompanyNewsStreaming(
+      {
+        jobTitle: "",
+        companyName: company,
+        jobDescription: "",
+      },
+      undefined,
+      signal,
+    );
     await putCachedCompanyResearch(company, "news", n);
     return n;
   };
@@ -102,59 +151,70 @@ export function useCompanyResearchHandlers() {
         setCompanyCachedAt(cp.cachedAt < cn.cachedAt ? cp.cachedAt : cn.cachedAt);
         if (!cp.fresh || !cn.fresh) {
           setIsRevalidating(true);
+          const controller = new AbortController();
+          abortRef.current = controller;
           try {
             const [p, n] = await Promise.all([
-              cp.fresh ? Promise.resolve(cp.data) : fetchProfileFresh(company),
-              cn.fresh ? Promise.resolve(cn.data) : fetchNewsFresh(company),
+              cp.fresh
+                ? Promise.resolve(cp.data)
+                : fetchProfileFresh(company, undefined, controller.signal),
+              cn.fresh ? Promise.resolve(cn.data) : fetchNewsFresh(company, controller.signal),
             ]);
             setCompanyResult(assembleCompanyResearch(p, n));
             setCompanyCachedAt(new Date().toISOString());
           } catch (err) {
-            console.error(err);
+            if (!controller.signal.aborted) console.error(err);
           } finally {
             setIsRevalidating(false);
+            abortRef.current = null;
           }
         }
         return;
       }
       setIsResearching(true);
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
         const [p, n] = await Promise.all([
-          cp?.data ?? fetchProfileFresh(company),
-          cn?.data ?? fetchNewsFresh(company),
+          cp?.data ?? fetchProfileFresh(company, undefined, controller.signal),
+          cn?.data ?? fetchNewsFresh(company, controller.signal),
         ]);
         setCompanyResult(assembleCompanyResearch(p, n));
         setCompanyCachedAt(new Date().toISOString());
       } catch (err) {
-        console.error(err);
+        if (!controller.signal.aborted) console.error(err);
       } finally {
         setIsResearching(false);
+        abortRef.current = null;
       }
       return;
     }
 
     setIsRevalidating(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const wantP = mode === "all";
       const wantN = mode === "all" || mode === "news";
       const [p, n] = await Promise.all([
         wantP
-          ? fetchProfileFresh(company)
+          ? fetchProfileFresh(company, undefined, controller.signal)
           : getCachedCompanyResearch(company, "profile").then(
-              (c) => c?.data ?? fetchProfileFresh(company),
+              (c) => c?.data ?? fetchProfileFresh(company, undefined, controller.signal),
             ),
         wantN
-          ? fetchNewsFresh(company)
+          ? fetchNewsFresh(company, controller.signal)
           : getCachedCompanyResearch(company, "news").then(
-              (c) => c?.data ?? fetchNewsFresh(company),
+              (c) => c?.data ?? fetchNewsFresh(company, controller.signal),
             ),
       ]);
       setCompanyResult(assembleCompanyResearch(p, n));
       setCompanyCachedAt(new Date().toISOString());
     } catch (err) {
-      console.error(err);
+      if (!controller.signal.aborted) console.error(err);
     } finally {
       setIsRevalidating(false);
+      abortRef.current = null;
     }
   };
 
@@ -217,5 +277,6 @@ export function useCompanyResearchHandlers() {
     runCompanyResearch,
     startCompanyResearch,
     submitProfileRequest,
+    stopResearching,
   };
 }
