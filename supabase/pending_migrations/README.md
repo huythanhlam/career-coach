@@ -1,46 +1,22 @@
 # Pending migrations
 
-These migrations back features whose code is already merged, but they are not
-yet applied to the database. They are staged here because this repo
-write-protects `supabase/migrations/**` and `supabase/types.ts` in
-`.claude/settings.json`: **a human applies them.**
+This directory holds migrations for features whose code is already merged but
+not yet applied to the database. It's used because this repo write-protects
+`supabase/migrations/**` and `supabase/types.ts` in `.claude/settings.json`:
+**a human applies them**, then moves the file into `supabase/migrations/`.
 
-They are numbered to sort **after** the newest applied migration
-(`20260624000004_add_admin_audit_log.sql`), so the ordering is correct once
-moved.
+There is nothing pending right now — the directory is empty except for this
+README. The most recent batch (below) was applied 2026-07-08.
 
-> **History note (2026-07):** three files that used to sit here —
-> `…_add_outreach_contacts.sql`, `…_add_negotiation_sessions.sql`,
-> `…_add_application_packages.sql` — were byte-identical duplicates of
-> migrations already applied under `20260624000000–02`. They were deleted to
-> remove the drift. The two Employer Studio files were renumbered from
-> `20260623*` (which collided with the applied `20260623000000_add_blog_posts.sql`
-> / `20260623000001_blog_admin.sql`) to `20260625*`.
-
-## How to apply
-
-Move the files into `supabase/migrations/` **in filename order** and push:
+## How to apply (when something lands here again)
 
 ```bash
-git mv supabase/pending_migrations/20260625000000_add_account_type.sql    supabase/migrations/
-git mv supabase/pending_migrations/20260625000001_add_employer_studio.sql supabase/migrations/
-git mv supabase/pending_migrations/20260625000002_add_blog_scheduling.sql supabase/migrations/
-git mv supabase/pending_migrations/20260703000000_add_ai_usage.sql        supabase/migrations/
-git mv supabase/pending_migrations/20260703000001_add_ai_conversations.sql supabase/migrations/
+git mv supabase/pending_migrations/<file>.sql supabase/migrations/
 supabase db push          # or: supabase migration up
 ```
 
-> `20260703000000_add_ai_usage.sql` backs AI Core v2 (P1): the `ai_usage`
-> metering table + `check_ai_usage_cap()` RPC the `ai-gateway` edge function
-> uses. It sorts after the P0 set above.
->
-> `20260703000001_add_ai_conversations.sql` backs AI Core v2 Slice 3: the
-> `ai_conversations` + `ai_messages` tables the gateway appends streaming chat
-> turns to (and `src/ai/conversation.ts` creates/reads). It sorts after
-> `…_add_ai_usage.sql`.
-
-Or paste each file's contents (in order) into the Supabase Dashboard → SQL
-Editor. Every file is idempotent (`add column if not exists`, guarded
+Or paste the file's contents into the Supabase Dashboard → SQL Editor. Files
+in this directory are written to be idempotent (`if not exists`, guarded
 constraints), so a partial apply or re-run is safe.
 
 After applying, regenerate types — **do not hand-edit** `supabase/types.ts`:
@@ -49,52 +25,64 @@ After applying, regenerate types — **do not hand-edit** `supabase/types.ts`:
 supabase gen types typescript --linked > supabase/types.ts
 ```
 
-`supabase/types.ts` is currently stale (it predates several applied tables and
-still lists the superseded `job_applications`); regenerating after this apply
-brings it fully in sync.
+## History
 
-## What these add
+### 2026-07-08 — Coach OS F1 Slice B + a production grants incident
 
-### `20260625000000_add_account_type.sql` — Employer Studio, part 1
-`profiles.account_type` (`'seeker'|'employer'`, default `'seeker'`). No backfill
-needed; the `handle_new_user` trigger is unchanged.
+- **`20260707000002_add_coach_nudges.sql`** / **`…000003_generate_nudges_cron.sql`**
+  — Coach OS F1 Slice B (nudges): the `coach_nudges` table + the nightly
+  `generate-nudges` pg_cron job. Requires `CRON_SECRET` as a function secret
+  and `generate-nudges` deployed (`supabase functions deploy generate-nudges
+  --no-verify-jwt`) — same pattern as `refresh-job-suggestions`. See §7 of
+  `docs/superpowers/specs/2026-07-07-coach-os-f1-design.md`.
 
-### `20260625000001_add_employer_studio.sql` — Employer Studio, part 2
-`employer_company_profiles`, `employer_job_listings`, `employer_boost_orders`
-with per-owner RLS plus one public SELECT policy so seekers can read published,
-boosted listings. Relies on `public.set_updated_at()`, `public.session_aal_ok()`,
-and `public.current_user_mfa_enrolled()`, which already exist. **Without these,
-creating a company/listing in the Studio fails.** Apply part 1 before part 2.
+- **`20260707000004_job_postings_grants.sql`** — production bugfix, unrelated
+  to Slice B. `job_postings` (20260610000001) predates the "explicit grants
+  required" convention below and was missing `select/insert/update/delete`
+  grants for both `authenticated` and `service_role` (confirmed via
+  `information_schema.role_table_grants` — only REFERENCES/TRIGGER/TRUNCATE
+  were present). This silently broke `refresh-suggestions` writes and would
+  have broken `generate-nudges` reads.
 
-### `20260625000002_add_blog_scheduling.sql` — Blog scheduling
-`blog_posts.scheduled_for` + `'scheduled'` added to `blog_posts_status_check`.
-The in-app Blog Admin (`schedulePost`/`cancelSchedule` in
-`src/services/blogAdminService.ts`, `useBlogPosts` in `src/hooks/useBlogPosts.ts`)
-already writes these; without the migration those writes fail the status check.
-See the migration's trailing note for the follow-up publisher cron that
-auto-publishes due posts.
+- **`20260707000005_fix_missing_table_grants.sql`** — production incident,
+  unrelated to Slice B. A live-app audit found 10 more tables missing base
+  grants for `authenticated` (and some for `service_role`) — including
+  `profiles` itself, which was actively blocking profile saves with
+  `"Grant the required privileges..."` errors. No migration in this repo ever
+  issued a table-level `REVOKE`, so this happened outside version control
+  (Dashboard/SQL editor), not from a code change. `ai_rate_limits` also
+  showed up in the audit but was deliberately excluded — it's accessed only
+  via a `SECURITY DEFINER` function restricted to `service_role`, so it never
+  needed a direct grant. `admin_audit_log` was folded in too: its own
+  migration's comment promised a `service_role` grant that was never actually
+  written. See the migration file for the full table list and the audit
+  query used to find them.
 
-### `20260703000000_add_ai_usage.sql` — AI Core v2 metering (Slice 1)
-`ai_usage` (one row per Gemini generation: tokens, latency, TTFT, est_cost) +
-`check_ai_usage_cap()`. Owner-only read; the gateway inserts with the service
-key. Backs the hard monthly per-user token cap enforced before any provider call.
+**Why this convention exists:** unlike some Postgres setups, this project's
+default privileges do **not** auto-cover new `public` tables beyond
+`REFERENCES`/`TRIGGER`/`TRUNCATE` — every table needs an explicit `grant` for
+`authenticated` and/or `service_role` per the access it needs. First
+documented in `20260612000000_company_profiles.sql`. `job_postings` and the
+10 tables above predate that documentation and were the fallout.
 
-### `20260703000001_add_ai_conversations.sql` — AI Core v2 conversations (Slice 3)
-`ai_conversations` + `ai_messages`, owner-only RLS. The `ai-gateway` streaming
-path appends the user turn and model reply to `ai_messages` when a
-`conversationId` is passed; `src/ai/conversation.ts` creates conversations and
-loads their messages. Depends only on `auth.users` (no extra helpers).
+## Verify a grants fix landed
 
-## Verify after applying
+Re-run the audit query from `20260707000005_fix_missing_table_grants.sql`
+(swap `grantee = 'authenticated'` for `'service_role'` for the other role):
 
-- **Employer tables:** creating a company profile and a listing in the Studio
-  succeeds; querying any employer table as a different user returns zero rows
-  (per-owner RLS).
-- **Blog scheduling:** scheduling a draft in Blog Admin sets `status='scheduled'`
-  with a future `scheduled_for`, shows in the admin "scheduled" lane, and is not
-  publicly readable until published.
-- **AI usage / cap:** an AI generation writes one `ai_usage` row; querying
-  another user's rows returns nothing (owner-only RLS).
-- **AI conversations:** sending a message in the Global Coach with a
-  conversation created writes a `user` then a `model` row to `ai_messages` under
-  a header in `ai_conversations`; another user reads zero rows from both.
+```sql
+select t.tablename, bool_or(g.privilege_type = 'SELECT') as has_select
+from pg_tables t
+left join information_schema.role_table_grants g
+  on g.table_name = t.tablename and g.table_schema = 'public'
+ and g.grantee = 'authenticated'
+where t.schemaname = 'public'
+group by t.tablename
+having not bool_or(g.privilege_type = 'SELECT');
+```
+
+An empty result means every `public` table has at least `SELECT` for that
+role — it doesn't confirm `INSERT`/`UPDATE`/`DELETE` are correct too, so for
+a table you just fixed, cross-check against its RLS policies (`for insert` /
+`for update` / `for delete` in its migration) rather than relying on this
+query alone.

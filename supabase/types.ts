@@ -276,6 +276,45 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_nudges: {
+        Row: {
+          body: string
+          created_at: string
+          cta_view: string | null
+          id: string
+          kind: string
+          status: string
+          subject_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          cta_view?: string | null
+          id?: string
+          kind: string
+          status?: string
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          cta_view?: string | null
+          id?: string
+          kind?: string
+          status?: string
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       company_profile_requests: {
         Row: {
           company: string
