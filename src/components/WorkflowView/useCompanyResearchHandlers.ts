@@ -20,7 +20,11 @@ function mergeProfilePartial(
   prev: CompanyProfileData | null,
   partial: Partial<CompanyProfileData>,
 ): CompanyProfileData {
-  const empty = { summary: "", bullets: [] as string[], sources: [] as CompanyProfileData["sources"] };
+  const empty = {
+    summary: "",
+    bullets: [] as string[],
+    sources: [] as CompanyProfileData["sources"],
+  };
   return {
     overview: partial.overview ?? prev?.overview ?? "",
     hiringValues: partial.hiringValues ?? prev?.hiringValues ?? empty,
@@ -151,7 +155,9 @@ export function useCompanyResearchHandlers() {
           abortRef.current = controller;
           try {
             const [p, n] = await Promise.all([
-              cp.fresh ? Promise.resolve(cp.data) : fetchProfileFresh(company, undefined, controller.signal),
+              cp.fresh
+                ? Promise.resolve(cp.data)
+                : fetchProfileFresh(company, undefined, controller.signal),
               cn.fresh ? Promise.resolve(cn.data) : fetchNewsFresh(company, controller.signal),
             ]);
             setCompanyResult(assembleCompanyResearch(p, n));
