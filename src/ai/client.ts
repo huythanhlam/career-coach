@@ -107,7 +107,7 @@ export async function callGateway(
 }
 
 /** Strip a leading/trailing markdown fence. Grounded calls (no responseSchema) may fence. */
-function stripFences(raw: string): string {
+export function stripFences(raw: string): string {
   return raw
     .replace(/^\s*```(?:json)?\s*/i, "")
     .replace(/\s*```\s*$/i, "")

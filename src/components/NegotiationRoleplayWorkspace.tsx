@@ -23,6 +23,8 @@ import { useNegotiationSessions } from "@/hooks/useNegotiationSessions";
 import { useSpeech } from "@/hooks/useSpeech";
 import { useDictation } from "@/hooks/useDictation";
 import { createCoachingSession, type CoachingSession } from "@/ai/coachingSession";
+import { StopGeneratingButton } from "@/components/ui/stop-generating-button";
+import { useStreamAnnouncer } from "@/hooks/useStreamAnnouncer";
 import {
   buildRecruiterSystemInstruction,
   evaluateNegotiationTranscript,
@@ -75,8 +77,14 @@ export function NegotiationRoleplayWorkspace() {
   const [isScoring, setIsScoring] = useState(false);
   const [failedInput, setFailedInput] = useState<string | null>(null);
   const chatRef = useRef<CoachingSession | null>(null);
+  // Cancels an in-flight reply (real AbortController, mirrors GlobalChatPanel).
+  const abortRef = useRef<AbortController | null>(null);
   const setupRef = useRef<NegotiationSetup | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastNegotiationMessage = messages[messages.length - 1];
+  const negotiationStreamingText =
+    lastNegotiationMessage?.role === "model" ? lastNegotiationMessage.text : "";
+  const negotiationAnnouncement = useStreamAnnouncer(negotiationStreamingText, !isGenerating);
 
   // Voice
   const speech = useSpeech();
@@ -156,13 +164,21 @@ export function NegotiationRoleplayWorkspace() {
     if (!chatRef.current) return;
     setFailedInput(null);
     setIsGenerating(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const full = await chatRef.current.send(text, (running) => {
-        setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: running }]);
-      });
+      const full = await chatRef.current.send(
+        text,
+        (running) => {
+          setMessages((prev) => [...prev.slice(0, -1), { role: "model", text: running }]);
+        },
+        controller.signal,
+      );
       if (voiceEnabled) speech.speak(full, { voice: selectedVoice, onEnd: continueConversation });
       else continueConversation();
     } catch (err) {
+      // A user-initiated stop leaves the partial reply in place, no error.
+      if (controller.signal.aborted) return;
       console.error("Negotiation reply failed:", err);
       setMessages((prev) => [
         ...prev.slice(0, -1),
@@ -174,6 +190,7 @@ export function NegotiationRoleplayWorkspace() {
       setFailedInput(text);
     } finally {
       setIsGenerating(false);
+      abortRef.current = null;
     }
   };
 
@@ -293,6 +310,7 @@ export function NegotiationRoleplayWorkspace() {
   };
 
   const reset = () => {
+    abortRef.current?.abort();
     speech.cancel();
     clearSilence();
     chatRef.current = null;
@@ -774,6 +792,11 @@ export function NegotiationRoleplayWorkspace() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+        {/* Throttled announcement — the bubble below updates every token, but screen
+            readers only hear it on a natural pause or once the reply settles. */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {negotiationAnnouncement}
+        </div>
         <div className="max-w-2xl mx-auto flex flex-col gap-4">
           {messages.slice(1).map((m, i) => (
             <div key={i} className={`flex gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -815,6 +838,12 @@ export function NegotiationRoleplayWorkspace() {
               </div>
             </div>
           ))}
+          {isGenerating && (
+            <StopGeneratingButton
+              onStop={() => abortRef.current?.abort()}
+              className="self-center"
+            />
+          )}
           {failedInput && (
             <button
               onClick={retry}

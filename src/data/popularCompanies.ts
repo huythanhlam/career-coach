@@ -5,7 +5,7 @@
  *
  * Only the company *names/aliases/tickers* are static here — public, stable
  * facts. All research figures and ratings are produced by the grounded pipeline
- * (`researchCompanyProfile` / `researchCompanyNews`), never hand-authored, so we
+ * (`researchCompanyProfileStreaming` / `researchCompanyNewsStreaming`), never hand-authored, so we
  * never ship invented data.
  *
  * `canonicalCompanyName()` collapses the many ways a user might type a company

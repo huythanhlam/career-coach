@@ -157,6 +157,7 @@ export function WorkflowView({ workflowId, onNavigate }: WorkflowViewProps) {
         companyName={h.companyJobDetails.companyName}
         companyResult={h.companyResult}
         isResearching={h.isResearching}
+        onStopResearching={h.stopResearching}
         isRevalidating={h.isRevalidating}
         companyCachedAt={h.companyCachedAt}
         companyProfile={h.companyProfile}

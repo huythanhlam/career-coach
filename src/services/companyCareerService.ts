@@ -14,7 +14,7 @@ import type { SourceLink } from "@/config/companyResearchSources";
  *      Edge Function — the same one the job-import flow uses.
  *
  * The concatenated primary-source text + the real page URLs are then handed to
- * `researchCompanyProfile` as authoritative grounding. Every step is best-effort:
+ * `researchCompanyProfileStreaming` as authoritative grounding. Every step is best-effort:
  * many large-company careers pages are JavaScript-rendered and return little, so
  * a thin/empty result simply falls back to the model's own grounded browsing.
  */

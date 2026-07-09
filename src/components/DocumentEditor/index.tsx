@@ -8,7 +8,6 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { sendMessageStream } from "@/services/geminiService";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { extractDocument, DOC_START, DOC_END } from "@/lib/aiDocFormat";
 import { markdownToHtml, htmlToMarkdown } from "@/lib/documentMarkdown";
@@ -47,6 +46,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
       content,
       onChange,
       isLoading = false,
+      onStopGenerating,
       title: titleProp = "Untitled document",
       onTitleChange,
       aiChat,
@@ -75,6 +75,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
     const [aiMessages, setAiMessages] = useState<DocMessage[]>(aiMessagesProp ?? []);
     const [chatInput, setChatInput] = useState("");
     const [isAiGenerating, setIsAiGenerating] = useState(false);
+    // Cancels an in-flight revise-chat reply (real AbortController, mirrors GlobalChatPanel).
+    const aiAbortRef = useRef<AbortController | null>(null);
     const [selectedContext, setSelectedContext] = useState("");
     const [showTailorJd, setShowTailorJd] = useState(false);
     const [tailorJdInput, setTailorJdInput] = useState("");
@@ -341,22 +343,28 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
         },
         { role: "model", text: "" },
       ]);
+      const controller = new AbortController();
+      aiAbortRef.current = controller;
       try {
-        let full = "";
-        await sendMessageStream(aiChat, prompt, (chunk) => {
-          full += chunk;
-          setAiMessages((prev) => {
-            const m = [...prev];
-            m[m.length - 1] = { role: "model", text: full };
-            return m;
-          });
-          const body = extractDocument(full);
-          if (body) {
-            sourceRef.current = "external";
-            onChange(body);
-          }
-        });
+        await aiChat.send(
+          prompt,
+          (fullText) => {
+            setAiMessages((prev) => {
+              const m = [...prev];
+              m[m.length - 1] = { role: "model", text: fullText };
+              return m;
+            });
+            const body = extractDocument(fullText);
+            if (body) {
+              sourceRef.current = "external";
+              onChange(body);
+            }
+          },
+          controller.signal,
+        );
       } catch (err) {
+        // A user-initiated stop leaves the partial revision in place, no error.
+        if (controller.signal.aborted) return;
         console.error(err);
         setAiMessages((prev) => {
           const m = [...prev];
@@ -365,6 +373,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
         });
       } finally {
         setIsAiGenerating(false);
+        aiAbortRef.current = null;
       }
     };
 
@@ -449,6 +458,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
             scopeId={scopeId.current}
             editorRef={editorRef}
             isLoading={isLoading}
+            onStopGenerating={onStopGenerating}
             content={content}
             rawHtmlMode={rawHtmlMode}
             headerHtml={headerHtml}
@@ -472,6 +482,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
             <AiSuggestionsPanel
               aiMessages={aiMessages}
               isAiGenerating={isAiGenerating}
+              onStopGenerating={() => aiAbortRef.current?.abort()}
               chatInput={chatInput}
               setChatInput={setChatInput}
               selectedContext={selectedContext}

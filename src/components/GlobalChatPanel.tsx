@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { StopGeneratingButton } from "@/components/ui/stop-generating-button";
+import { useStreamAnnouncer } from "@/hooks/useStreamAnnouncer";
 import { Input } from "@/components/ui/input";
 import { Send, X, MessageSquare, Loader2, Sparkles, Trash2, RotateCcw } from "lucide-react";
 import Markdown from "react-markdown";
@@ -97,6 +99,10 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
 
   const workflowConfig = workflowsConfig[activeView as any];
   const systemInstruction = workflowConfig?.systemInstruction || basePersona;
+
+  const lastMessage = messages[messages.length - 1];
+  const streamingText = lastMessage?.role === "model" ? lastMessage.text : "";
+  const streamAnnouncement = useStreamAnnouncer(streamingText, !isGenerating);
 
   const initials =
     (profile.preferredName || profile.fullName || "")
@@ -249,6 +255,9 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {isGenerating && (
+            <StopGeneratingButton onStop={() => abortRef.current?.abort()} className="mr-1" />
+          )}
           {messages.length > 0 && (
             <Button
               variant="ghost"
@@ -276,13 +285,12 @@ export function GlobalChatPanel({ isOpen, onClose, activeView }: GlobalChatPanel
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0" style={{ padding: "18px" }}>
-        <div
-          className="space-y-4 pb-4"
-          role="log"
-          aria-live="polite"
-          aria-relevant="additions text"
-          aria-label="Coach conversation"
-        >
+        {/* Throttled announcement of the streaming reply — the bubble below updates every
+            token, but screen readers only hear it on a natural pause or once it settles. */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {streamAnnouncement}
+        </div>
+        <div className="space-y-4 pb-4" role="log" aria-label="Coach conversation">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
               <div

@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { workflowsConfig } from "@/config/workflows";
+import { StopGeneratingButton } from "@/components/ui/stop-generating-button";
+import { useStreamAnnouncer } from "@/hooks/useStreamAnnouncer";
 import type { SavedCareerPlan, PlanMilestone } from "@/types/userProfile";
 import type { GoalPlanIntakeData } from "@/components/GoalPlanIntakeForm";
 
@@ -38,6 +40,7 @@ interface PlanViewProps {
   onInputChange: (v: string) => void;
   onSend: (e?: React.FormEvent, override?: string) => void;
   isGenerating: boolean;
+  onStopGenerating: () => void;
   editingSheet: boolean;
   draftMarkdown: string;
   onDraftChange: (v: string) => void;
@@ -72,6 +75,7 @@ export const PlanView = React.memo(function PlanView({
   onInputChange,
   onSend,
   isGenerating,
+  onStopGenerating,
   editingSheet,
   draftMarkdown,
   onDraftChange,
@@ -98,6 +102,10 @@ export const PlanView = React.memo(function PlanView({
   onExtractMilestones,
   onCheckIn,
 }: PlanViewProps) {
+  const lastPlanMessage = messages[messages.length - 1];
+  const planStreamingText = lastPlanMessage?.role === "model" ? lastPlanMessage.text : "";
+  const planAnnouncement = useStreamAnnouncer(planStreamingText, !isGenerating);
+
   return (
     <div
       className="flex-1 flex flex-col h-full overflow-hidden"
@@ -551,6 +559,9 @@ export const PlanView = React.memo(function PlanView({
                   ? "Building your plan…"
                   : "Career Goal Planning Sheet"}
               </span>
+              {isGenerating && (
+                <StopGeneratingButton onStop={onStopGenerating} className="ml-auto" />
+              )}
               {!isGenerating &&
                 planMarkdown.trim() &&
                 (editingSheet ? (
@@ -698,6 +709,11 @@ export const PlanView = React.memo(function PlanView({
           </div>
 
           <div className="flex-1 overflow-auto no-scrollbar" style={{ padding: 18 }}>
+            {/* Throttled announcement — the bubble below updates every token, but screen
+                readers only hear it on a natural pause or once the reply settles. */}
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
+              {planAnnouncement}
+            </div>
             <div className="space-y-4 pb-2">
               {messages.map((msg, idx) => (
                 <div

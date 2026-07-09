@@ -24,12 +24,9 @@ import {
   EyeOff,
   Eye,
 } from "lucide-react";
-import {
-  createTechCoachChat,
-  sendMessageStream,
-  type ResumeAnalysisResult,
-  type Improvement,
-} from "@/services/geminiService";
+import { type ResumeAnalysisResult, type Improvement } from "@/services/geminiService";
+import { createCoachingSession, type CoachingSession } from "@/ai/coachingSession";
+import { documentDraftingWorkflow } from "@/ai/workflows/documentDrafting";
 import { workflowsConfig } from "@/config/workflows";
 import { docWrapInstruction, extractDocument, DOC_START } from "@/lib/aiDocFormat";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -43,9 +40,6 @@ export interface ResumeGeneratorWorkspaceHandle {
   applyFix(original: string, suggested: string): void;
   setHighlight(text: string | null): void;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Chat = any;
 
 export type SuggestionStatus = "pending" | "applied" | "dismissed";
 
@@ -112,7 +106,9 @@ export const ResumeGeneratorWorkspace = forwardRef<
   const [isGenerating, setIsGenerating] = useState(
     !initialResumeText && !initialChatMessages && !analysisResult && !initialHtml,
   );
-  const [chatInstance, setChatInstance] = useState<Chat | null>(null);
+  const [chatInstance, setChatInstance] = useState<CoachingSession | null>(null);
+  // Cancels an in-flight initial-generation stream (real AbortController, mirrors GlobalChatPanel).
+  const genAbortRef = useRef<AbortController | null>(null);
   const [chatMessages, setChatMessages] = useState<DocMessage[]>(() => {
     if (initialChatMessages) return initialChatMessages;
     if (initialResumeText) return [{ role: "model", text: initialResumeText }];
@@ -132,8 +128,8 @@ export const ResumeGeneratorWorkspace = forwardRef<
     const baseInstruction = systemInstruction ?? config.systemInstruction;
     const systemPrompt = baseInstruction + docWrapInstruction("resume");
 
-    const chat = createTechCoachChat(systemPrompt, config.enableSearch);
-    setChatInstance(chat);
+    const session = createCoachingSession(systemPrompt, documentDraftingWorkflow);
+    setChatInstance(session);
 
     if (initialChatMessages || initialResumeText || analysisResult !== undefined) {
       setIsGenerating(false);
@@ -151,24 +147,34 @@ export const ResumeGeneratorWorkspace = forwardRef<
         { role: "user", text: "Please generate my resume based on my details." },
         { role: "model", text: "" },
       ]);
+      const controller = new AbortController();
+      genAbortRef.current = controller;
       try {
-        let full = "";
-        await sendMessageStream(chat, prompt as string, (chunk) => {
-          full += chunk;
-          setChatMessages((prev) => {
-            const m = [...prev];
-            m[m.length - 1] = { role: "model", text: full };
-            return m;
-          });
-          const body = extractDocument(full);
-          if (body) setContent(body);
-          else if (full.trim().length > 100 && !full.includes(DOC_START) && !full.includes("```"))
-            setContent(full.trim());
-        });
+        await session.send(
+          prompt as string,
+          (fullText) => {
+            setChatMessages((prev) => {
+              const m = [...prev];
+              m[m.length - 1] = { role: "model", text: fullText };
+              return m;
+            });
+            const body = extractDocument(fullText);
+            if (body) setContent(body);
+            else if (
+              fullText.trim().length > 100 &&
+              !fullText.includes(DOC_START) &&
+              !fullText.includes("```")
+            )
+              setContent(fullText.trim());
+          },
+          controller.signal,
+        );
       } catch (err) {
-        console.error("Resume generation failed:", err);
+        // A user-initiated stop leaves the partial resume in place, no error.
+        if (!controller.signal.aborted) console.error("Resume generation failed:", err);
       } finally {
         if (mounted) setIsGenerating(false);
+        genAbortRef.current = null;
       }
     })();
 
@@ -232,6 +238,7 @@ export const ResumeGeneratorWorkspace = forwardRef<
         content={content}
         onChange={setContent}
         isLoading={isGenerating}
+        onStopGenerating={() => genAbortRef.current?.abort()}
         title="Resume"
         aiChat={chatInstance}
         aiMessages={chatMessages}

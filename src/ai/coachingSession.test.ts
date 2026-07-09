@@ -8,6 +8,7 @@ vi.mock("@/ai/client", () => ({
 
 import { createCoachingSession } from "@/ai/coachingSession";
 import { coachingChatWorkflow } from "@/ai/workflows/coachingChat";
+import { documentDraftingWorkflow } from "@/ai/workflows/documentDrafting";
 
 /** A fake streamWorkflow that emits `reply` in two chunks and resolves. */
 function emits(...chunks: string[]) {
@@ -60,6 +61,15 @@ describe("createCoachingSession", () => {
       { role: "user", text: "Q1" },
       { role: "model", text: "A1" },
     ]);
+  });
+
+  it("uses a caller-provided workflow instead of the coachingChat default", async () => {
+    streamWorkflow.mockImplementation(emits("draft"));
+    const session = createCoachingSession("SYSTEM", documentDraftingWorkflow);
+    await session.send("Generate my resume.", () => {});
+
+    const [wf] = streamWorkflow.mock.calls[0];
+    expect(wf).toBe(documentDraftingWorkflow);
   });
 
   it("propagates errors so the caller can offer Retry", async () => {
