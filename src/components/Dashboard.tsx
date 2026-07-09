@@ -23,7 +23,8 @@ import { useUserProfile } from "@/context/UserProfileContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { useInterviewSessions } from "@/hooks/useInterviewSessions";
-import { computePipelineStats, STALE_AFTER_DAYS } from "@/lib/pipelineStats";
+import { useCoachNudges } from "@/hooks/useCoachNudges";
+import { computePipelineStats } from "@/lib/pipelineStats";
 import {
   MOCK_WORKFLOW_LABELS,
   MOCK_WORKFLOW_IDS,
@@ -127,6 +128,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const postings = allPostings.filter((p) => p.status !== "suggested");
   const suggestedCount = allPostings.length - postings.length;
   const pipelineStats = useMemo(() => computePipelineStats(postings), [postings]);
+  const { nudges, dismiss: dismissNudge } = useCoachNudges();
   const { profile } = useUserProfile();
   const isMobile = useIsMobile();
   const { analyses } = useSavedAnalyses();
@@ -551,10 +553,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </button>
         )}
 
-        {/* ── Follow-up nudge ────────────────────────────────────── */}
-        {pipelineStats.staleApplications.length > 0 && (
-          <button
-            onClick={() => go("job_postings")}
+        {/* ── Coach nudges ───────────────────────────────────────── */}
+        {nudges.map((nudge) => (
+          <div
+            key={nudge.id}
             className="group transition-colors"
             style={{
               display: "flex",
@@ -566,72 +568,83 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               border: "1px solid rgba(245,158,11,0.30)",
               borderRadius: 24,
               padding: "18px 24px",
-              cursor: "pointer",
             }}
           >
-            <div
+            <button
+              onClick={() => go((nudge.ctaView as ViewId) ?? "job_postings")}
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                background: "rgba(245,158,11,0.12)",
-                border: "1px solid rgba(245,158,11,0.25)",
-                color: "#B45309",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
+                gap: 16,
+                flex: 1,
+                minWidth: 0,
+                textAlign: "left",
+                fontFamily: "inherit",
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
               }}
             >
-              <Clock className="w-5 h-5" />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                className="font-display"
-                style={{
-                  fontSize: 17,
-                  fontWeight: 600,
-                  color: "var(--foreground)",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {pipelineStats.staleApplications.length} application
-                {pipelineStats.staleApplications.length === 1 ? "" : "s"} could use a follow-up
-              </div>
               <div
                 style={{
-                  fontSize: 13,
-                  color: "var(--muted-foreground)",
-                  marginTop: 2,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  background: "rgba(245,158,11,0.12)",
+                  border: "1px solid rgba(245,158,11,0.25)",
+                  color: "#B45309",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
-                No movement in over {STALE_AFTER_DAYS} days:{" "}
-                {pipelineStats.staleApplications
-                  .slice(0, 3)
-                  .map((p) => p.company ?? p.title)
-                  .join(", ")}
-                {pipelineStats.staleApplications.length > 3 ? "…" : ""} — we'll draft the email for
-                you.
+                <Clock className="w-5 h-5" />
               </div>
-            </div>
-            <div
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  className="font-display"
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {nudge.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--muted-foreground)",
+                    marginTop: 2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {nudge.body}
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => dismissNudge(nudge.id)}
+              aria-label="Dismiss"
               style={{
-                color: "#B45309",
-                fontSize: 13,
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
+                color: "var(--muted-foreground)",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
                 flexShrink: 0,
+                padding: 6,
+                display: "flex",
               }}
             >
-              Follow up <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </button>
-        )}
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
 
         {/* ── Career path ────────────────────────────────────────── */}
         <CareerPath
