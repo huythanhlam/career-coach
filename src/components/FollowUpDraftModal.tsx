@@ -72,7 +72,9 @@ export function FollowUpDraftModal({
       .catch((err) => {
         if (controller.signal.aborted) return;
         console.error("Follow-up draft failed:", err);
-        setError("Couldn't generate the draft. Make sure the AI gateway is reachable, then try again.");
+        setError(
+          "Couldn't generate the draft. Make sure the AI gateway is reachable, then try again.",
+        );
       })
       .finally(() => {
         setIsGenerating(false);
@@ -156,7 +158,11 @@ export function FollowUpDraftModal({
             flexWrap: "wrap",
           }}
         >
-          {isGenerating ? <StopGeneratingButton onStop={() => abortRef.current?.abort()} /> : <div />}
+          {isGenerating ? (
+            <StopGeneratingButton onStop={() => abortRef.current?.abort()} />
+          ) : (
+            <div />
+          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button type="button" variant="outline" size="sm" onClick={onSnooze}>
               Snooze 3 days

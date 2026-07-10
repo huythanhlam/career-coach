@@ -132,8 +132,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const postings = allPostings.filter((p) => p.status !== "suggested");
   const suggestedCount = allPostings.length - postings.length;
   const pipelineStats = useMemo(() => computePipelineStats(postings), [postings]);
-  const { nudges, dismiss: dismissNudge, markDone: markNudgeDone, snooze: snoozeNudge } =
-    useCoachNudges();
+  const {
+    nudges,
+    dismiss: dismissNudge,
+    markDone: markNudgeDone,
+    snooze: snoozeNudge,
+  } = useCoachNudges();
 
   const [draftModal, setDraftModal] = useState<{
     nudge: CoachNudge;
@@ -598,7 +602,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           >
             <button
               onClick={() =>
-                nudge.draftKind ? openDraftNudge(nudge) : go((nudge.ctaView as ViewId) ?? "job_postings")
+                nudge.draftKind
+                  ? openDraftNudge(nudge)
+                  : go((nudge.ctaView as ViewId) ?? "job_postings")
               }
               style={{
                 display: "flex",

@@ -62,10 +62,7 @@ export async function dismissNudge(id: string): Promise<void> {
 
 /** Mark a nudge as done (the user completed the action). Best-effort. */
 export async function markNudgeDone(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("coach_nudges")
-    .update({ status: "done" })
-    .eq("id", id);
+  const { error } = await supabase.from("coach_nudges").update({ status: "done" }).eq("id", id);
   if (error) console.error("markNudgeDone failed:", error.message);
 }
 
