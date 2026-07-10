@@ -28,7 +28,16 @@ import { downloadResume } from "@/services/resumeStorageService";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { FollowUpDraftModal } from "@/components/FollowUpDraftModal";
 import type { CoachNudge } from "@/services/coachNudges";
-import { computePipelineStats } from "@/lib/pipelineStats";
+import { computePipelineStats, computeResumeVariantStats } from "@/lib/pipelineStats";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import {
   MOCK_WORKFLOW_LABELS,
   MOCK_WORKFLOW_IDS,
@@ -160,6 +169,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     setDraftModal({ nudge, posting, resumeText });
   };
   const { profile } = useUserProfile();
+  const resumeVariantStats = useMemo(
+    () => computeResumeVariantStats(postings, profile.savedResumes),
+    [postings, profile.savedResumes],
+  );
   const isMobile = useIsMobile();
   const { analyses } = useSavedAnalyses();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1014,29 +1027,73 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   hint={pipelineStats.offers > 0 ? "nice work 🎉" : "keep going"}
                 />
               </div>
-              {pipelineStats.tailoredEdge &&
-                pipelineStats.tailoredEdge.tailoredRate >
-                  pipelineStats.tailoredEdge.untailoredRate && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--muted-foreground)",
-                      marginTop: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <Sparkles
-                      className="w-3.5 h-3.5"
-                      style={{ color: "var(--primary)", flexShrink: 0 }}
-                    />
-                    Applications with a tailored resume hear back{" "}
-                    {Math.round(pipelineStats.tailoredEdge.tailoredRate * 100)}% of the time, vs{" "}
-                    {Math.round(pipelineStats.tailoredEdge.untailoredRate * 100)}% without —
-                    tailoring is working for you.
+              {resumeVariantStats && (
+                <div
+                  style={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 18,
+                    padding: "14px 18px 6px",
+                    marginTop: 12,
+                    boxShadow: "0 8px 30px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  <div className="eyebrow">Response rate by resume</div>
+                  <div style={{ height: 220, marginTop: 8 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={resumeVariantStats.map((s) => ({
+                          name: s.label,
+                          rate: s.responseRate,
+                          applied: s.applied,
+                          responses: s.responses,
+                        }))}
+                        margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          vertical={false}
+                          stroke="var(--border)"
+                        />
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 12, fill: "#6E6557" }}
+                          dy={10}
+                        />
+                        <YAxis
+                          tickFormatter={(val: number) => `${Math.round(val * 100)}%`}
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 12, fill: "#6E6557" }}
+                          width={44}
+                          domain={[0, 1]}
+                        />
+                        <RechartsTooltip
+                          formatter={(val, _name, item) => {
+                            const rate = typeof val === "number" ? val : 0;
+                            const p = item.payload as { applied: number; responses: number };
+                            return [
+                              `${p.responses}/${p.applied} applications (${Math.round(rate * 100)}%)`,
+                              "Response rate",
+                            ];
+                          }}
+                          contentStyle={{
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "var(--card)",
+                            color: "var(--foreground)",
+                            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                          }}
+                          cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                        />
+                        <Bar dataKey="rate" fill="#D97757" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                )}
+                </div>
+              )}
             </div>
           )}
 
