@@ -1,11 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
 
 /**
- * Client-side store for Coach OS nudges (`coach_nudges`, Roadmap F1 Slice B).
- * Rows are server-generated only (nightly `generate-nudges` cron, service-role
- * insert) — the client only reads and dismisses. Fail-soft: reading/dismissing
- * must never break the Dashboard render. The `coach_nudges` table is still in
- * `supabase/pending_migrations/`, so it is referenced by name (untyped client).
+ * Client-side store for Coach OS nudges (`coach_nudges`, Roadmap F1 Slice B;
+ * draftKind/snooze added in F3 Slice A). Rows are server-generated only
+ * (nightly `generate-nudges` cron, service-role insert) — the client reads,
+ * dismisses, marks done, and snoozes. Fail-soft: reading/mutating must never
+ * break the Dashboard render.
  */
 
 export interface CoachNudge {
@@ -16,6 +16,8 @@ export interface CoachNudge {
   body: string;
   ctaView: string | null;
   createdAt: string;
+  /** Non-null when this nudge has a real AI-draftable action attached. */
+  draftKind: "follow_up" | "thank_you" | null;
 }
 
 function rowToNudge(row: Record<string, unknown>): CoachNudge {
@@ -27,15 +29,20 @@ function rowToNudge(row: Record<string, unknown>): CoachNudge {
     body: row.body as string,
     ctaView: (row.cta_view as string) ?? null,
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
+    draftKind: (row.draft_kind as CoachNudge["draftKind"]) ?? null,
   };
 }
 
-/** Active nudges for the current user, most recent first. `[]` on error. */
+/**
+ * Active, non-snoozed nudges for the current user, most recent first.
+ * `[]` on error.
+ */
 export async function listActiveNudges(): Promise<CoachNudge[]> {
   const { data, error } = await supabase
     .from("coach_nudges")
-    .select("id, kind, subject_id, title, body, cta_view, created_at")
+    .select("id, kind, subject_id, title, body, cta_view, created_at, draft_kind")
     .eq("status", "active")
+    .or(`snoozed_until.is.null,snoozed_until.lt.${new Date().toISOString()}`)
     .order("created_at", { ascending: false });
   if (error || !data) {
     if (error) console.error("listActiveNudges failed:", error.message);
@@ -51,4 +58,23 @@ export async function dismissNudge(id: string): Promise<void> {
     .update({ status: "dismissed" })
     .eq("id", id);
   if (error) console.error("dismissNudge failed:", error.message);
+}
+
+/** Mark a nudge as done (the user completed the action). Best-effort. */
+export async function markNudgeDone(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("coach_nudges")
+    .update({ status: "done" })
+    .eq("id", id);
+  if (error) console.error("markNudgeDone failed:", error.message);
+}
+
+/** Hide a nudge for `days` days, after which it resurfaces (unless dismissed/done meanwhile). */
+export async function snoozeNudge(id: string, days: number): Promise<void> {
+  const snoozedUntil = new Date(Date.now() + days * 86_400_000).toISOString();
+  const { error } = await supabase
+    .from("coach_nudges")
+    .update({ snoozed_until: snoozedUntil })
+    .eq("id", id);
+  if (error) console.error("snoozeNudge failed:", error.message);
 }
