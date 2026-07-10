@@ -71,7 +71,6 @@ describe("computePipelineStats", () => {
     });
     expect(computePipelineStats([p], NOW).staleApplications).toHaveLength(1);
   });
-
 });
 
 describe("computeResumeVariantStats", () => {
