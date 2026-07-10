@@ -1071,10 +1071,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                           domain={[0, 1]}
                         />
                         <RechartsTooltip
-                          formatter={(val: number, _name, item) => {
+                          formatter={(val, _name, item) => {
+                            const rate = typeof val === "number" ? val : 0;
                             const p = item.payload as { applied: number; responses: number };
                             return [
-                              `${p.responses}/${p.applied} applications (${Math.round(val * 100)}%)`,
+                              `${p.responses}/${p.applied} applications (${Math.round(rate * 100)}%)`,
                               "Response rate",
                             ];
                           }}
