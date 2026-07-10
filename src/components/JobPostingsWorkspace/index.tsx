@@ -817,6 +817,10 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
                 s === "applied" && !posting.appliedAt
                   ? new Date().toISOString()
                   : posting.appliedAt,
+              interviewingAt:
+                s === "interviewing" && !posting.interviewingAt
+                  ? new Date().toISOString()
+                  : posting.interviewingAt,
             })
           }
           onToggleSavedOnly={() => setSavedOnly((s) => !s)}

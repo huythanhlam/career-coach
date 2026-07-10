@@ -426,6 +426,10 @@ export const DetailDrawer = React.memo(function DetailDrawer({
                       s === "applied" && !posting.appliedAt
                         ? new Date().toISOString()
                         : posting.appliedAt,
+                    interviewingAt:
+                      s === "interviewing" && !posting.interviewingAt
+                        ? new Date().toISOString()
+                        : posting.interviewingAt,
                   });
                 }}
               >
