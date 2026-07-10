@@ -1,10 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { buildFollowUpNudges, type StalePostingCandidate } from "../_shared/followUpNudges.ts";
+import {
+  buildFollowUpNudges,
+  buildThankYouNudges,
+  type StalePostingCandidate,
+} from "../_shared/followUpNudges.ts";
 
 // ── Nightly coach-nudge generator (Coach OS F1 Slice B) ────────────────────
 // Triggered by pg_cron (see migration). Deterministic, template-only, no AI:
-// for every user's stale applied/interviewing job_postings, upserts a
-// `follow_up` coach_nudges row (idempotent via the unique
+// for every user's stale applied/interviewing job_postings, upserts
+// `follow_up` and `thank_you` coach_nudges rows (idempotent via the unique
 // (user_id, kind, subject_id) index — ON CONFLICT DO NOTHING so a dismissed
 // nudge is never recreated). See
 // docs/superpowers/specs/2026-07-07-coach-os-f1-design.md §7.
@@ -24,14 +28,15 @@ Deno.serve(async (req) => {
 
   const { data: postings, error } = await admin
     .from("job_postings")
-    .select("id, user_id, status, title, company, applied_at, updated_at")
+    .select("id, user_id, status, title, company, applied_at, interviewing_at, updated_at")
     .in("status", ["applied", "interviewing"]);
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 
-  const rows = buildFollowUpNudges((postings ?? []) as StalePostingCandidate[], new Date());
+  const candidates = (postings ?? []) as StalePostingCandidate[];
+  const rows = [...buildFollowUpNudges(candidates, new Date()), ...buildThankYouNudges(candidates, new Date())];
 
   let inserted = 0;
   if (rows.length > 0) {
