@@ -27,6 +27,7 @@ function rowToPosting(row: Record<string, unknown>): JobPosting {
     appliedCoverLetterId: (row.applied_cover_letter_id as string) ?? undefined,
     notes: (row.notes as string) ?? undefined,
     appliedAt: (row.applied_at as string) ?? undefined,
+    interviewingAt: (row.interviewing_at as string) ?? undefined,
     postingData: (row.posting_data as Record<string, unknown>) ?? {},
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
@@ -57,6 +58,7 @@ function postingToRow(p: Partial<JobPosting>): Record<string, unknown> {
   set("applied_cover_letter_id", p.appliedCoverLetterId ?? null);
   set("notes", p.notes ?? null);
   set("applied_at", p.appliedAt ?? null);
+  set("interviewing_at", p.interviewingAt ?? null);
   set("posting_data", p.postingData);
   return row;
 }

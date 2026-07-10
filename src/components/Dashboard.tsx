@@ -18,12 +18,16 @@ import {
   Clock,
 } from "lucide-react";
 import { useJobPostings } from "@/hooks/useJobPostings";
-import type { JobStatus } from "@/types/jobPosting";
+import type { JobPosting, JobStatus } from "@/types/jobPosting";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSavedAnalyses } from "@/hooks/useSavedAnalyses";
 import { useInterviewSessions } from "@/hooks/useInterviewSessions";
 import { useCoachNudges } from "@/hooks/useCoachNudges";
+import { downloadResume } from "@/services/resumeStorageService";
+import { buildProfileBaseline } from "@/lib/careerBaseline";
+import { FollowUpDraftModal } from "@/components/FollowUpDraftModal";
+import type { CoachNudge } from "@/services/coachNudges";
 import { computePipelineStats } from "@/lib/pipelineStats";
 import {
   MOCK_WORKFLOW_LABELS,
@@ -128,7 +132,33 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const postings = allPostings.filter((p) => p.status !== "suggested");
   const suggestedCount = allPostings.length - postings.length;
   const pipelineStats = useMemo(() => computePipelineStats(postings), [postings]);
-  const { nudges, dismiss: dismissNudge } = useCoachNudges();
+  const {
+    nudges,
+    dismiss: dismissNudge,
+    markDone: markNudgeDone,
+    snooze: snoozeNudge,
+  } = useCoachNudges();
+
+  const [draftModal, setDraftModal] = useState<{
+    nudge: CoachNudge;
+    posting: JobPosting;
+    resumeText: string;
+  } | null>(null);
+
+  const openDraftNudge = async (nudge: CoachNudge) => {
+    const posting = allPostings.find((p) => p.id === nudge.subjectId);
+    if (!posting) return;
+    const resume = profile.savedResumes?.find((r) => r.id === posting.appliedResumeId);
+    let resumeText = resume?.text ?? "";
+    if (!resumeText && resume?.storagePath) {
+      try {
+        resumeText = await downloadResume(resume.storagePath);
+      } catch {
+        resumeText = "";
+      }
+    }
+    setDraftModal({ nudge, posting, resumeText });
+  };
   const { profile } = useUserProfile();
   const isMobile = useIsMobile();
   const { analyses } = useSavedAnalyses();
@@ -571,7 +601,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             }}
           >
             <button
-              onClick={() => go((nudge.ctaView as ViewId) ?? "job_postings")}
+              onClick={() =>
+                nudge.draftKind
+                  ? openDraftNudge(nudge)
+                  : go((nudge.ctaView as ViewId) ?? "job_postings")
+              }
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1395,6 +1429,27 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </form>
           </div>
         </div>
+      )}
+      {draftModal && (
+        <FollowUpDraftModal
+          draftKind={draftModal.nudge.draftKind as "follow_up" | "thank_you"}
+          posting={draftModal.posting}
+          resumeText={draftModal.resumeText}
+          baseline={buildProfileBaseline(profile)}
+          onClose={() => setDraftModal(null)}
+          onMarkDone={() => {
+            markNudgeDone(draftModal.nudge.id);
+            setDraftModal(null);
+          }}
+          onSnooze={() => {
+            snoozeNudge(draftModal.nudge.id, 3);
+            setDraftModal(null);
+          }}
+          onDismiss={() => {
+            dismissNudge(draftModal.nudge.id);
+            setDraftModal(null);
+          }}
+        />
       )}
     </div>
   );
