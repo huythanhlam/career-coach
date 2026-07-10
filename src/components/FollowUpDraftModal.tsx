@@ -126,8 +126,11 @@ export function FollowUpDraftModal({
         <div className="font-display" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>
           {MODAL_TITLE[draftKind]}
         </div>
-        <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 4 }}>
           {posting.title} at {posting.company ?? "this company"}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>
+          We never send anything automatically — copy this draft and send it yourself.
         </div>
 
         {error ? (
