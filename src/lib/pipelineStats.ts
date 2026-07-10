@@ -28,13 +28,6 @@ const OFFER_SET: ReadonlySet<JobStatus> = new Set(["offer", "accepted"]);
 /** An application still sitting in "applied" longer than this needs a follow-up. */
 export const STALE_AFTER_DAYS = 10;
 
-export interface TailoredEdge {
-  /** Response rate (0–1) for applications with a tailored/attached resume. */
-  tailoredRate: number;
-  /** Response rate (0–1) for applications without one. */
-  untailoredRate: number;
-}
-
 export interface PipelineStats {
   /** Applications submitted (applied or any later stage). */
   applied: number;
@@ -49,8 +42,6 @@ export interface PipelineStats {
   offers: number;
   /** Still in "applied" with no movement for more than STALE_AFTER_DAYS. */
   staleApplications: JobPosting[];
-  /** Tailored-resume vs plain response rates; null until both groups have ≥3 applications. */
-  tailoredEdge: TailoredEdge | null;
 }
 
 function daysSince(iso: string | undefined, now: Date): number | null {
@@ -82,17 +73,6 @@ export function computePipelineStats(
         new Date(b.appliedAt ?? b.updatedAt).getTime(),
     );
 
-  // Outcome attribution: does attaching a tailored resume change the response
-  // rate? Only meaningful once both groups have a few data points.
-  const tailored = appliedPostings.filter((p) => p.appliedResumeId);
-  const untailored = appliedPostings.filter((p) => !p.appliedResumeId);
-  const rate = (group: JobPosting[]) =>
-    group.filter((p) => RESPONSE_SET.has(p.status)).length / group.length;
-  const tailoredEdge: TailoredEdge | null =
-    tailored.length >= 3 && untailored.length >= 3
-      ? { tailoredRate: rate(tailored), untailoredRate: rate(untailored) }
-      : null;
-
   return {
     applied,
     responses,
@@ -101,8 +81,78 @@ export function computePipelineStats(
     interviewRate: applied > 0 ? interviews / applied : null,
     offers,
     staleApplications,
-    tailoredEdge,
   };
+}
+
+/** Minimum applications a single resume-variant group needs before it's shown. */
+const MIN_VARIANT_APPLICATIONS = 3;
+/** Minimum total applied applications before the variant breakdown is shown at all. */
+const MIN_TOTAL_FOR_VARIANT_BREAKDOWN = 10;
+/** Minimum number of qualifying variant groups before the variant breakdown is shown. */
+const MIN_VARIANT_GROUPS = 2;
+
+export interface ResumeVariantStat {
+  /** Saved-resume id this group is keyed by, or null for "no resume attached". */
+  id: string | null;
+  /** Display label — resume name, "No resume attached", or "Deleted resume"[ + suffix]. */
+  label: string;
+  /** Applications submitted with this variant. */
+  applied: number;
+  /** Applications in this group that got a response. */
+  responses: number;
+  /** responses / applied for this group. */
+  responseRate: number;
+}
+
+/**
+ * Response rate broken down by which resume variant was attached at
+ * application time. Returns null unless there's enough data for the
+ * breakdown to be meaningful (≥10 total applications AND ≥2 variant groups
+ * with ≥3 applications each). Groups below the per-variant minimum are
+ * simply omitted, not merged into an "other" bucket.
+ */
+export function computeResumeVariantStats(
+  postings: JobPosting[],
+  savedResumes: { id: string; name: string }[] | undefined,
+): ResumeVariantStat[] | null {
+  const appliedPostings = postings.filter((p) => APPLIED_SET.has(p.status));
+  if (appliedPostings.length < MIN_TOTAL_FOR_VARIANT_BREAKDOWN) return null;
+
+  const groups = new Map<string | null, JobPosting[]>();
+  for (const p of appliedPostings) {
+    const key = p.appliedResumeId ?? null;
+    const group = groups.get(key);
+    if (group) group.push(p);
+    else groups.set(key, [p]);
+  }
+
+  // Disambiguate colliding "Deleted resume" labels with a short id suffix.
+  const deletedIds = [...groups.keys()].filter(
+    (id): id is string => id !== null && !savedResumes?.some((r) => r.id === id),
+  );
+  const labelFor = (id: string | null): string => {
+    if (id === null) return "No resume attached";
+    const saved = savedResumes?.find((r) => r.id === id);
+    if (saved) return saved.name;
+    return deletedIds.length > 1 ? `Deleted resume (${id.slice(0, 6)})` : "Deleted resume";
+  };
+
+  const stats: ResumeVariantStat[] = [...groups.entries()]
+    .filter(([, group]) => group.length >= MIN_VARIANT_APPLICATIONS)
+    .map(([id, group]) => {
+      const responses = group.filter((p) => RESPONSE_SET.has(p.status)).length;
+      return {
+        id,
+        label: labelFor(id),
+        applied: group.length,
+        responses,
+        responseRate: responses / group.length,
+      };
+    })
+    .sort((a, b) => b.responseRate - a.responseRate);
+
+  if (stats.length < MIN_VARIANT_GROUPS) return null;
+  return stats;
 }
 
 const STATUS_ORDER: JobStatus[] = [
