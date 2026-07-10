@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   buildFollowUpNudges,
+  buildThankYouNudges,
   STALE_AFTER_DAYS,
+  THANK_YOU_MIN_DAYS,
+  THANK_YOU_MAX_DAYS,
   type StalePostingCandidate,
 } from "./followUpNudges.ts";
 
@@ -15,6 +18,7 @@ function posting(overrides: Partial<StalePostingCandidate>): StalePostingCandida
     title: "Software Engineer",
     company: "Stripe",
     applied_at: null,
+    interviewing_at: null,
     updated_at: NOW.toISOString(),
     ...overrides,
   };
@@ -36,6 +40,7 @@ describe("buildFollowUpNudges", () => {
       kind: "follow_up",
       subject_id: "posting-1",
       cta_view: "dashboard",
+      draft_kind: "follow_up",
     });
     expect(rows[0].title).toContain("Stripe");
     expect(rows[0].body).toContain("Software Engineer");
@@ -97,5 +102,84 @@ describe("buildFollowUpNudges", () => {
 
   it("returns no rows for an empty posting list", () => {
     expect(buildFollowUpNudges([], NOW)).toEqual([]);
+  });
+});
+
+describe("buildThankYouNudges", () => {
+  it("produces a thank_you nudge for an interview 1-2 days ago", () => {
+    const rows = buildThankYouNudges(
+      [
+        posting({
+          status: "interviewing",
+          interviewing_at: daysAgo((THANK_YOU_MIN_DAYS + THANK_YOU_MAX_DAYS) / 2),
+        }),
+      ],
+      NOW,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      user_id: "user-1",
+      kind: "thank_you",
+      subject_id: "posting-1",
+      cta_view: "dashboard",
+      draft_kind: "thank_you",
+    });
+    expect(rows[0].title).toContain("Stripe");
+    expect(rows[0].body).toContain("Software Engineer");
+  });
+
+  it("excludes interviews less than THANK_YOU_MIN_DAYS ago", () => {
+    const rows = buildThankYouNudges(
+      [posting({ status: "interviewing", interviewing_at: daysAgo(THANK_YOU_MIN_DAYS - 0.5) })],
+      NOW,
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it("excludes interviews more than THANK_YOU_MAX_DAYS ago", () => {
+    const rows = buildThankYouNudges(
+      [posting({ status: "interviewing", interviewing_at: daysAgo(THANK_YOU_MAX_DAYS + 1) })],
+      NOW,
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it("excludes postings with no interviewing_at", () => {
+    const rows = buildThankYouNudges(
+      [posting({ status: "interviewing", interviewing_at: null })],
+      NOW,
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it("excludes non-interviewing statuses even with an interviewing_at set", () => {
+    const rows = buildThankYouNudges(
+      [
+        posting({
+          status: "offer",
+          interviewing_at: daysAgo((THANK_YOU_MIN_DAYS + THANK_YOU_MAX_DAYS) / 2),
+        }),
+      ],
+      NOW,
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it("falls back to a generic company label when company is missing", () => {
+    const rows = buildThankYouNudges(
+      [
+        posting({
+          status: "interviewing",
+          company: null,
+          interviewing_at: daysAgo((THANK_YOU_MIN_DAYS + THANK_YOU_MAX_DAYS) / 2),
+        }),
+      ],
+      NOW,
+    );
+    expect(rows[0].title).toBe("Send a thank-you to this company?");
+  });
+
+  it("returns no rows for an empty posting list", () => {
+    expect(buildThankYouNudges([], NOW)).toEqual([]);
   });
 });
