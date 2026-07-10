@@ -83,8 +83,12 @@ export function FollowUpDraftModal({
   }, []);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(draft);
-    toast("Copied to clipboard", "success");
+    try {
+      await navigator.clipboard.writeText(draft);
+      toast("Copied to clipboard", "success");
+    } catch {
+      /* clipboard unavailable */
+    }
   };
 
   return (
@@ -133,6 +137,7 @@ export function FollowUpDraftModal({
         <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          disabled={isGenerating}
           rows={10}
           style={{ width: "100%", resize: "vertical" }}
           aria-label="Draft text"
