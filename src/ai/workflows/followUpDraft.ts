@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { defineWorkflow } from "@/ai/defineWorkflow";
+import { uc, injectionTrailer } from "@/ai/prompt";
 import { basePersona } from "@/config/workflows";
 
 /**
@@ -35,11 +36,12 @@ export const followUpDraftWorkflow = defineWorkflow({
 COMPANY: ${company}
 
 JOB DESCRIPTION:
-${jobDescription || "(not provided)"}
+${jobDescription ? uc(jobDescription) : "(not provided)"}
 
 CANDIDATE RESUME:
-${resumeText || "(not provided)"}
+${resumeText ? uc(resumeText) : "(not provided)"}
 
-${baseline ? `CANDIDATE PROFILE:\n${baseline}\n` : ""}
-Write the email per the rules.`,
+${baseline ? `CANDIDATE PROFILE:\n${uc(baseline)}\n` : ""}
+Write the email per the rules.
+${injectionTrailer()}`,
 });
