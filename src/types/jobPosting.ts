@@ -66,6 +66,7 @@ export interface JobPosting {
   appliedCoverLetterId?: string;
   notes?: string;
   appliedAt?: string;
+  interviewingAt?: string;
   postingData?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
