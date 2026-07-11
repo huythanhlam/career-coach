@@ -8,9 +8,11 @@ import { synthesizeSpeech, TtsUnavailableError } from "@/services/ttsService";
  *   1. Gemini TTS via the gateway (server.ts dev / ai-gateway prod).
  *   2. The browser's Web Speech API (best installed voice, chunked, warm prosody).
  *
- * Latency: Gemini TTS is synthesized **sentence-by-sentence and pipelined** —
- * the first sentence starts playing while the rest generate in the background,
- * so time-to-first-audio is one short sentence instead of the whole response.
+ * Latency: short Gemini TTS replies (see `chunksForSpeech`) are synthesized as
+ * a single clip — no inter-sentence network round-trips. Longer replies are
+ * split and pipelined — the first chunk starts playing while the rest
+ * generate in the background — so time-to-first-audio stays low even for a
+ * long response.
  *
  * `speak(text, { voice, onEnd })` calls `onEnd` when playback finishes naturally
  * (not on cancel) so the caller can resume a hands-free conversation.
@@ -54,6 +56,19 @@ export function splitForSpeech(text: string): string[] {
     }
   }
   return chunks;
+}
+
+// Below this length, a Gemini TTS reply is spoken as a single clip instead of
+// being split per sentence. Most interview questions are 1-3 sentences —
+// splitting them buys nothing (each chunk is its own network round-trip to
+// Gemini) and risks an audible gap if a later chunk's generation is slower
+// than the previous chunk's playback. Longer replies (e.g. end-of-interview
+// feedback) still chunk, so time-to-first-audio stays low for those.
+const SHORT_REPLY_CHARS = 280;
+
+/** Chunk a Gemini TTS reply: one clip below the threshold, else per-sentence. */
+export function chunksForSpeech(text: string): string[] {
+  return text.length <= SHORT_REPLY_CHARS ? [text] : splitForSpeech(text);
 }
 
 export interface SpeakOptions {
@@ -155,7 +170,7 @@ export function useSpeech() {
       token: number,
       onEnd?: () => void,
     ): Promise<boolean> => {
-      const chunks = splitForSpeech(clean);
+      const chunks = chunksForSpeech(clean);
       const ac = new AbortController();
       abortRef.current = ac;
       let current: Blob;
