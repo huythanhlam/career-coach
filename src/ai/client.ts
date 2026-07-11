@@ -21,13 +21,13 @@ import type {
  * The gateway runs identically in dev (`supabase functions serve ai-gateway`)
  * and prod, so this URL points at the same code in both — no dev/prod fork.
  */
-const GATEWAY_URL =
+export const GATEWAY_URL =
   (import.meta.env.VITE_AI_GATEWAY_URL as string) ||
   (import.meta.env.VITE_SUPABASE_URL
     ? `${(import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, "")}/functions/v1/ai-gateway`
     : "http://localhost:54321/functions/v1/ai-gateway");
 
-const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? "";
+export const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ?? "";
 
 // Generations with web search can legitimately take a while, but a request
 // should never hang the UI forever.
@@ -40,7 +40,7 @@ const GATEWAY_DOWN_MESSAGE = import.meta.env.DEV
   : "Could not reach the AI service. Check your connection and try again.";
 const GATEWAY_TIMEOUT_MESSAGE = "The AI request timed out. Please try again.";
 
-async function getAuthHeader(): Promise<string> {
+export async function getAuthHeader(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   return `Bearer ${data.session?.access_token ?? ""}`;
 }

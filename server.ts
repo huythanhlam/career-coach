@@ -3,7 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { spawn } from 'child_process';
+import { GoogleGenAI } from '@google/genai';
 import { captureScreenshot } from './api/_lib/capture';
+import { wrapPcm16AsWav } from './src/lib/pcmWav';
+import { DEFAULT_GEMINI_VOICE } from './src/lib/geminiVoices';
+
+const GEMINI_TTS_MODEL = 'gemini-3.1-flash-tts-preview';
+const GEMINI_TTS_SAMPLE_RATE = 24000;
 
 // This Express gateway is for LOCAL DEVELOPMENT ONLY. It shells out to the
 // developer's Claude CLI (on their own subscription), which must never be
@@ -99,16 +105,12 @@ app.post('/api/ai/generate', async (req, res) => {
   }
 });
 
-// --- Text-to-speech proxy (optional neural TTS backend) ---
-// Gives the interviewer a human-sounding voice. Two backends, in priority order:
-//   1. Hugging Face Inference — set HF_API_TOKEN + HF_TTS_MODEL (e.g.
-//      "hexgrad/Kokoro-82M", "facebook/mms-tts-eng", "suno/bark-small"). No GPU
-//      needed; HF hosts the model. This is the easiest path.
-//   2. A custom HTTP TTS server you run (VibeVoice/ElevenLabs/etc.) — set
-//      TTS_API_URL (+ optional TTS_API_KEY, TTS_VOICE); it must accept
-//      { text, voice } and return audio bytes.
-// Keeps any token server-side and sidesteps browser CORS. If neither is set,
-// returns 501 and the frontend falls back to the browser's speech synthesis.
+// --- Text-to-speech (Gemini TTS) ---
+// Gives the interviewer a human-sounding voice via Gemini's native TTS
+// (same GEMINI_API_KEY and @google/genai SDK used by the ai-gateway edge
+// function). If the key is unset, returns 501 and the frontend falls back to
+// the browser's speech synthesis. See
+// docs/superpowers/specs/2026-07-11-gemini-tts-design.md.
 app.post('/api/tts', async (req, res) => {
   const { text, voice } = req.body as { text?: string; voice?: string };
   if (!text || typeof text !== 'string') {
@@ -120,57 +122,36 @@ app.post('/api/tts', async (req, res) => {
     return;
   }
 
-  const hfToken = process.env.HF_API_TOKEN;
-  const hfModel = process.env.HF_TTS_MODEL;
-  const customUrl = process.env.TTS_API_URL;
-  const useHf = !!(hfToken && hfModel);
-  if (!useHf && !customUrl) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
     res.status(501).json({ error: 'TTS backend not configured' });
     return;
   }
 
   try {
-    const upstream = useHf
-      ? await fetch(`https://api-inference.huggingface.co/models/${hfModel}`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${hfToken}`,
-            'Content-Type': 'application/json',
-            Accept: 'audio/wav',
-          },
-          // wait_for_model:false → if the model is cold, HF returns 503 quickly
-          // and we fall back to the browser voice rather than blocking the turn.
-          body: JSON.stringify({ inputs: text, options: { wait_for_model: false } }),
-        })
-      : await fetch(customUrl as string, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(process.env.TTS_API_KEY ? { Authorization: `Bearer ${process.env.TTS_API_KEY}` } : {}),
-          },
-          body: JSON.stringify({ text, voice: voice ?? process.env.TTS_VOICE }),
-        });
-
-    // 503 = HF model still loading. Transient: let the client retry next turn.
-    if (upstream.status === 503) {
-      console.warn('[TTS] model loading (503) — falling back to browser voice this turn');
-      res.status(503).json({ error: 'TTS model is warming up' });
-      return;
-    }
-    const contentType = upstream.headers.get('content-type') ?? 'audio/wav';
-    // HF reports errors as JSON (sometimes with HTTP 200), never as audio.
-    if (!upstream.ok || contentType.includes('application/json')) {
-      const detail = await upstream.text().catch(() => '');
-      console.error('[TTS] backend error', upstream.status, detail.slice(0, 200));
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: GEMINI_TTS_MODEL,
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: voice || DEFAULT_GEMINI_VOICE } },
+        },
+      },
+    });
+    const b64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!b64) {
+      console.error('[TTS] Gemini response had no audio data');
       res.status(502).json({ error: 'TTS backend error' });
       return;
     }
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    res.setHeader('Content-Type', contentType);
-    res.send(buf);
+    const wav = wrapPcm16AsWav(Buffer.from(b64, 'base64'), GEMINI_TTS_SAMPLE_RATE);
+    res.setHeader('Content-Type', 'audio/wav');
+    res.send(Buffer.from(wav));
   } catch (err: any) {
-    console.error('[TTS] proxy failed:', err?.message);
-    res.status(502).json({ error: 'TTS proxy failed' });
+    console.error('[TTS] Gemini call failed:', err?.message);
+    res.status(502).json({ error: 'TTS backend error' });
   }
 });
 

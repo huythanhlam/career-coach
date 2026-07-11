@@ -27,6 +27,12 @@ const TIER_MODELS: Record<string, string> = {
   RESEARCH: "gemini-3.1-flash-lite",
 };
 
+/** Gemini TTS model + defaults. MUST mirror server.ts's dev /api/tts route and
+ *  src/lib/geminiVoices.ts's DEFAULT_GEMINI_VOICE. */
+const GEMINI_TTS_MODEL = "gemini-3.1-flash-tts-preview";
+const DEFAULT_TTS_VOICE = "Charon";
+const TTS_SAMPLE_RATE_HZ = 24000;
+
 /** Gemini list prices (USD per 1M tokens, in/out) — see DEVELOPMENT_PLAN §9. */
 const PRICES: Record<string, { in: number; out: number }> = {
   "gemini-3.1-flash-lite": { in: 0.25, out: 1.5 },
@@ -225,7 +231,56 @@ Deno.serve(async (req) => {
       stream,
       conversationId,
       userMessage,
+      modality,
+      text,
+      voice,
     } = await req.json();
+
+    // ── Text-to-speech branch ──────────────────────────────────────────────
+    // Bypasses the text-generation config (thinkingConfig/tools/responseSchema
+    // don't apply to TTS) but reuses the auth/cap/rate-limit gate above and the
+    // same metering path. See
+    // docs/superpowers/specs/2026-07-11-gemini-tts-design.md §2.
+    if (modality === "audio") {
+      if (typeof text !== "string" || !text) {
+        return json({ error: "Missing text" }, 400, cors);
+      }
+      if (text.length > 8000) {
+        return json({ error: "Text too long" }, 400, cors);
+      }
+      const ai = new GoogleGenAI({ apiKey: Deno.env.get("GEMINI_API_KEY") });
+      const started = Date.now();
+      const response = await ai.models.generateContent({
+        model: GEMINI_TTS_MODEL,
+        contents: [{ parts: [{ text }] }],
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: typeof voice === "string" && voice ? voice : DEFAULT_TTS_VOICE },
+            },
+          },
+        },
+      });
+      // deno-lint-ignore no-explicit-any
+      const audio = (response as any)?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!audio) {
+        console.error("ai-gateway tts error: no audio in response");
+        return json({ error: "TTS generation failed. Please try again." }, 502, cors);
+      }
+      // deno-lint-ignore no-explicit-any
+      const usage = (response as any)?.usageMetadata ?? {};
+      meter({
+        userId: user.id,
+        workflowId: typeof workflowId === "string" ? workflowId : "tts",
+        model: GEMINI_TTS_MODEL,
+        inputTokens: Number(usage.promptTokenCount ?? 0),
+        outputTokens: Number(usage.candidatesTokenCount ?? 0),
+        latencyMs: Date.now() - started,
+        ttftMs: null,
+      }).catch(() => {});
+      return json({ audio, sampleRateHz: TTS_SAMPLE_RATE_HZ }, 200, cors);
+    }
 
     // Resolve the model: explicit tier wins; fall back to a passed-through
     // Gemini id for incremental migration; default FAST.

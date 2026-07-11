@@ -31,7 +31,7 @@ import {
   type NegotiationSetup,
 } from "@/services/negotiationEval";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
-import { DEFAULT_KOKORO_VOICE, preloadKokoro, isKokoroVoice } from "@/services/kokoroTts";
+import { DEFAULT_GEMINI_VOICE } from "@/lib/geminiVoices";
 import { COMMON_ROLES } from "@/config/workflows";
 import {
   COUNTERPART_LABELS,
@@ -90,9 +90,7 @@ export function NegotiationRoleplayWorkspace() {
   const speech = useSpeech();
   const [voiceOn, setVoiceOn] = useState(true);
   const voiceEnabled = speech.supported && voiceOn;
-  const selectedVoice = isKokoroVoice(DEFAULT_KOKORO_VOICE)
-    ? DEFAULT_KOKORO_VOICE
-    : DEFAULT_KOKORO_VOICE;
+  const selectedVoice = DEFAULT_GEMINI_VOICE;
 
   const conversationalRef = useRef(true);
   const handleSendRef = useRef<(t: string) => void>(() => {});
@@ -130,12 +128,6 @@ export function NegotiationRoleplayWorkspace() {
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-  // Only warm the ~80MB model when the recruiter voice is on (the default); a user
-  // who muted it shouldn't download the model speculatively. Unmuting flips
-  // voiceEnabled and re-runs this to warm it then.
-  useEffect(() => {
-    if (mode.kind === "setup" && voiceEnabled) preloadKokoro();
-  }, [mode.kind, voiceEnabled]);
   useEffect(
     () => () => {
       speech.cancel();
@@ -196,7 +188,6 @@ export function NegotiationRoleplayWorkspace() {
 
   const handleStart = async () => {
     if (!role.trim() || isGenerating) return;
-    if (voiceEnabled) preloadKokoro();
     const setup: NegotiationSetup = {
       role: role.trim(),
       counterpart,
