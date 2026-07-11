@@ -169,7 +169,9 @@ export function useSpeech() {
       if (token !== tokenRef.current) return true;
       // Prefetch the 2nd sentence while the 1st plays.
       const genNext = (i: number) =>
-        i < chunks.length ? synthesizeSpeech(chunks[i], voice, ac.signal).catch(() => null) : Promise.resolve(null);
+        i < chunks.length
+          ? synthesizeSpeech(chunks[i], voice, ac.signal).catch(() => null)
+          : Promise.resolve(null);
       let nextPromise = genNext(1);
       for (let i = 0; i < chunks.length; i++) {
         await playBlobAwait(current, token);

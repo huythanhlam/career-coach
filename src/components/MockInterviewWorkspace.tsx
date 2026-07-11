@@ -44,7 +44,12 @@ import { useStreamAnnouncer } from "@/hooks/useStreamAnnouncer";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { deriveChatStatus } from "@/lib/chatStatus";
 import { stripMarkdown } from "@/lib/speechText";
-import { GEMINI_VOICES, DEFAULT_GEMINI_VOICE, isGeminiVoice, type GeminiVoice } from "@/lib/geminiVoices";
+import {
+  GEMINI_VOICES,
+  DEFAULT_GEMINI_VOICE,
+  isGeminiVoice,
+  type GeminiVoice,
+} from "@/lib/geminiVoices";
 import { synthesizeSpeech } from "@/services/ttsService";
 import { QUESTION_BANK } from "@/config/interviewQuestions";
 import {
