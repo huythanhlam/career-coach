@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stripMarkdown } from "@/lib/speechText";
 import { pickVoice } from "@/lib/voicePick";
-import { synthesizeSpeech, ttsConfigured, TtsUnavailableError } from "@/services/ttsService";
-import { kokoroGenerate, kokoroFailed, isKokoroVoice } from "@/services/kokoroTts";
+import { synthesizeSpeech, TtsUnavailableError } from "@/services/ttsService";
 
 /**
  * Speak text aloud for the interview agent. Voice priority:
- *   1. Kokoro (in-browser ONNX) when a Kokoro voice is selected — most human.
- *   2. A configured neural TTS backend via the gateway /api/tts proxy.
- *   3. The browser's Web Speech API (best installed voice, chunked, warm prosody).
+ *   1. Gemini TTS via the gateway (server.ts dev / ai-gateway prod).
+ *   2. The browser's Web Speech API (best installed voice, chunked, warm prosody).
  *
- * Latency: Kokoro is synthesized **sentence-by-sentence and pipelined** — the
- * first sentence starts playing while the rest generate in the background, so
- * time-to-first-audio is one short sentence instead of the whole response.
+ * Latency: Gemini TTS is synthesized **sentence-by-sentence and pipelined** —
+ * the first sentence starts playing while the rest generate in the background,
+ * so time-to-first-audio is one short sentence instead of the whole response.
  *
  * `speak(text, { voice, onEnd })` calls `onEnd` when playback finishes naturally
  * (not on cancel) so the caller can resume a hands-free conversation.
@@ -65,7 +63,7 @@ export interface SpeakOptions {
 
 export function useSpeech() {
   const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
-  const supported = !!synth || ttsConfigured;
+  const supported = !!synth;
   const [speaking, setSpeaking] = useState(false);
 
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
@@ -144,26 +142,34 @@ export function useSpeech() {
   );
 
   /**
-   * Kokoro, pipelined: generate sentence i+1 while sentence i plays.
-   * Returns false if it couldn't even start (model loading/failed) so the
-   * caller can fall back; true if it handled playback (incl. cancellation).
+   * Gemini TTS, pipelined: generate sentence i+1 while sentence i plays, so
+   * time-to-first-audio is one short sentence instead of the whole response.
+   * Returns false if the backend is unreachable/unconfigured (so the caller
+   * falls back to the browser voice); true if it handled playback (incl.
+   * cancellation).
    */
-  const speakKokoroStreaming = useCallback(
-    async (clean: string, voice: string, token: number, onEnd?: () => void): Promise<boolean> => {
+  const speakGeminiStreaming = useCallback(
+    async (
+      clean: string,
+      voice: string | undefined,
+      token: number,
+      onEnd?: () => void,
+    ): Promise<boolean> => {
       const chunks = splitForSpeech(clean);
-      // First sentence: don't block on model load — bail fast to a fallback.
+      const ac = new AbortController();
+      abortRef.current = ac;
       let current: Blob;
       try {
-        current = await kokoroGenerate(chunks[0], voice, { waitForLoad: false });
-      } catch {
+        current = await synthesizeSpeech(chunks[0], voice, ac.signal);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return true;
+        if (err instanceof TtsUnavailableError) remoteDownRef.current = true;
         return false;
       }
       if (token !== tokenRef.current) return true;
-      // Prefetch the 2nd sentence (model is warm now) while the 1st plays.
+      // Prefetch the 2nd sentence while the 1st plays.
       const genNext = (i: number) =>
-        i < chunks.length
-          ? kokoroGenerate(chunks[i], voice, { waitForLoad: true }).catch(() => null)
-          : Promise.resolve(null);
+        i < chunks.length ? synthesizeSpeech(chunks[i], voice, ac.signal).catch(() => null) : Promise.resolve(null);
       let nextPromise = genNext(1);
       for (let i = 0; i < chunks.length; i++) {
         await playBlobAwait(current, token);
@@ -235,37 +241,17 @@ export function useSpeech() {
       const token = tokenRef.current;
       setSpeaking(true);
 
-      // 1. Kokoro in-browser, pipelined for low latency.
-      if (isKokoroVoice(opts?.voice) && !kokoroFailed()) {
-        const handled = await speakKokoroStreaming(clean, opts!.voice!, token, opts?.onEnd);
+      // 1. Gemini TTS, pipelined for low latency.
+      if (!remoteDownRef.current) {
+        const handled = await speakGeminiStreaming(clean, opts?.voice, token, opts?.onEnd);
         if (handled || token !== tokenRef.current) return;
-        // not handled → model still loading; fall through to a fast fallback
+        // not handled → backend unreachable this turn; fall through to browser voice
       }
 
-      // 2. Configured remote neural TTS backend.
-      if (ttsConfigured && !remoteDownRef.current) {
-        const ac = new AbortController();
-        abortRef.current = ac;
-        try {
-          const blob = await synthesizeSpeech(clean, opts?.voice, ac.signal);
-          if (token !== tokenRef.current) return;
-          await playBlobAwait(blob, token);
-          if (token === tokenRef.current) {
-            setSpeaking(false);
-            opts?.onEnd?.();
-          }
-          return;
-        } catch (err) {
-          if (err instanceof DOMException && err.name === "AbortError") return;
-          if (err instanceof TtsUnavailableError) remoteDownRef.current = true;
-          if (token !== tokenRef.current) return;
-        }
-      }
-
-      // 3. Browser speech synthesis.
+      // 2. Browser speech synthesis.
       speakBrowser(clean, token, opts?.onEnd);
     },
-    [cancel, playBlobAwait, speakKokoroStreaming, speakBrowser],
+    [cancel, speakGeminiStreaming, speakBrowser],
   );
 
   useEffect(

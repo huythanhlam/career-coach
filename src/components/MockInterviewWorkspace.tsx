@@ -44,14 +44,8 @@ import { useStreamAnnouncer } from "@/hooks/useStreamAnnouncer";
 import { buildProfileBaseline } from "@/lib/careerBaseline";
 import { deriveChatStatus } from "@/lib/chatStatus";
 import { stripMarkdown } from "@/lib/speechText";
-import {
-  KOKORO_VOICES,
-  DEFAULT_KOKORO_VOICE,
-  preloadKokoro,
-  kokoroGenerate,
-  isKokoroVoice,
-  type KokoroVoice,
-} from "@/services/kokoroTts";
+import { GEMINI_VOICES, DEFAULT_GEMINI_VOICE, isGeminiVoice, type GeminiVoice } from "@/lib/geminiVoices";
+import { synthesizeSpeech } from "@/services/ttsService";
 import { QUESTION_BANK } from "@/config/interviewQuestions";
 import {
   SCORE_DIMENSIONS,
@@ -656,9 +650,9 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   const [selectedVoice, setSelectedVoice] = useState<string>(() => {
     try {
       const stored = localStorage.getItem("interviewVoice");
-      return stored && isKokoroVoice(stored) ? stored : DEFAULT_KOKORO_VOICE;
+      return stored && isGeminiVoice(stored) ? stored : DEFAULT_GEMINI_VOICE;
     } catch {
-      return DEFAULT_KOKORO_VOICE;
+      return DEFAULT_GEMINI_VOICE;
     }
   });
   const [samplingVoice, setSamplingVoice] = useState<string | null>(null);
@@ -681,18 +675,6 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     }
   };
   useEffect(() => stopSample, []);
-  // Warm the ~80MB Kokoro model up front while the user reads the setup screen.
-  // Cold generation takes many seconds; if the user taps Sample first and waits
-  // that long, the browser drops the click's user-activation and blocks
-  // audio.play() (silent "nothing happened"). A pre-warmed model generates in
-  // ~1s, so playback stays inside the activation window.
-  // Only warm the ~80MB model when the interviewer voice is actually on (the default).
-  // A user who muted the interviewer shouldn't download the model speculatively;
-  // if they unmute here, voiceEnabled flips and this re-runs to warm it then. An
-  // explicit Sample tap still loads on demand regardless.
-  useEffect(() => {
-    if (mode.kind === "setup" && voiceEnabled) preloadKokoro();
-  }, [mode.kind, voiceEnabled]);
 
   // ── Hands-free conversation: auto-submit after the user pauses speaking ──
   const [conversational, setConversational] = useState(true);
@@ -870,7 +852,6 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
   /* ── Start a session ─────────────────────────────────────────────── */
   const handleStart = async () => {
     if (!requiredOk || isGenerating) return;
-    if (voiceEnabled) preloadKokoro(); // warm the in-browser voice model
     chatRef.current = createCoachingSession(buildSystemInstruction());
     // generatePrompt is typed string | parts[], but the mock workflows always build a string.
     const generated = config.generatePrompt(formData);
@@ -955,7 +936,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     });
   };
 
-  /** Sample a Kokoro voice (plays a short line) so the user can choose. */
+  /** Sample a Gemini voice (plays a short line) so the user can choose. */
   const sampleVoice = async (voiceId: string) => {
     // Silence the interviewer and any previous sample so previews don't overlap.
     speech.cancel();
@@ -963,10 +944,10 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     setVoiceError(null);
     setSamplingVoice(voiceId);
     try {
-      const blob = await kokoroGenerate(
+      const blob = await synthesizeSpeech(
         "Hi, I'm your interviewer today. Let's get started — tell me about yourself.",
         voiceId,
-        { waitForLoad: true },
+        new AbortController().signal,
       );
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -993,7 +974,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
       });
     } catch (err) {
       console.error("Voice sample failed:", err);
-      const label = KOKORO_VOICES.find((v) => v.id === voiceId)?.label ?? "this voice";
+      const label = GEMINI_VOICES.find((v) => v.id === voiceId)?.id ?? "this voice";
       setVoiceError(`Couldn't play the ${label} sample — tap Sample again to try.`);
     } finally {
       setSamplingVoice(null);
@@ -1007,7 +988,6 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     } catch {
       /* ignore */
     }
-    preloadKokoro();
   };
 
   /* ── Finish: score the transcript and persist the session ────────── */
@@ -2237,7 +2217,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
             )}
           </div>
 
-          {/* Interviewer voice — sample & choose a Kokoro voice */}
+          {/* Interviewer voice — sample & choose a Gemini voice */}
           <div style={{ ...cardStyle, padding: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <Volume2 className="w-4 h-4" style={{ color: "var(--primary)" }} />
@@ -2253,12 +2233,11 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                 lineHeight: 1.5,
               }}
             >
-              Top-graded Kokoro voices, running privately in your browser. Tap ▶ to hear a sample,
-              then choose one. First sample downloads the voice model (~80MB), so it may take a
-              moment.
+              Gemini AI voices, from firm and informative to upbeat and energetic. Tap ▶ to hear a
+              sample, then choose one.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {KOKORO_VOICES.map((v: KokoroVoice) => {
+              {GEMINI_VOICES.map((v: GeminiVoice) => {
                 const isSel = selectedVoice === v.id;
                 return (
                   <div
@@ -2293,11 +2272,9 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
-                        {v.label}
+                        {v.id}
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                        {v.accent} · {v.gender}
-                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{v.feel}</div>
                     </div>
                     <button
                       onClick={(e) => {
@@ -2305,7 +2282,7 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
                         sampleVoice(v.id);
                       }}
                       disabled={samplingVoice != null}
-                      aria-label={`Play a sample of the ${v.label} voice`}
+                      aria-label={`Play a sample of the ${v.id} voice`}
                       style={{
                         display: "flex",
                         alignItems: "center",
