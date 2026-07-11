@@ -622,6 +622,14 @@ function CallControl({
   );
 }
 
+// The voice picker always samples the same fixed line per voice — cache the
+// synthesized clip so repeat taps of Sample (a likely UX pattern while
+// comparing voices) don't re-bill a Gemini TTS call for identical output.
+// Module-level (not component state) so it survives remounts within the tab.
+const VOICE_SAMPLE_TEXT =
+  "Hi, I'm your interviewer today. Let's get started — tell me about yourself.";
+const voiceSampleCache = new Map<string, Blob>();
+
 export function MockInterviewWorkspace({ workflowId }: Props) {
   const config = workflowsConfig[workflowId];
   const { profile } = useUserProfile();
@@ -949,11 +957,11 @@ export function MockInterviewWorkspace({ workflowId }: Props) {
     setVoiceError(null);
     setSamplingVoice(voiceId);
     try {
-      const blob = await synthesizeSpeech(
-        "Hi, I'm your interviewer today. Let's get started — tell me about yourself.",
-        voiceId,
-        new AbortController().signal,
-      );
+      let blob = voiceSampleCache.get(voiceId);
+      if (!blob) {
+        blob = await synthesizeSpeech(VOICE_SAMPLE_TEXT, voiceId, new AbortController().signal);
+        voiceSampleCache.set(voiceId, blob);
+      }
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       sampleAudioRef.current = audio;

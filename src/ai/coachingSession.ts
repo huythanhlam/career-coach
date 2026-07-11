@@ -7,6 +7,16 @@ type ChatWorkflow = Workflow<
   unknown
 >;
 
+// The gateway is stateless, so every turn resends the transcript as input
+// tokens — cost that grows linearly with session length. Beyond this many
+// turns (8 exchanges), only the most recent MAX_HISTORY_TURNS are replayed
+// into the model; the full transcript is still kept on `history` for any
+// other consumer (e.g. end-of-session scoring reads the component's own
+// message log, not this). Tradeoff: a very long session's interviewer may
+// occasionally lose track of turns older than the window (e.g. re-ask a
+// question), which is an acceptable cost for bounding per-turn token spend.
+const MAX_HISTORY_TURNS = 16;
+
 /**
  * A stateful conversational coaching session — the streaming replacement for the
  * retired `createCoachingChat` helper. Holds the running transcript in memory and
@@ -41,9 +51,11 @@ export function createCoachingSession(
     },
     async send(message, onToken, signal) {
       let full = "";
+      const capped =
+        history.length > MAX_HISTORY_TURNS ? history.slice(-MAX_HISTORY_TURNS) : history;
       await streamWorkflow(
         workflow,
-        { systemInstruction, history: [...history], message },
+        { systemInstruction, history: [...capped], message },
         {
           signal,
           onToken: (delta) => {

@@ -72,6 +72,35 @@ describe("createCoachingSession", () => {
     expect(wf).toBe(documentDraftingWorkflow);
   });
 
+  it("caps history replayed into the workflow once a session runs long, keeping only the most recent turns", async () => {
+    const session = createCoachingSession("SYSTEM");
+    for (let i = 1; i <= 12; i++) {
+      streamWorkflow.mockImplementation(emits(`A${i}`));
+      await session.send(`Q${i}`, () => {});
+    }
+
+    // Before this call, 11 exchanges (22 turns: Q1/A1..Q11/A11) have completed.
+    const lastInput = streamWorkflow.mock.calls.at(-1)?.[1] as {
+      history: { role: string; text: string }[];
+    };
+    expect(lastInput.history).toHaveLength(16);
+    expect(lastInput.history[0]).toEqual({ role: "user", text: "Q4" });
+    expect(lastInput.history.at(-1)).toEqual({ role: "model", text: "A11" });
+    // Earliest turns were dropped from what's sent to the model...
+    expect(lastInput.history).not.toContainEqual({ role: "user", text: "Q1" });
+  });
+
+  it("keeps the full transcript on the history getter even after capping what's sent to the workflow", async () => {
+    const session = createCoachingSession("SYSTEM");
+    for (let i = 1; i <= 12; i++) {
+      streamWorkflow.mockImplementation(emits(`A${i}`));
+      await session.send(`Q${i}`, () => {});
+    }
+    // ...but the session's own record of the conversation is never truncated.
+    expect(session.history).toHaveLength(24);
+    expect(session.history[0]).toEqual({ role: "user", text: "Q1" });
+  });
+
   it("propagates errors so the caller can offer Retry", async () => {
     streamWorkflow.mockRejectedValue(new Error("gateway down"));
     const session = createCoachingSession("SYSTEM");
