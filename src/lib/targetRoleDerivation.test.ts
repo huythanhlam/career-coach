@@ -83,7 +83,14 @@ describe("deriveTargetRoles", () => {
     const profile: UserProfile = {
       ...createEmptyProfile(),
       workHistory: [
-        { id: "w1", company: "Acme", role: "  ", startDate: "2020", endDate: "", responsibilities: "" },
+        {
+          id: "w1",
+          company: "Acme",
+          role: "  ",
+          startDate: "2020",
+          endDate: "",
+          responsibilities: "",
+        },
       ],
     };
     expect(deriveTargetRoles(profile)).toEqual([]);

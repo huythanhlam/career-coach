@@ -85,8 +85,7 @@ export function profileToRow(profile: UserProfile, userId: string): Record<strin
     ),
     // Auto-fill target roles from resume/work-history signal when the user
     // hasn't set any yet, so the weekly suggestion cron works out of the box.
-    target_roles:
-      profile.targetRoles?.length ? profile.targetRoles : deriveTargetRoles(profile),
+    target_roles: profile.targetRoles?.length ? profile.targetRoles : deriveTargetRoles(profile),
     target_companies: profile.targetCompanies ?? [],
     career_survey: profile.careerSurvey ?? {},
     resume_score: profile.resumeScore ?? null,

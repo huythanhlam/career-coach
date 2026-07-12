@@ -23,9 +23,7 @@ export function deriveTargetRoles(profile: UserProfile): TargetRole[] {
   if (profile.targetRole?.trim()) candidates.push(profile.targetRole.trim());
 
   const workHistory = profile.workHistory ?? [];
-  const currentFirst = [...workHistory].sort(
-    (a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0),
-  );
+  const currentFirst = [...workHistory].sort((a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0));
   for (const w of currentFirst) {
     if (w.role?.trim()) candidates.push(w.role.trim());
   }
