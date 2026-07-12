@@ -6,6 +6,15 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // against what they've already saved, and replaces their status='suggested'
 // rows. The user reviews these in the Suggested lane and Saves the good ones.
 // No AI involved — just the free ATS/Workable endpoints.
+//
+// Profiles saved before target-role auto-derivation shipped (see
+// src/lib/targetRoleDerivation.ts) may still have empty target_roles despite
+// having a resume/work history — normally that gap closes on their next
+// profile save, but this backfills it here too so existing users don't have
+// to touch their profile to start getting suggestions. Mirrors the priority
+// order of the client-side helper (target_role, then most-recent work
+// history) without pulling in the TS module — Edge Functions in this repo
+// are self-contained, matching scan-jobs/job-search.
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -24,6 +33,36 @@ interface DiscoveredJob {
   employmentType?: string | null;
   remote?: boolean | null;
   source: string;
+}
+
+interface WorkHistoryEntry {
+  role?: string;
+  current?: boolean;
+}
+
+/** Minimal mirror of src/lib/targetRoleDerivation.ts's priority order. */
+function deriveTargetRolesInline(
+  targetRole: string | null,
+  workHistory: unknown,
+): { id: string; title: string }[] {
+  const candidates: string[] = [];
+  if (targetRole?.trim()) candidates.push(targetRole.trim());
+  const history = Array.isArray(workHistory) ? (workHistory as WorkHistoryEntry[]) : [];
+  const currentFirst = [...history].sort((a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0));
+  for (const w of currentFirst) {
+    if (w.role?.trim()) candidates.push(w.role.trim());
+  }
+
+  const seen = new Set<string>();
+  const roles: { id: string; title: string }[] = [];
+  for (const title of candidates) {
+    const key = title.trim().toLowerCase().replace(/\s+/g, " ");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    roles.push({ id: crypto.randomUUID(), title });
+    if (roles.length >= MAX_ROLES_PER_USER) break;
+  }
+  return roles;
 }
 
 async function callFn(name: string, body: unknown): Promise<{ results?: DiscoveredJob[] }> {
@@ -55,14 +94,25 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, target_roles, target_companies");
+    .select("id, target_roles, target_companies, target_role, work_history");
 
   let inserted = 0;
   let usersProcessed = 0;
+  let backfilled = 0;
 
   for (const p of profiles ?? []) {
-    const roles = Array.isArray(p.target_roles) ? p.target_roles : [];
-    if (roles.length === 0) continue;
+    let roles = Array.isArray(p.target_roles) ? p.target_roles : [];
+    if (roles.length === 0) {
+      const derived = deriveTargetRolesInline(p.target_role, p.work_history);
+      if (derived.length === 0) continue;
+      const { error } = await admin
+        .from("profiles")
+        .update({ target_roles: derived })
+        .eq("id", p.id);
+      if (error) continue;
+      roles = derived;
+      backfilled++;
+    }
     usersProcessed++;
     const companies = Array.isArray(p.target_companies) ? p.target_companies : [];
 
@@ -127,7 +177,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, usersProcessed, inserted }),
+    JSON.stringify({ ok: true, usersProcessed, inserted, backfilled }),
     { headers: { "Content-Type": "application/json" } },
   );
 });
