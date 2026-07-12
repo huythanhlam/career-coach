@@ -33,6 +33,41 @@ describe("profileToRow", () => {
     expect(() => new Date(row.updated_at as string).toISOString()).not.toThrow();
   });
 
+  it("auto-fills target_roles from workHistory when the profile has none set", () => {
+    const p: UserProfile = {
+      ...createEmptyProfile(),
+      workHistory: [
+        {
+          id: "w1",
+          company: "Acme",
+          role: "Product Manager",
+          startDate: "2020",
+          endDate: "",
+          responsibilities: "",
+          current: true,
+        },
+      ],
+    };
+    const row = profileToRow(p, "u1") as { target_roles: { title: string }[] };
+    expect(row.target_roles).toHaveLength(1);
+    expect(row.target_roles[0].title).toBe("Product Manager");
+  });
+
+  it("does not override an already-set (or deliberately empty) targetRoles array", () => {
+    const p: UserProfile = {
+      ...createEmptyProfile(),
+      targetRole: "Should not be used",
+      targetRoles: [{ id: "r1", title: "Existing Role" }],
+    };
+    const row = profileToRow(p, "u1") as { target_roles: { title: string }[] };
+    expect(row.target_roles).toEqual([{ id: "r1", title: "Existing Role" }]);
+  });
+
+  it("leaves target_roles empty when there's no targetRole or workHistory signal", () => {
+    const row = profileToRow(createEmptyProfile(), "u1") as { target_roles: unknown[] };
+    expect(row.target_roles).toEqual([]);
+  });
+
   it("strips transient fields from saved cover letters", () => {
     const p: UserProfile = {
       ...createEmptyProfile(),

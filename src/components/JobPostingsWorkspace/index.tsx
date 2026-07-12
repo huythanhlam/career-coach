@@ -794,6 +794,51 @@ export function JobPostingsWorkspace({ onNavigate }: Props) {
           </div>
         )}
 
+        {/* Roles are set (often auto-derived from resume/work history) but the
+            weekly scan hasn't run yet — avoid a silent gap that reads as broken */}
+        {suggested.length === 0 && !savedOnly && (profile.targetRoles?.length ?? 0) > 0 && (
+          <div
+            style={{
+              ...cardStyle,
+              padding: 18,
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              flexWrap: "wrap",
+            }}
+          >
+            <div
+              style={{
+                flexShrink: 0,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: "rgba(217,119,87,0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Bell className="w-5 h-5" style={{ color: "var(--primary)" }} />
+            </div>
+            <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>
+                We're setting up your matches
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--muted-foreground)",
+                  marginTop: 2,
+                  lineHeight: 1.5,
+                }}
+              >
+                Based on your profile, check back Monday for fresh picks from your target roles.
+              </div>
+            </div>
+          </div>
+        )}
+
         <PostingList
           items={items}
           loading={loading}

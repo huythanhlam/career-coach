@@ -37,6 +37,7 @@ import { ModeSwitch } from "@/components/ModeSwitch";
 import { MODE_META } from "@/lib/accountMode";
 import type { TargetRole, TargetCompany } from "@/types/jobPosting";
 import { detectAtsFromUrl } from "@/services/jobScanService";
+import { deriveTargetRoles } from "@/lib/targetRoleDerivation";
 
 /* ── gradient cover ──────────────────────────────────────────── */
 const COVER_GRADIENT = "linear-gradient(135deg, #D97757 0%, #E8B948 40%, #2F6B4F 100%)";
@@ -211,13 +212,10 @@ export function ProfileSettings() {
   const [saved, setSaved] = useState(false);
 
   /* job alerts state — target roles drive the weekly suggested-postings scan,
-     so seed from the free-text target role when no structured roles exist yet */
+     so seed from the resume-derived target role / work history when no
+     structured roles exist yet (same derivation used on every profile save) */
   const [alertRoles, setAlertRoles] = useState<TargetRole[]>(
-    profile.targetRoles?.length
-      ? profile.targetRoles
-      : profile.targetRole?.trim()
-        ? [{ id: generateId(), title: profile.targetRole.trim() }]
-        : [],
+    profile.targetRoles?.length ? profile.targetRoles : deriveTargetRoles(profile),
   );
   const [newAlertRole, setNewAlertRole] = useState("");
   const [followedCompanies, setFollowedCompanies] = useState<TargetCompany[]>(
