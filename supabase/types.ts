@@ -676,6 +676,7 @@ export type Database = {
           external_id: string | null
           favorite: boolean
           id: string
+          interviewing_at: string | null
           location: string | null
           match_score: number | null
           notes: string | null
@@ -701,6 +702,7 @@ export type Database = {
           external_id?: string | null
           favorite?: boolean
           id?: string
+          interviewing_at?: string | null
           location?: string | null
           match_score?: number | null
           notes?: string | null
@@ -726,6 +728,7 @@ export type Database = {
           external_id?: string | null
           favorite?: boolean
           id?: string
+          interviewing_at?: string | null
           location?: string | null
           match_score?: number | null
           notes?: string | null
