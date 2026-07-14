@@ -29,10 +29,10 @@ export function Pricing({ openAuth }: PricingProps) {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
         <p className="eyebrow-plain justify-center mb-4">Pricing</p>
         <h2 className="font-display text-4xl font-medium tracking-tight mb-4">
-          <span className="marker-highlight">Free</span> while in beta
+          <span className="marker-highlight">Free</span> to get started
         </h2>
         <p className="text-muted-foreground mb-12">
-          All 10 tools are free during our public beta. No credit card required.
+          All 10 tools are free to use. No credit card required.
         </p>
 
         <div
@@ -42,7 +42,7 @@ export function Pricing({ openAuth }: PricingProps) {
           <div className="font-display text-5xl font-bold mb-1" style={{ color: "var(--primary)" }}>
             $0
           </div>
-          <div className="text-muted-foreground text-sm mb-6">Forever free during beta</div>
+          <div className="text-muted-foreground text-sm mb-6">Forever free</div>
           <ul className="space-y-3 mb-8 text-left">
             {INCLUDED.map((item) => (
               <li key={item} className="flex items-center gap-3 text-sm">

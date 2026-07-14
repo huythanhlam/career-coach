@@ -7,7 +7,7 @@
 
 </div>
 
-TechCoach AI gives any professional — not just tech workers — the kind of specific, data-backed coaching that used to require a big budget or the right referral: resume audits, LinkedIn optimization, mock interviews, salary negotiation, and market compensation data, organized around the stages of a real job search (Plan → Apply → Practice → Research). A stateful AI coach persists context across sessions, proactively nudges users, and drafts interview follow-ups. A separate **Employer mode** lets companies post and promote job listings. Designed with a warm "Mentor Mode" aesthetic and powered by Google Gemini.
+TechCoach AI gives any professional — not just tech workers — the kind of specific, data-backed coaching that used to require a big budget or the right referral: resume audits, LinkedIn optimization, mock interviews, salary negotiation, and market compensation data, organized around the stages of a real job search (Plan → Apply → Practice → Research). A stateful AI coach persists context across sessions, proactively nudges users, and drafts interview follow-ups. A separate **Employer mode** lets companies post and promote job listings. Designed with a warm "Mentor Mode" aesthetic.
 
 ---
 

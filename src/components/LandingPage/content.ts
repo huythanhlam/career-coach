@@ -186,8 +186,4 @@ export const steps: Step[] = [
 ];
 
 /** Honest, verifiable proof points that replace the old fabricated stat wall. */
-export const proofPoints: readonly string[] = [
-  "Powered by Gemini",
-  "Free while in beta",
-  "Private by default",
-];
+export const proofPoints: readonly string[] = ["Private by default"];
