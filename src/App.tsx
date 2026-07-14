@@ -197,7 +197,7 @@ function AppInner() {
                 <Menu className="w-5 h-5" />
               </button>
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0">
                   <Compass className="w-4 h-4" />
                 </div>
                 <span className="font-display text-[15px] font-semibold tracking-[-0.01em] text-foreground truncate">
@@ -243,10 +243,10 @@ function AppInner() {
                   className="absolute bottom-6 right-7 w-14 h-14 rounded-full flex items-center justify-center z-40 transition-transform hover:scale-105 animate-in zoom-in duration-300"
                   style={{
                     background: "var(--primary)",
-                    color: "#FFF",
+                    color: "var(--primary-foreground)",
                     border: "none",
                     cursor: "pointer",
-                    boxShadow: "0 12px 30px rgba(217,119,87,0.35)",
+                    boxShadow: "0 12px 30px rgba(240,182,58,0.35)",
                   }}
                 >
                   <MessageCircle className="w-6 h-6" />

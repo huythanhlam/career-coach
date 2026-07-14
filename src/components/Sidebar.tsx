@@ -169,7 +169,7 @@ export function Sidebar({ activeView, onSelectView, isOpen = false, onClose }: S
       >
         {/* Brand mark */}
         <div className="px-[22px] pt-5 pb-[18px] flex items-center gap-3">
-          <div className="w-9 h-9 rounded-[10px] bg-primary flex items-center justify-center text-white flex-shrink-0 shadow-[0_0_16px_rgba(217,119,87,0.25)]">
+          <div className="w-9 h-9 rounded-[10px] bg-primary flex items-center justify-center text-primary-foreground flex-shrink-0 shadow-[0_0_16px_rgba(240,182,58,0.25)]">
             <Compass className="w-[18px] h-[18px]" />
           </div>
           <div className="min-w-0 flex-1">
