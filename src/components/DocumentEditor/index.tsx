@@ -281,9 +281,15 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
-        insertHtml(
-          `<img src="${ev.target?.result as string}" alt="${file.name}" style="max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0;" />`,
-        );
+        // Build the <img> via DOM APIs (not string concatenation) so an
+        // attacker-chosen filename can't break out of the alt attribute and
+        // inject markup/event handlers — file.name is fully untrusted input.
+        const img = document.createElement("img");
+        img.src = ev.target?.result as string;
+        img.alt = file.name;
+        img.style.cssText =
+          "max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0;";
+        insertHtml(img.outerHTML);
       };
       reader.readAsDataURL(file);
       e.target.value = "";
