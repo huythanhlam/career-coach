@@ -9,7 +9,7 @@
 
 @theme inline {
   --font-sans: "Geist Variable", sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+  --font-display: "Newsreader Variable", Georgia, serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -49,22 +49,26 @@
   --radius-sm: calc(var(--radius) * 0.6);
 }
 
-/* ── Mentor mode (warm, welcoming — default per brief) ───────────── */
+/* ── Mentor mode (warm, welcoming — default per brief) ─────────────
+   Surfaces/text/brand match the landing page's dailyfour-inspired palette
+   (see .landing-theme below) so the main app and the marketing site read as
+   one product. Forest/highlight/destructive stay app-specific semantic
+   accents — never redefine those, they're shared across both. */
 :root {
   /* Surfaces */
-  --background: #fbf7f1; /* cream */
-  --paper: #f4eee3; /* warm paper */
-  --card: #ffffff;
-  --muted: #f0e9dc;
+  --background: #f9f6ef; /* warm cream */
+  --paper: #ece4d5; /* warm paper */
+  --card: #fffefb;
+  --muted: #eee6d7;
 
   /* Text */
-  --foreground: #1f1b16; /* warm near-black */
-  --card-foreground: #1f1b16;
-  --muted-foreground: #6e6557; /* warm stone */
+  --foreground: #2a2823; /* warm near-black */
+  --card-foreground: #2a2823;
+  --muted-foreground: #8d8577; /* warm stone */
 
   /* Brand */
-  --primary: #d97757; /* terracotta */
-  --primary-foreground: #ffffff;
+  --primary: #f0b63a; /* gold */
+  --primary-foreground: #2a2823;
 
   /* Forest — "you've got this" */
   --forest: #2f6b4f;
@@ -73,25 +77,25 @@
   --highlight: #e8b948;
 
   /* Secondary (warm muted) */
-  --secondary: #f0e9dc;
-  --secondary-foreground: #1f1b16;
+  --secondary: #eee6d7;
+  --secondary-foreground: #2a2823;
 
   /* Accent */
-  --accent: #f0e9dc;
-  --accent-foreground: #1f1b16;
+  --accent: #eee6d7;
+  --accent-foreground: #2a2823;
 
   /* Status / semantic */
   --destructive: #f43f5e;
   --destructive-foreground: #ffffff;
 
   /* Popover */
-  --popover: #ffffff;
-  --popover-foreground: #1f1b16;
+  --popover: #fffefb;
+  --popover-foreground: #2a2823;
 
   /* Lines */
-  --border: #e8dfce;
-  --input: #e8dfce;
-  --ring: #d97757;
+  --border: #e2dbc9;
+  --input: #e2dbc9;
+  --ring: #f0b63a;
   --radius: 0.75rem;
 
   /* Status (shared — never reinvent) */
@@ -103,14 +107,13 @@
 
 /* ── Landing page theme (dailyfour.app-inspired) ──────────────────────
    Scoped to .landing-theme (the marketing page's own root, NOT including
-   the auth modal — see index.tsx) so the rest of the app keeps its
-   existing warm cream/terracotta/Fraunces identity untouched. This
-   overrides the *same* token names every landing component already reads
-   via var(--foreground) / var(--primary) / the muted-foreground, bg-muted,
-   etc. Tailwind utilities — so every existing file re-themes for free,
-   nothing needs to change its color references. Two net-new tokens
-   (--lp-cool, --lp-mauve) add the extra alternating section tints
-   dailyfour uses that this app's original two-tone system didn't have. */
+   the auth modal — see index.tsx). The app's default palette (:root, above)
+   now matches these same surface/text/brand values, so most of what's
+   redeclared here is redundant with :root (kept for clarity/isolation) —
+   the two things landing still needs on its own are a tighter --radius and
+   the two net-new tokens (--lp-cool, --lp-mauve) that add the extra
+   alternating section tints dailyfour uses that this app's original
+   two-tone system didn't have. */
 .landing-theme {
   --background: #f9f6ef;
   --paper: #ece4d5;
@@ -133,16 +136,10 @@
   color: var(--foreground);
 }
 
-/* Within the landing scope, the shared .font-display utility (hardcoded to
-   Fraunces for the rest of the app) becomes the calmer editorial serif —
-   every existing section heading picks this up with no className changes.
-   .font-hero is net-new: only the hero's one big headline uses the bold
-   grotesque voice, matching dailyfour's bold-sans-hero/serif-everything-
-   else hierarchy. */
-.landing-theme .font-display {
-  font-family: "Newsreader Variable", Georgia, serif;
-  font-optical-sizing: auto;
-}
+/* .font-hero is net-new: only the landing hero's one big headline uses the
+   bold grotesque voice, matching dailyfour's bold-sans-hero/serif-everything-
+   else hierarchy. Every other heading — landing and the rest of the app
+   alike — reads as the calmer editorial serif via .font-display below. */
 .font-hero {
   font-family: "Bricolage Grotesque Variable", sans-serif;
   font-variation-settings: "wght" 650;
@@ -165,7 +162,8 @@
 /* ── Utility classes ──────────────────────────────────────────────── */
 @layer utilities {
   .font-display {
-    font-family: "Fraunces", Georgia, serif;
+    font-family: "Newsreader Variable", Georgia, serif;
+    font-optical-sizing: auto;
   }
 
   .paper {

@@ -50,9 +50,9 @@ import { normalizeLocation } from "@/lib/locations";
 
 const STATUS_MAP: Record<JobStatus, { bg: string; fg: string; border: string; label: string }> = {
   suggested: {
-    bg: "rgba(217,119,87,0.10)",
-    fg: "#D97757",
-    border: "rgba(217,119,87,0.25)",
+    bg: "rgba(240,182,58,0.10)",
+    fg: "#F0B63A",
+    border: "rgba(240,182,58,0.25)",
     label: "Suggested",
   },
   saved: {
@@ -479,7 +479,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 8,
-                  boxShadow: "0 4px 14px rgba(217,119,87,0.3)",
+                  boxShadow: "0 4px 14px rgba(240,182,58,0.3)",
                 }}
               >
                 {firstTodo ? "Complete your profile" : "Browse job matches"}{" "}
@@ -541,8 +541,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               gap: 16,
               textAlign: "left",
               fontFamily: "inherit",
-              background: "rgba(217,119,87,0.06)",
-              border: "1px solid rgba(217,119,87,0.30)",
+              background: "rgba(240,182,58,0.06)",
+              border: "1px solid rgba(240,182,58,0.30)",
               borderRadius: 24,
               padding: "18px 24px",
               cursor: "pointer",
@@ -553,8 +553,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 width: 44,
                 height: 44,
                 borderRadius: 14,
-                background: "rgba(217,119,87,0.12)",
-                border: "1px solid rgba(217,119,87,0.25)",
+                background: "rgba(240,182,58,0.12)",
+                border: "1px solid rgba(240,182,58,0.25)",
                 color: "var(--primary)",
                 display: "flex",
                 alignItems: "center",
@@ -863,8 +863,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                           width: 34,
                           height: 34,
                           borderRadius: 11,
-                          background: "rgba(217,119,87,0.10)",
-                          border: "1px solid rgba(217,119,87,0.20)",
+                          background: "rgba(240,182,58,0.10)",
+                          border: "1px solid rgba(240,182,58,0.20)",
                           color: "var(--primary)",
                           display: "flex",
                           alignItems: "center",
@@ -1088,7 +1088,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                           }}
                           cursor={{ fill: "rgba(0,0,0,0.04)" }}
                         />
-                        <Bar dataKey="rate" fill="#D97757" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                        <Bar dataKey="rate" fill="#F0B63A" radius={[4, 4, 0, 0]} maxBarSize={48} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1183,7 +1183,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       alignItems: "center",
                       justifyContent: "center",
                       color: "var(--primary)",
-                      fontFamily: "'Fraunces',Georgia,serif",
+                      fontFamily: "'Newsreader Variable',Georgia,serif",
                       fontSize: 13,
                       fontWeight: 600,
                     }}
@@ -1278,8 +1278,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       width: 44,
                       height: 44,
                       borderRadius: 14,
-                      background: "rgba(217,119,87,0.10)",
-                      border: "1px solid rgba(217,119,87,0.25)",
+                      background: "rgba(240,182,58,0.10)",
+                      border: "1px solid rgba(240,182,58,0.25)",
                       color: "var(--primary)",
                       display: "flex",
                       alignItems: "center",
@@ -1478,7 +1478,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   cursor: isAddingApp ? "default" : "pointer",
                   opacity: isAddingApp ? 0.6 : 1,
                   marginTop: 4,
-                  boxShadow: "0 4px 14px rgba(217,119,87,0.25)",
+                  boxShadow: "0 4px 14px rgba(240,182,58,0.25)",
                 }}
               >
                 {isAddingApp ? "Adding…" : "Add to pipeline"}
@@ -1772,7 +1772,7 @@ function CareerPath({
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              boxShadow: "0 4px 14px rgba(217,119,87,0.25)",
+              boxShadow: "0 4px 14px rgba(240,182,58,0.25)",
             }}
           >
             Build full plan <ArrowRight className="w-3.5 h-3.5" />
@@ -1795,8 +1795,8 @@ function CareerPath({
               width: 44,
               height: 44,
               borderRadius: 14,
-              background: "rgba(217,119,87,0.10)",
-              border: "1px solid rgba(217,119,87,0.25)",
+              background: "rgba(240,182,58,0.10)",
+              border: "1px solid rgba(240,182,58,0.25)",
               color: "var(--primary)",
               display: "flex",
               alignItems: "center",
@@ -1905,8 +1905,8 @@ function PathNode({
       dot: "var(--forest)",
     },
     plan: {
-      bg: "rgba(217,119,87,0.08)",
-      border: "1px dashed rgba(217,119,87,0.40)",
+      bg: "rgba(240,182,58,0.08)",
+      border: "1px dashed rgba(240,182,58,0.40)",
       fg: "var(--primary)",
       dot: "var(--primary)",
     },
