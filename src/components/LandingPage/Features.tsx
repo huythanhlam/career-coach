@@ -171,7 +171,7 @@ export function Features({ openAuth }: FeaturesProps) {
         }}
         className="overflow-x-auto no-scrollbar snap-x snap-mandatory"
       >
-        <div className="flex gap-6 px-4 sm:px-6" style={{ width: "max-content" }}>
+        <div className="flex gap-6 pl-6 pr-4 sm:pl-10 sm:pr-6" style={{ width: "max-content" }}>
           <div
             className="flex-shrink-0"
             style={{ width: "calc((100vw - min(100vw, 72rem)) / 2)" }}
