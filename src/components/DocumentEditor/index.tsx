@@ -287,7 +287,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, DocumentEditorPro
         const img = document.createElement("img");
         img.src = ev.target?.result as string;
         img.alt = file.name;
-        img.style.cssText = "max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0;";
+        img.style.cssText =
+          "max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0;";
         insertHtml(img.outerHTML);
       };
       reader.readAsDataURL(file);
