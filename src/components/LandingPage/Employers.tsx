@@ -17,8 +17,24 @@ function AiDraftArt() {
     <svg viewBox="0 0 96 96" className="w-16 h-16" aria-hidden="true">
       <defs>{EMPLOYER_ART_SHADOW}</defs>
       <g filter="url(#employer-art-shadow)">
-        <rect x="18" y="14" width="60" height="68" rx="12" fill="var(--card)" stroke="var(--border)" />
-        <rect x="30" y="30" width="30" height="7" rx="3.5" fill="var(--foreground)" opacity="0.85" />
+        <rect
+          x="18"
+          y="14"
+          width="60"
+          height="68"
+          rx="12"
+          fill="var(--card)"
+          stroke="var(--border)"
+        />
+        <rect
+          x="30"
+          y="30"
+          width="30"
+          height="7"
+          rx="3.5"
+          fill="var(--foreground)"
+          opacity="0.85"
+        />
         <rect x="30" y="44" width="36" height="5" rx="2.5" fill="var(--border)" />
         <rect x="30" y="54" width="36" height="5" rx="2.5" fill="var(--border)" />
         <rect x="30" y="64" width="20" height="5" rx="2.5" fill="var(--primary)" opacity="0.7" />
@@ -79,15 +95,7 @@ function ReachArt() {
     <svg viewBox="0 0 96 96" className="w-16 h-16" aria-hidden="true">
       <defs>{EMPLOYER_ART_SHADOW}</defs>
       {nodes.map((n, i) => (
-        <line
-          key={i}
-          x1="48"
-          y1="48"
-          x2={n.x}
-          y2={n.y}
-          stroke="var(--border)"
-          strokeWidth="2.5"
-        />
+        <line key={i} x1="48" y1="48" x2={n.x} y2={n.y} stroke="var(--border)" strokeWidth="2.5" />
       ))}
       {nodes.map((n, i) => (
         <circle

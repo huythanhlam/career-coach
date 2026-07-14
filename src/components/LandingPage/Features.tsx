@@ -118,7 +118,10 @@ export function Features({ openAuth }: FeaturesProps) {
             >
               Features
             </p>
-            <h2 className="font-display text-4xl tracking-tight" style={{ color: "var(--foreground)" }}>
+            <h2
+              className="font-display text-4xl tracking-tight"
+              style={{ color: "var(--foreground)" }}
+            >
               Every step of the search, <span className="marker-highlight">covered</span>
             </h2>
             <p className="mt-3 max-w-xl" style={{ color: "var(--muted-foreground)" }}>
@@ -135,7 +138,10 @@ export function Features({ openAuth }: FeaturesProps) {
               onClick={() => scrollByCard(-1)}
               aria-label="Scroll features left"
               className="w-10 h-10 rounded-md flex items-center justify-center transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2"
-              style={{ border: "1px solid var(--border)", ["--tw-ring-color" as string]: "var(--primary)" }}
+              style={{
+                border: "1px solid var(--border)",
+                ["--tw-ring-color" as string]: "var(--primary)",
+              }}
             >
               <ChevronLeft className="w-4 h-4" style={{ color: "var(--foreground)" }} />
             </button>
@@ -144,7 +150,10 @@ export function Features({ openAuth }: FeaturesProps) {
               onClick={() => scrollByCard(1)}
               aria-label="Scroll features right"
               className="w-10 h-10 rounded-md flex items-center justify-center transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2"
-              style={{ border: "1px solid var(--border)", ["--tw-ring-color" as string]: "var(--primary)" }}
+              style={{
+                border: "1px solid var(--border)",
+                ["--tw-ring-color" as string]: "var(--primary)",
+              }}
             >
               <ChevronRight className="w-4 h-4" style={{ color: "var(--foreground)" }} />
             </button>
@@ -163,9 +172,18 @@ export function Features({ openAuth }: FeaturesProps) {
         className="overflow-x-auto no-scrollbar snap-x snap-mandatory"
       >
         <div className="flex gap-6 px-4 sm:px-6" style={{ width: "max-content" }}>
-          <div className="flex-shrink-0" style={{ width: "calc((100vw - min(100vw, 72rem)) / 2)" }} />
+          <div
+            className="flex-shrink-0"
+            style={{ width: "calc((100vw - min(100vw, 72rem)) / 2)" }}
+          />
           {features.map((f, i) => (
-            <FeatureCard key={f.id} f={f} i={i} isVisible={isVisible} onClick={() => openAuth(f.tab)} />
+            <FeatureCard
+              key={f.id}
+              f={f}
+              i={i}
+              isVisible={isVisible}
+              onClick={() => openAuth(f.tab)}
+            />
           ))}
           <div className="flex-shrink-0 w-4 sm:w-6" />
         </div>

@@ -18,7 +18,15 @@ function AccountArt() {
     <svg viewBox="0 0 120 120" className="w-24 h-24" aria-hidden="true">
       <defs>{ART_SHADOW}</defs>
       <g filter="url(#step-art-shadow)">
-        <rect x="18" y="20" width="84" height="72" rx="14" fill="var(--card)" stroke="var(--border)" />
+        <rect
+          x="18"
+          y="20"
+          width="84"
+          height="72"
+          rx="14"
+          fill="var(--card)"
+          stroke="var(--border)"
+        />
         <circle cx="46" cy="50" r="14" fill="var(--lp-mauve)" />
         <path
           d="M32 78c2-11 10-16 14-16s12 5 14 16"
@@ -98,7 +106,15 @@ function ActOnSpecificsArt() {
     <svg viewBox="0 0 120 120" className="w-24 h-24" aria-hidden="true">
       <defs>{ART_SHADOW}</defs>
       <g filter="url(#step-art-shadow)">
-        <rect x="16" y="18" width="88" height="76" rx="14" fill="var(--card)" stroke="var(--border)" />
+        <rect
+          x="16"
+          y="18"
+          width="88"
+          height="76"
+          rx="14"
+          fill="var(--card)"
+          stroke="var(--border)"
+        />
         {[0, 1, 2].map((i) => (
           <g key={i} transform={`translate(30 ${36 + i * 18})`}>
             <rect

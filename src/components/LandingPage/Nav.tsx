@@ -43,7 +43,9 @@ export function Nav({ openAuth, heroCtaRef }: NavProps) {
     <nav
       className="sticky top-0 z-40"
       style={{
-        background: scrolled ? "color-mix(in srgb, var(--background) 94%, transparent)" : "transparent",
+        background: scrolled
+          ? "color-mix(in srgb, var(--background) 94%, transparent)"
+          : "transparent",
         backdropFilter: scrolled ? "blur(12px)" : "none",
         borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
         transition: "background 0.3s ease, border-color 0.3s ease",

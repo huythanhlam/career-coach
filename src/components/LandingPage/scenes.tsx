@@ -301,14 +301,21 @@ export function GoalPlanScene({ progress: _progress }: { progress?: number }) {
     { label: "Run the interview loop", done: false },
   ];
   return (
-    <SceneShell icon={<Target className="w-4 h-4" style={{ color: "var(--primary)" }} />} title="Goal Plan">
+    <SceneShell
+      icon={<Target className="w-4 h-4" style={{ color: "var(--primary)" }} />}
+      title="Goal Plan"
+    >
       <div className="flex flex-col gap-2 h-full justify-center">
         {weeks.map((w, i) => (
           <div key={w.label} className="flex items-center gap-2.5">
             <span
               className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
               style={{
-                background: w.done ? "#3B82F6" : w.current ? "rgba(59,130,246,0.15)" : "var(--muted)",
+                background: w.done
+                  ? "#3B82F6"
+                  : w.current
+                    ? "rgba(59,130,246,0.15)"
+                    : "var(--muted)",
                 color: w.done ? "#fff" : w.current ? "#3B82F6" : "var(--muted-foreground)",
                 border: w.current ? "1.5px solid #3B82F6" : "none",
               }}
@@ -388,7 +395,11 @@ export function LinkedInScene({ progress: _progress }: { progress?: number }) {
           />
           <div
             className="flex-1 rounded-lg px-3 py-2 text-xs"
-            style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--border)",
+              color: "var(--foreground)",
+            }}
           >
             Product Manager turning 0→1 ideas into shipped, revenue-generating features.
           </div>
@@ -417,7 +428,10 @@ export function JobPlanScene({ progress: _progress }: { progress?: number }) {
     { label: "Follow up with referral", done: false },
   ];
   return (
-    <SceneShell icon={<Zap className="w-4 h-4" style={{ color: "var(--primary)" }} />} title="Today's Plan">
+    <SceneShell
+      icon={<Zap className="w-4 h-4" style={{ color: "var(--primary)" }} />}
+      title="Today's Plan"
+    >
       <div className="flex flex-col gap-2 h-full justify-center">
         {tasks.map((t) => (
           <div
@@ -452,7 +466,11 @@ export function JobPlanScene({ progress: _progress }: { progress?: number }) {
 
 /** Company Research: a company card with a couple of sourced findings. */
 export function CompanyResearchScene({ progress: _progress }: { progress?: number }) {
-  const findings = ["Series C · $80M raised", "Engineering values async work", "3 recruiters posted this week"];
+  const findings = [
+    "Series C · $80M raised",
+    "Engineering values async work",
+    "3 recruiters posted this week",
+  ];
   return (
     <SceneShell
       icon={<Building className="w-4 h-4" style={{ color: "var(--primary)" }} />}
@@ -472,8 +490,15 @@ export function CompanyResearchScene({ progress: _progress }: { progress?: numbe
         </div>
         <div className="space-y-1.5">
           {findings.map((f) => (
-            <div key={f} className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--foreground)" }}>
-              <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
+            <div
+              key={f}
+              className="flex items-center gap-1.5 text-[11px]"
+              style={{ color: "var(--foreground)" }}
+            >
+              <ExternalLink
+                className="w-2.5 h-2.5 flex-shrink-0"
+                style={{ color: "var(--muted-foreground)" }}
+              />
               {f}
             </div>
           ))}

@@ -22,8 +22,22 @@ function AboutArt() {
       </defs>
 
       {/* Ambient atmosphere, matching the hero's glow */}
-      <circle cx="370" cy="70" r="90" fill="var(--primary)" opacity="0.22" filter="url(#about-art-blur)" />
-      <circle cx="60" cy="330" r="100" fill="var(--lp-cool)" opacity="0.55" filter="url(#about-art-blur)" />
+      <circle
+        cx="370"
+        cy="70"
+        r="90"
+        fill="var(--primary)"
+        opacity="0.22"
+        filter="url(#about-art-blur)"
+      />
+      <circle
+        cx="60"
+        cy="330"
+        r="100"
+        fill="var(--lp-cool)"
+        opacity="0.55"
+        filter="url(#about-art-blur)"
+      />
 
       {/* Back card — mauve, salary/chart bars */}
       <g filter="url(#about-art-shadow)" transform="rotate(-9 150 150)">
@@ -44,7 +58,15 @@ function AboutArt() {
           fill="var(--card)"
           stroke="var(--border)"
         />
-        <rect x="176" y="140" width="90" height="12" rx="6" fill="var(--foreground)" opacity="0.85" />
+        <rect
+          x="176"
+          y="140"
+          width="90"
+          height="12"
+          rx="6"
+          fill="var(--foreground)"
+          opacity="0.85"
+        />
         <rect x="176" y="164" width="130" height="8" rx="4" fill="var(--border)" />
         <rect x="176" y="182" width="110" height="8" rx="4" fill="var(--border)" />
         <rect x="176" y="200" width="120" height="8" rx="4" fill="var(--border)" />
