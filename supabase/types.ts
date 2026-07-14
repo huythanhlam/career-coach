@@ -276,13 +276,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cache_write_rate_limits: {
+        Row: {
+          hit_count: number
+          scope: string
+          user_id: string
+          window_key: number
+        }
+        Insert: {
+          hit_count?: number
+          scope: string
+          user_id: string
+          window_key: number
+        }
+        Update: {
+          hit_count?: number
+          scope?: string
+          user_id?: string
+          window_key?: number
+        }
+        Relationships: []
+      }
       coach_nudges: {
         Row: {
           body: string
           created_at: string
           cta_view: string | null
+          draft_kind: string | null
           id: string
           kind: string
+          snoozed_until: string | null
           status: string
           subject_id: string | null
           title: string
@@ -293,8 +316,10 @@ export type Database = {
           body: string
           created_at?: string
           cta_view?: string | null
+          draft_kind?: string | null
           id?: string
           kind: string
+          snoozed_until?: string | null
           status?: string
           subject_id?: string | null
           title: string
@@ -305,8 +330,10 @@ export type Database = {
           body?: string
           created_at?: string
           cta_view?: string | null
+          draft_kind?: string | null
           id?: string
           kind?: string
+          snoozed_until?: string | null
           status?: string
           subject_id?: string | null
           title?: string
@@ -382,6 +409,7 @@ export type Database = {
           created_at: string
           data: Json
           kind: string
+          last_written_by: string | null
           updated_at: string
         }
         Insert: {
@@ -390,6 +418,7 @@ export type Database = {
           created_at?: string
           data: Json
           kind: string
+          last_written_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -398,6 +427,7 @@ export type Database = {
           created_at?: string
           data?: Json
           kind?: string
+          last_written_by?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -717,6 +747,7 @@ export type Database = {
           cache_key: string
           created_at: string
           data: Json
+          last_written_by: string | null
           location: string
           role: string
           secondary_location: string | null
@@ -727,6 +758,7 @@ export type Database = {
           cache_key: string
           created_at?: string
           data: Json
+          last_written_by?: string | null
           location: string
           role: string
           secondary_location?: string | null
@@ -737,6 +769,7 @@ export type Database = {
           cache_key?: string
           created_at?: string
           data?: Json
+          last_written_by?: string | null
           location?: string
           role?: string
           secondary_location?: string | null
@@ -1076,6 +1109,10 @@ export type Database = {
       }
       check_ai_usage_cap: {
         Args: { p_cap: number; p_user_id: string }
+        Returns: boolean
+      }
+      check_cache_write_rate_limit: {
+        Args: { p_max_hits: number; p_scope: string }
         Returns: boolean
       }
       current_user_is_admin: { Args: never; Returns: boolean }
