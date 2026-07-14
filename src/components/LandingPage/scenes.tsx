@@ -1,4 +1,17 @@
-import { FileText, Mic, LineChart, DollarSign, Check, Star } from "lucide-react";
+import {
+  FileText,
+  Mic,
+  LineChart,
+  DollarSign,
+  Check,
+  Star,
+  Target,
+  PenTool,
+  ShieldCheck,
+  Zap,
+  Building,
+  ExternalLink,
+} from "lucide-react";
 import { typewriter } from "./demoTimeline";
 
 // Simplified recreations of real product screens, driven by a 0..1 `progress`.
@@ -31,7 +44,7 @@ function SceneShell({
       <div className="flex items-center gap-2 mb-4">
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(217,119,87,0.12)" }}
+          style={{ background: "color-mix(in srgb, var(--primary) 15%, transparent)" }}
         >
           {icon}
         </div>
@@ -143,7 +156,11 @@ export function InterviewScene({ progress }: { progress: number }) {
         </div>
         <div
           className="rounded-xl rounded-tr-sm px-3 py-2 text-xs self-end max-w-[90%]"
-          style={{ background: "rgba(217,119,87,0.12)", color: "var(--foreground)", minHeight: 54 }}
+          style={{
+            background: "color-mix(in srgb, var(--primary) 15%, transparent)",
+            color: "var(--foreground)",
+            minHeight: 54,
+          }}
         >
           {typed}
           <span style={{ opacity: typed.length < full.length ? 1 : 0, color: "var(--primary)" }}>
@@ -265,6 +282,202 @@ export function SalaryScene({ progress }: { progress: number }) {
             </div>
           );
         })}
+      </div>
+    </SceneShell>
+  );
+}
+
+// The five scenes below are static (no `progress` animation — they only ever
+// appear resolved, as a feature-card thumbnail, never in the hero timeline)
+// but still take an optional `progress` prop so every scene shares one call
+// signature and the card grid never needs a conditional per id.
+
+/** Goal Planning: a week-by-week roadmap, two weeks done, one in progress. */
+export function GoalPlanScene({ progress: _progress }: { progress?: number }) {
+  const weeks = [
+    { label: "Audit your skills gap", done: true },
+    { label: "Ship a portfolio piece", done: true },
+    { label: "Apply to 10 target roles", done: false, current: true },
+    { label: "Run the interview loop", done: false },
+  ];
+  return (
+    <SceneShell icon={<Target className="w-4 h-4" style={{ color: "var(--primary)" }} />} title="Goal Plan">
+      <div className="flex flex-col gap-2 h-full justify-center">
+        {weeks.map((w, i) => (
+          <div key={w.label} className="flex items-center gap-2.5">
+            <span
+              className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
+              style={{
+                background: w.done ? "#3B82F6" : w.current ? "rgba(59,130,246,0.15)" : "var(--muted)",
+                color: w.done ? "#fff" : w.current ? "#3B82F6" : "var(--muted-foreground)",
+                border: w.current ? "1.5px solid #3B82F6" : "none",
+              }}
+            >
+              {w.done ? <Check className="w-3 h-3" /> : i + 1}
+            </span>
+            <span
+              className="text-xs"
+              style={{
+                color: w.current ? "var(--foreground)" : "var(--muted-foreground)",
+                fontWeight: w.current ? 600 : 400,
+              }}
+            >
+              {w.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </SceneShell>
+  );
+}
+
+/** Resume Generation: a document preview with a template selector strip. */
+export function ResumeGenScene({ progress: _progress }: { progress?: number }) {
+  const lineWidths = [88, 72, 95, 60, 80];
+  return (
+    <SceneShell
+      icon={<PenTool className="w-4 h-4" style={{ color: "var(--primary)" }} />}
+      title="Resume Builder"
+    >
+      <div className="flex flex-col h-full">
+        <div
+          className="flex-1 rounded-lg p-3 min-h-0"
+          style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+        >
+          <div className="h-2.5 w-2/5 rounded mb-2" style={{ background: "var(--foreground)" }} />
+          <div className="h-1.5 w-1/4 rounded mb-3" style={{ background: "var(--primary)" }} />
+          {lineWidths.map((w, i) => (
+            <div
+              key={i}
+              className="h-1.5 rounded mb-1.5"
+              style={{ width: `${w}%`, background: "var(--muted)" }}
+            />
+          ))}
+        </div>
+        <div className="flex items-center justify-center gap-1.5 mt-3 flex-shrink-0">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span
+              key={i}
+              className="rounded-full"
+              style={{
+                width: i === 2 ? 16 : 6,
+                height: 6,
+                background: i === 2 ? "var(--primary)" : "var(--border)",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </SceneShell>
+  );
+}
+
+/** LinkedIn Optimizer: a headline rewrite with keyword chips surfacing below. */
+export function LinkedInScene({ progress: _progress }: { progress?: number }) {
+  const keywords = ["Product Manager", "0→1", "B2B SaaS", "Growth"];
+  return (
+    <SceneShell
+      icon={<ShieldCheck className="w-4 h-4" style={{ color: "var(--primary)" }} />}
+      title="LinkedIn Optimizer"
+    >
+      <div className="flex flex-col gap-3 h-full justify-center">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="w-9 h-9 rounded-full flex-shrink-0"
+            style={{ background: "#0A66C2", opacity: 0.15 }}
+          />
+          <div
+            className="flex-1 rounded-lg px-3 py-2 text-xs"
+            style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+          >
+            Product Manager turning 0→1 ideas into shipped, revenue-generating features.
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5 pl-[46px]">
+          {keywords.map((k) => (
+            <span
+              key={k}
+              className="text-[10px] font-semibold px-2 py-1 rounded-full"
+              style={{ background: "rgba(10,102,194,0.1)", color: "#0A66C2" }}
+            >
+              {k}
+            </span>
+          ))}
+        </div>
+      </div>
+    </SceneShell>
+  );
+}
+
+/** Job-search plan: today's short list, one task already done. */
+export function JobPlanScene({ progress: _progress }: { progress?: number }) {
+  const tasks = [
+    { label: "Tailor resume for Acme Corp", done: true },
+    { label: "Practice 2 behavioral questions", done: false },
+    { label: "Follow up with referral", done: false },
+  ];
+  return (
+    <SceneShell icon={<Zap className="w-4 h-4" style={{ color: "var(--primary)" }} />} title="Today's Plan">
+      <div className="flex flex-col gap-2 h-full justify-center">
+        {tasks.map((t) => (
+          <div
+            key={t.label}
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2"
+            style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+          >
+            <span
+              className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+              style={{
+                background: t.done ? "#8B5CF6" : "transparent",
+                border: t.done ? "none" : "1.5px solid var(--border)",
+              }}
+            >
+              {t.done && <Check className="w-2.5 h-2.5 text-white" />}
+            </span>
+            <span
+              className="text-xs"
+              style={{
+                color: t.done ? "var(--muted-foreground)" : "var(--foreground)",
+                textDecoration: t.done ? "line-through" : "none",
+              }}
+            >
+              {t.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </SceneShell>
+  );
+}
+
+/** Company Research: a company card with a couple of sourced findings. */
+export function CompanyResearchScene({ progress: _progress }: { progress?: number }) {
+  const findings = ["Series C · $80M raised", "Engineering values async work", "3 recruiters posted this week"];
+  return (
+    <SceneShell
+      icon={<Building className="w-4 h-4" style={{ color: "var(--primary)" }} />}
+      title="Company Research"
+    >
+      <div className="flex flex-col gap-3 h-full justify-center">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(232,185,72,0.18)" }}
+          >
+            <Building className="w-4 h-4" style={{ color: "#b8860b" }} />
+          </span>
+          <span className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>
+            Acme Corp
+          </span>
+        </div>
+        <div className="space-y-1.5">
+          {findings.map((f) => (
+            <div key={f} className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--foreground)" }}>
+              <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
+              {f}
+            </div>
+          ))}
+        </div>
       </div>
     </SceneShell>
   );

@@ -22,11 +22,13 @@ export function Contact() {
   }
 
   return (
-    <section id="contact" className="py-24 max-w-6xl mx-auto px-4 sm:px-6">
+    <section id="contact" className="py-28 max-w-6xl mx-auto px-4 sm:px-6">
       <div className="grid md:grid-cols-2 gap-16 items-start">
         <div>
-          <p className="eyebrow mb-3">Contact</p>
-          <h2 className="font-display text-4xl font-semibold mb-4">We'd love to hear from you</h2>
+          <p className="eyebrow-plain mb-4">Contact</p>
+          <h2 className="font-display text-4xl font-medium tracking-tight mb-4">
+            We'd love to hear from you
+          </h2>
           <p className="text-muted-foreground leading-relaxed mb-6">
             Have feedback, a feature request, or a partnership inquiry? Drop us a note.
           </p>
@@ -37,7 +39,7 @@ export function Contact() {
         </div>
 
         <div
-          className="rounded-2xl p-6 border"
+          className="rounded-lg p-6 border"
           style={{ background: "var(--card)", borderColor: "var(--border)" }}
         >
           {sent ? (
@@ -105,9 +107,10 @@ export function Contact() {
               </div>
               <button
                 type="submit"
-                className="w-full font-semibold py-3 rounded-xl text-white hover:opacity-90 transition-opacity text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                className="w-full font-medium py-3 rounded-md hover:opacity-90 transition-opacity text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style={{
                   background: "var(--primary)",
+                  color: "var(--primary-foreground)",
                   ["--tw-ring-color" as string]: "var(--ring)",
                 }}
               >

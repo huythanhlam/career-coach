@@ -4,6 +4,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/newsreader";
 
 @theme inline {
   --font-sans: "Geist Variable", sans-serif;
@@ -99,6 +101,53 @@
   --status-rejected: #f43f5e;
 }
 
+/* ── Landing page theme (dailyfour.app-inspired) ──────────────────────
+   Scoped to .landing-theme (the marketing page's own root, NOT including
+   the auth modal — see index.tsx) so the rest of the app keeps its
+   existing warm cream/terracotta/Fraunces identity untouched. This
+   overrides the *same* token names every landing component already reads
+   via var(--foreground) / var(--primary) / the muted-foreground, bg-muted,
+   etc. Tailwind utilities — so every existing file re-themes for free,
+   nothing needs to change its color references. Two net-new tokens
+   (--lp-cool, --lp-mauve) add the extra alternating section tints
+   dailyfour uses that this app's original two-tone system didn't have. */
+.landing-theme {
+  --background: #f9f6ef;
+  --paper: #ece4d5;
+  --card: #fffefb;
+  --muted: #eee6d7;
+  --foreground: #2a2823;
+  --card-foreground: #2a2823;
+  --muted-foreground: #8d8577;
+  --primary: #f0b63a;
+  --primary-foreground: #2a2823;
+  --border: #e2dbc9;
+  --input: #e2dbc9;
+  --ring: #f0b63a;
+  --radius: 0.5rem;
+
+  --lp-cool: #dde2e2;
+  --lp-mauve: #e8dcd3;
+
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Within the landing scope, the shared .font-display utility (hardcoded to
+   Fraunces for the rest of the app) becomes the calmer editorial serif —
+   every existing section heading picks this up with no className changes.
+   .font-hero is net-new: only the hero's one big headline uses the bold
+   grotesque voice, matching dailyfour's bold-sans-hero/serif-everything-
+   else hierarchy. */
+.landing-theme .font-display {
+  font-family: "Newsreader Variable", Georgia, serif;
+  font-optical-sizing: auto;
+}
+.font-hero {
+  font-family: "Bricolage Grotesque Variable", sans-serif;
+  font-variation-settings: "wght" 650;
+}
+
 @layer base {
   * {
     border-color: var(--border);
@@ -106,6 +155,10 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: "Geist Variable", sans-serif;
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
 }
 
@@ -130,6 +183,40 @@
     color: var(--muted-foreground);
   }
 
+  /* A highlighter-pen swipe behind a word — the one recurring signature mark
+     carried across the landing page's headlines (hero, features, pricing),
+     the same "circle the important word" move as timespent.so/diffusion.studio. */
+  .marker-highlight {
+    background-image: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--primary) 65%, transparent) 34%,
+      transparent 34%
+    );
+    background-repeat: no-repeat;
+    padding: 0 0.06em;
+  }
+
+  /* Plain-text eyebrow — a dot + small-caps label with no pill background,
+     the quieter treatment used across diffusion.studio / timespent.so
+     headers. Prefer this over .eyebrow's boxed variant on the landing page. */
+  .eyebrow-plain {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted-foreground);
+  }
+  .eyebrow-plain::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -138,17 +225,26 @@
     scrollbar-width: none;
   }
 
+  /* A barely-there film-grain, tiled via an SVG turbulence filter baked into a
+     data URI. Lives on the background-image layer (never a separate stacked
+     element), so it never fights z-index and can't intercept clicks. Reads as
+     warmth/paper texture rather than "noise" at this opacity. */
+  .grain-bg {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.12  0 0 0 0 0.11  0 0 0 0 0.09  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+
   /* Scroll-reveal (landing page). Base = hidden + nudged down; [data-revealed]
      transitions it into place. Stagger children with an inline --i index.
      Fully disabled under prefers-reduced-motion (and the useReveal hook also
      forces isVisible there, so content never stays hidden). */
   .reveal {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(20px);
     transition:
-      opacity 0.6s ease,
-      transform 0.6s ease;
-    transition-delay: calc(var(--i, 0) * 80ms);
+      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(var(--i, 0) * 90ms);
     will-change: opacity, transform;
   }
   .reveal[data-revealed] {
@@ -157,6 +253,29 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+
+  /* Hero entrance — a quiet fade + rise on mount, matching the reveal-on-scroll
+     easing so the very top of the page doesn't feel like a different system.
+     Runs once via [data-mounted], and is a no-op under reduced motion. */
+  .fade-in-up {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(var(--i, 0) * 100ms);
+  }
+  .fade-in-up[data-mounted] {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fade-in-up {
       opacity: 1;
       transform: none;
       transition: none;

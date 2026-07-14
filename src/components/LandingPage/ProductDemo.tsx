@@ -114,11 +114,11 @@ export function ProductDemo() {
               className="w-16 h-16 rounded-full flex items-center justify-center transition-transform group-hover:scale-105 group-focus-visible:ring-4"
               style={{
                 background: "var(--primary)",
-                boxShadow: "0 12px 40px rgba(217,119,87,0.45)",
-                ["--tw-ring-color" as string]: "rgba(217,119,87,0.4)",
+                boxShadow: "0 12px 40px rgba(240,182,58,0.45)",
+                ["--tw-ring-color" as string]: "rgba(240,182,58,0.4)",
               }}
             >
-              <Play className="w-7 h-7 text-white ml-1" />
+              <Play className="w-7 h-7 ml-1" style={{ color: "var(--primary-foreground)" }} />
             </span>
           </button>
         )}

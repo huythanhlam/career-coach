@@ -21,6 +21,21 @@ export function usePrefersReducedMotion(): boolean {
 }
 
 /**
+ * True on the frame after mount — pair with the `.fade-in-up` utility class
+ * (toggling `data-mounted`) for a one-shot entrance animation on content that's
+ * visible without scrolling, e.g. the hero. Starts false so the CSS's initial
+ * hidden state is what paints first, then flips true to trigger the transition.
+ */
+export function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return mounted;
+}
+
+/**
  * Reveal-on-scroll. Returns a ref to attach to a section and an `isVisible` flag
  * that flips true once the element scrolls ~12% into view (then stops observing).
  * Under reduced motion — or without IntersectionObserver — it reports visible

@@ -18,7 +18,7 @@ interface DemoFrameProps {
 export function DemoFrame({ address = "app.techcoach.ai", caption, children }: DemoFrameProps) {
   return (
     <div
-      className="rounded-2xl overflow-hidden w-full"
+      className="rounded-lg overflow-hidden w-full"
       style={{
         background: "var(--card)",
         border: "1px solid var(--border)",
