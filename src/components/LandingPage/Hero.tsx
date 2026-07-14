@@ -20,13 +20,9 @@ export function Hero({ openAuth, heroCtaRef }: HeroProps) {
 
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-20 text-center">
-      <p className="eyebrow-plain fade-in-up justify-center mb-7" {...fadeUp(0)}>
-        Powered by Gemini AI · Free while in beta
-      </p>
-
       <h1
         className="font-hero fade-in-up text-4xl sm:text-6xl lg:text-7xl leading-[1.05] mb-6 tracking-tight"
-        {...fadeUp(1, { color: "var(--foreground)" })}
+        {...fadeUp(0, { color: "var(--foreground)" })}
       >
         Land your dream <span className="marker-highlight">job</span>
         <br />
@@ -35,7 +31,7 @@ export function Hero({ openAuth, heroCtaRef }: HeroProps) {
 
       <p
         className="fade-in-up text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-9 leading-relaxed"
-        {...fadeUp(2)}
+        {...fadeUp(1)}
       >
         Specific, data-backed coaching for every step of the search — analyze your resume, rehearse
         the interview, and walk into the negotiation with a script. Not generic career advice.
@@ -43,7 +39,7 @@ export function Hero({ openAuth, heroCtaRef }: HeroProps) {
 
       <div
         className="fade-in-up flex flex-col sm:flex-row items-center justify-center gap-4 mb-8"
-        {...fadeUp(3)}
+        {...fadeUp(2)}
       >
         <button
           ref={heroCtaRef}
@@ -73,7 +69,7 @@ export function Hero({ openAuth, heroCtaRef }: HeroProps) {
       {/* Honest social-proof strip (replaces the old fabricated stat wall) */}
       <div
         className="fade-in-up flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground mb-14"
-        {...fadeUp(4)}
+        {...fadeUp(3)}
       >
         {proofPoints.map((p, i) => (
           <span key={p} className="inline-flex items-center gap-3">
@@ -89,7 +85,7 @@ export function Hero({ openAuth, heroCtaRef }: HeroProps) {
 
       {/* The product demo — show, don't just tell. A soft ambient glow behind
           it breaks up the otherwise flat cream field with a little depth. */}
-      <div className="fade-in-up relative" {...fadeUp(5)}>
+      <div className="fade-in-up relative" {...fadeUp(4)}>
         <div
           aria-hidden="true"
           className="absolute -inset-x-10 -top-16 -bottom-16 -z-10 blur-3xl"
