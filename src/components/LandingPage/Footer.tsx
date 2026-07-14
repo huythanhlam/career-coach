@@ -1,4 +1,3 @@
-import { Compass } from "lucide-react";
 import type { OpenAuth } from "./types";
 
 interface FooterProps {
@@ -7,17 +6,16 @@ interface FooterProps {
 
 export function Footer({ openAuth }: FooterProps) {
   return (
-    <footer className="border-t py-12" style={{ borderColor: "var(--border)" }}>
+    <footer className="border-t py-14" style={{ borderColor: "var(--border)" }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
+            <span
+              className="w-1.5 h-1.5 rounded-full"
               style={{ background: "var(--primary)" }}
-            >
-              <Compass className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-display font-semibold">TechCoach AI</span>
+              aria-hidden="true"
+            />
+            <span className="font-display font-medium tracking-tight">TechCoach AI</span>
           </div>
 
           <div className="flex items-center gap-6 text-sm text-muted-foreground">

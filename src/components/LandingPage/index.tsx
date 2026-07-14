@@ -28,24 +28,28 @@ export function LandingPage(_props: LandingPageProps) {
   }
 
   return (
-    <div
-      id="top"
-      className="min-h-screen"
-      style={{ background: "var(--background)", color: "var(--foreground)" }}
-    >
-      <Nav openAuth={openAuth} heroCtaRef={heroCtaRef} />
+    <div id="top" className="min-h-screen">
+      {/* The marketing page gets its own scoped palette/type (dailyfour.app-
+          inspired) — deliberately not extended to AuthModal below, which
+          keeps the app's real cream/terracotta identity for sign-up/sign-in. */}
+      <div
+        className="min-h-screen grain-bg landing-theme"
+        style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}
+      >
+        <Nav openAuth={openAuth} heroCtaRef={heroCtaRef} />
 
-      <main>
-        <Hero openAuth={openAuth} heroCtaRef={heroCtaRef} />
-        <HowItWorks openAuth={openAuth} />
-        <Features openAuth={openAuth} />
-        <Employers openAuth={openAuth} />
-        <About />
-        <Pricing openAuth={openAuth} />
-        <Contact />
-      </main>
+        <main>
+          <Hero openAuth={openAuth} heroCtaRef={heroCtaRef} />
+          <HowItWorks openAuth={openAuth} />
+          <Features openAuth={openAuth} />
+          <Employers openAuth={openAuth} />
+          <About />
+          <Pricing openAuth={openAuth} />
+          <Contact />
+        </main>
 
-      <Footer openAuth={openAuth} />
+        <Footer openAuth={openAuth} />
+      </div>
 
       {authOpen && (
         <AuthModal onClose={() => setAuthOpen(false)} pendingTab={pendingTab} intent={authIntent} />
