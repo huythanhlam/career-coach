@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -82,7 +82,7 @@ jobs:
     concurrency: deploy-ai-gateway
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       # v2 runs on Node 24 (v1 targets the now-deprecated Node 20 runtime).
       # Pin an explicit version instead of `latest`: resolving "latest" makes an
@@ -90,7 +90,7 @@ jobs:
       # ("Failed to resolve latest Supabase CLI release"). GITHUB_TOKEN also
       # authenticates the release asset fetch (60 → 5000 req/hr).
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v2
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
         with:
           version: 2.109.0
         env:

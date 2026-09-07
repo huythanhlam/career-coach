@@ -1,0 +1,50 @@
+version: 2
+
+# Two ecosystems, both weekly:
+#   - npm            → application dependencies (package.json / package-lock.json)
+#   - github-actions → the `uses:` SHA pins in .github/workflows/*
+#
+# The github-actions ecosystem is what keeps those SHA pins from going stale:
+# Dependabot rewrites the SHA and the trailing `# vX.Y.Z` comment together, so
+# pinning does not mean silently running an unpatched action forever.
+#
+# Minor and patch updates are grouped into a single PR per ecosystem to keep the
+# review queue small; majors stay separate so breaking changes get their own
+# review.
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - automated
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+      - automated
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch

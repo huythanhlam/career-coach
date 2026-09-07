@@ -1,0 +1,6 @@
+# Default owner for everything in the repository.
+#
+# NOTE: CODEOWNERS on its own only auto-requests review — it does not block a
+# merge. It has no enforcement effect until a branch ruleset (or protection
+# rule) on `main` enables "Require review from Code Owners".
+* @huythanhlam
