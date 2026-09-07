@@ -38,10 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -58,16 +58,23 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           BLOG_MODEL: ${{ vars.BLOG_MODEL }}
+          # Workflow inputs are bound to env vars and referenced as quoted shell
+          # variables — NEVER interpolated with ${{ }} inside `run:`. Direct
+          # interpolation splices attacker-controllable text into the shell before
+          # bash ever sees it, and this job holds SUPABASE_SERVICE_ROLE_KEY (which
+          # bypasses RLS). The argument list is a bash array so quoting survives.
+          LIMIT: ${{ github.event.inputs.limit }}
+          SEED_ONLY: ${{ github.event.inputs.seed_only }}
+          TRENDING_ONLY: ${{ github.event.inputs.trending_only }}
         run: |
-          LIMIT="${{ github.event.inputs.limit }}"
-          ARGS="--limit ${LIMIT:-3}"
-          if [ "${{ github.event.inputs.seed_only }}" = "true" ]; then ARGS="$ARGS --seed-only"; fi
-          if [ "${{ github.event.inputs.trending_only }}" = "true" ]; then ARGS="$ARGS --trending-only"; fi
-          echo "Running: npx tsx scripts/blog/build.ts $ARGS"
-          npx tsx scripts/blog/build.ts $ARGS
+          args=(--limit "${LIMIT:-3}")
+          if [ "$SEED_ONLY" = "true" ]; then args+=(--seed-only); fi
+          if [ "$TRENDING_ONLY" = "true" ]; then args+=(--trending-only); fi
+          echo "Running: npx tsx scripts/blog/build.ts ${args[*]}"
+          npx tsx scripts/blog/build.ts "${args[@]}"
 
       - name: Open pull request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: blog/auto-content
           base: main

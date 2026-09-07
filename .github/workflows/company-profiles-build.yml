@@ -38,10 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -51,7 +51,7 @@ jobs:
 
       - name: Set up Chrome
         id: setup-chrome
-        uses: browser-actions/setup-chrome@v2
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
         with:
           chrome-version: stable
 
@@ -61,21 +61,30 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+          # Workflow inputs are bound to env vars and referenced as quoted shell
+          # variables — NEVER interpolated with ${{ }} inside `run:`. Direct
+          # interpolation splices attacker-controllable text into the shell before
+          # bash ever sees it, and this job holds SUPABASE_SERVICE_ROLE_KEY (which
+          # bypasses RLS). The argument list is a bash array so quoting survives.
+          EVENT_NAME: ${{ github.event_name }}
+          ONLY: ${{ github.event.inputs.only }}
+          REQUESTS_ONLY: ${{ github.event.inputs.requests_only }}
+          LIMIT: ${{ github.event.inputs.limit }}
         run: |
-          ARGS=""
+          args=()
           # repository_dispatch (from a user request) → only process requests.
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            ARGS="--requests-only"
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            args=(--requests-only)
           else
-            if [ "${{ github.event.inputs.requests_only }}" = "true" ]; then ARGS="$ARGS --requests-only"; fi
-            if [ -n "${{ github.event.inputs.only }}" ]; then ARGS="$ARGS --only ${{ github.event.inputs.only }}"; fi
-            if [ -n "${{ github.event.inputs.limit }}" ]; then ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"; fi
+            if [ "$REQUESTS_ONLY" = "true" ]; then args+=(--requests-only); fi
+            if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
+            if [ -n "$LIMIT" ]; then args+=(--limit "$LIMIT"); fi
           fi
-          echo "Running: npx tsx scripts/company-profiles/build.ts $ARGS"
-          npx tsx scripts/company-profiles/build.ts $ARGS
+          echo "Running: npx tsx scripts/company-profiles/build.ts ${args[*]}"
+          npx tsx scripts/company-profiles/build.ts "${args[@]}"
 
       - name: Open pull request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: company-profiles/auto-update
           base: main
