@@ -29,7 +29,7 @@
     "@fontsource-variable/bricolage-grotesque": "5.2.10",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/newsreader": "5.2.10",
-    "@google/genai": "^1.29.0",
+    "@google/genai": "^2.26.0",
     "@sparticuz/chromium": "^131.0.0",
     "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/typography": "^0.5.19",
